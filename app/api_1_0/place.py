@@ -67,10 +67,13 @@ def get_search_pagination():
                 "category_id": 8,
             } for i in server_data]
 
+            total_count = page_size * cur_page
+
         res = {'data': data,
                'page_size': page_size,
                'cur_page': cur_page,
                'total_count': total_count}
-    except:
+    except Exception as e:
+        print(str(e))
         res = []
     return jsonify(res)

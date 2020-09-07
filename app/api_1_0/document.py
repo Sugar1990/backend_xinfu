@@ -438,9 +438,9 @@ def judge_doc_permission():
         if doc_power <= cus_power:
             res = success_res()
         else:
-            res = fail_res("此文档权限较高，无法打开")
+            res = fail_res(msg="此文档权限较高，无法打开")
     else:
-        res = fail_res("无效用户，无法操作")
+        res = fail_res(msg="无效用户，无法操作")
 
     return res
 
