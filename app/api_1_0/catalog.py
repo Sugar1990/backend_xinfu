@@ -6,6 +6,7 @@ from ..models import Catalog, Document, Customer
 from .. import db
 from .utils import success_res, fail_res
 
+
 @blue_print.route('/insert_catalog', methods=['POST'])
 def insert_catalog():
     try:
@@ -148,6 +149,7 @@ def get_catalog_files():
         customer = Customer.query.filter_by(id=customer_id).first()
         catalogs = Catalog.query.filter_by(parent_id=catalog_id).all()
 
+        doc_status = lambda x: "上传处理中" if x == 0 else "未标注" if x == 1 else "已标注" if x == 2 else ""
         if customer:
             res = {
                 "files": [{
@@ -156,7 +158,7 @@ def get_catalog_files():
                     "createtime": i.create_time,
                     "create_username": Customer.get_username_by_id(i.create_by),
                     "extension": i.category.replace('\n\"', ""),
-                    "status": '已标注' if i.status else '未标注'
+                    "status": doc_status(i.status)
                 } for i in docs if i.get_power() <= customer.get_power()],
                 "catalogs": [{
                     'id': i.id,
@@ -188,19 +190,20 @@ def batch_del_catalog():
 
     return jsonify(res)
 
+
 @blue_print.route('/insert_1stfloor_catalog', methods=['POST'])
 def insert_1stfloor_catalog():
     try:
         name = request.json.get("name", "")
         customer_id = request.json.get("customer_id", 0)
         tabs = request.json.get("tabs", [])
-        catalog = Catalog.query.filter_by(name=name, create_by=customer_id, parent_id=0,tagging_tabs=tabs).first()
+        catalog = Catalog.query.filter_by(name=name, create_by=customer_id, parent_id=0, tagging_tabs=tabs).first()
 
         if catalog:
             res = fail_res(msg="相同根目录已存在")
         else:
             catalog = Catalog(name=name, create_by=customer_id, parent_id=0
-                              , create_time=datetime.datetime.now(),tagging_tabs=tabs)
+                              , create_time=datetime.datetime.now(), tagging_tabs=tabs)
             db.session.add(catalog)
             db.session.commit()
             res = success_res()
@@ -211,6 +214,7 @@ def insert_1stfloor_catalog():
 
     return jsonify(res)
 
+
 @blue_print.route('/modify_catalog', methods=['PUT'])
 def modify_catalog():
     catalog_id = request.json.get('catalog_id', 0)
@@ -220,7 +224,7 @@ def modify_catalog():
     try:
         catalog = Catalog.query.filter_by(id=catalog_id).first()
         if catalog:
-            if not catalog.tagging_tabs:   # 不是根目录   ??修改的必须是根目录吗
+            if not catalog.tagging_tabs:  # 不是根目录   ??修改的必须是根目录吗
                 res = fail_res(msg="非文档类型目录")
             else:
                 catalog1 = Catalog.query.filter_by(name=name, parent_id=parent_id, tagging_tabs=tabs).first()
@@ -239,6 +243,7 @@ def modify_catalog():
         db.session.rollback()
         res = fail_res()
     return jsonify(res)
+
 
 @blue_print.route('/get_tagging_tabs', methods=['GET'])
 def get_tagging_tabs():
@@ -269,12 +274,12 @@ def get_1stfloor_catalog():
                 if catalog.tagging_tabs:
                     res.append(
                         {
-                            "catalog_id":catalog.id,
-                            "name":catalog.name,
-                            "parent_id":catalog.parent_id,
-                            "create_by":catalog.create_by,
-                            "create_time":catalog.create_time,
-                            "tagging_tabs":catalog.tagging_tabs
+                            "catalog_id": catalog.id,
+                            "name": catalog.name,
+                            "parent_id": catalog.parent_id,
+                            "create_by": catalog.create_by,
+                            "create_time": catalog.create_time,
+                            "tagging_tabs": catalog.tagging_tabs
                         }
                     )
     except Exception:
