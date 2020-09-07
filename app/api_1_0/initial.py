@@ -86,7 +86,7 @@ def pg_insert_es():
                 "entities": "ik",  # [{name: category_id}, …]  # 多个实体，含名称和类型id
                 "event_categories": "ik",  # [{event_class: event_category}, …]
                 "doc_type": "id",
-                "notes": "notes"
+                "notes": "ik"
             }
             pg_dict = {"id": {"col_type": "align", "document": "id"},
                        "name": {"col_type": "", "document": "name"},
