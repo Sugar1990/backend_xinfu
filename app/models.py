@@ -37,6 +37,7 @@ class Document(db.Model):
     permission_id = db.Column(db.Integer)
     status = db.Column(db.Integer)
     keywords = db.Column(db.JSON)
+    md5 = db.Column(db.String)
 
     def category_name(self):
         conf = EntityCategory.query.filter_by(id=self.category_id).first()

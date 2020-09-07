@@ -8,6 +8,7 @@ from flask import jsonify, request
 from pypinyin import lazy_pinyin
 from sqlalchemy import or_
 from werkzeug.utils import secure_filename
+import hashlib
 
 from . import api_document as blue_print
 from .utils import success_res, fail_res
@@ -25,6 +26,7 @@ def upload_doc():
         uid = request.form.get('uid', 0)
         file_list = request.files.getlist('file', None)
 
+        msg = ""
         for file_obj in file_list:
             path_filename = file_obj.filename
             path = path_filename.split("/")
@@ -34,56 +36,72 @@ def upload_doc():
                     with lock:
                         catalog_id = find_leaf_catalog_id(catalog_id, path_catalog_name_list, uid)
 
-                    filename = secure_filename(''.join(lazy_pinyin(path[-1])))
-                    save_filename = "{0}{1}{2}".format(os.path.splitext(filename)[0],
-                                                       datetime.datetime.now().strftime('%Y%m%d%H%M%S'),
-                                                       os.path.splitext(filename)[1]).lower()
-                    file_savepath = os.path.join(os.getcwd(), 'static', save_filename)
-                    file_obj.save(file_savepath)
+                filename = secure_filename(''.join(lazy_pinyin(path[-1])))
+                save_filename = "{0}{1}{2}".format(os.path.splitext(filename)[0],
+                                                   datetime.datetime.now().strftime('%Y%m%d%H%M%S'),
+                                                   os.path.splitext(filename)[1]).lower()
+                file_savepath = os.path.join(os.getcwd(), 'static', save_filename)
+                file_obj.save(file_savepath)
 
-                    doc_extension = os.path.splitext(filename)[1]
-                    content_list, keywords = [], []
-                    if doc_extension in ['.docx', '.doc']:
-                        content_list = extract_word_content(file_savepath)
-                        keywords = get_keywords(content_list)
+                doc_extension = os.path.splitext(filename)[1]
+                content_list, keywords = [], []
+                if doc_extension in ['.docx', '.doc']:
+                    content_list = extract_word_content(file_savepath)
+                    keywords = get_keywords(content_list)
 
-                    permission_id = 0
-                    customer = Customer.query.filter_by(id=uid).first()
-                    if customer:
-                        permission = Permission.query.filter_by(id=customer.permission_id).first()
-                        if permission:
-                            permission_id = permission.id
+                permission_id = 0
+                customer = Customer.query.filter_by(id=uid).first()
+                if customer:
+                    permission = Permission.query.filter_by(id=customer.permission_id).first()
+                    if permission:
+                        permission_id = permission.id
 
-                    doc = Document(name=path[-1],
-                                   category=os.path.splitext(filename)[1],
-                                   savepath='/static/{0}'.format(save_filename),
-                                   catalog_id=catalog_id,
-                                   content=content_list,
-                                   create_by=uid,
-                                   create_time=datetime.datetime.now(),
-                                   permission_id=permission_id,
-                                   status=0,
-                                   keywords=keywords)
+                with open(file_savepath, 'rb') as f:
+                    md5_hash = hashlib.md5(f.read())
+                    file_md5 = md5_hash.hexdigest()
 
-                    db.session.add(doc)
-                    db.session.commit()
+                if file_md5:
+                    doc = Document.query.filter_by(md5=file_md5, catalog_id=catalog_id).first()
+                    if doc:
+                        res = fail_res("{0}文档已存在\n".format(path[-1]))
+                    else:
+                        doc = Document(name=path[-1],
+                                       category=os.path.splitext(filename)[1],
+                                       savepath='/static/{0}'.format(save_filename),
+                                       catalog_id=catalog_id,
+                                       content=content_list,
+                                       create_by=uid,
+                                       create_time=datetime.datetime.now(),
+                                       permission_id=permission_id,
+                                       status=0,
+                                       keywords=keywords,
+                                       md5=file_md5)
 
-                    # 抽取id、name、content插入es数据库中
-                    data_insert_json = [{
-                        "id": doc.id,
-                        "name": doc.name,
-                        "content": str(doc.content),
-                        "create_time": doc.create_time.strftime('%Y%m%d%H%M%S')
-                    }]
+                        db.session.add(doc)
+                        db.session.commit()
 
-                    url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
-                    header = {"Content-Type": "application/json; charset=UTF-8"}
-                    para = {"data_insert_index": "document",
-                            "data_insert_json": data_insert_json}
+                        # 抽取id、name、content插入es数据库中
+                        data_insert_json = [{
+                            "id": doc.id,
+                            "name": doc.name,
+                            "content": str(doc.content),
+                            "create_time": doc.create_time.strftime('%Y%m%d%H%M%S'),
+                            "keywords": doc.keywords
+                        }]
 
-                    insert_result = requests.post(url + '/dataInsert', data=json.dumps(para),
-                                                  headers=header)
-        res = success_res()
+                        url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+                        header = {"Content-Type": "application/json; charset=UTF-8"}
+                        para = {"data_insert_index": "document",
+                                "data_insert_json": data_insert_json}
+
+                        insert_result = requests.post(url + '/dataInsert', data=json.dumps(para),
+                                                      headers=header)
+                        res = success_res()
+                else:
+                    res = fail_res("计算文件md5异常，上传失败")
+            else:
+                res = fail_res("upload path is empty")
+
     except Exception as e:
         print(str(e))
         db.session.rollback()
@@ -421,13 +439,12 @@ def get_search_panigation():
         document_name = request.args.get('search', "")
         page_size = request.args.get('page_size', 10, type=int)
         cur_page = request.args.get('cur_page', 1, type=int)
-        print(document_name, page_size, flush=True)
         url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
         if not document_name:
             search_json = {}
         else:
             search_json = {"name": {"type": "text", "value": document_name, "boost": 1},
-                           "sort": {"type": "normal", "sort": "creat_time", "asc_desc": "desc"}}
+                           "sort": {"type": "normal", "sort": "create_time", "asc_desc": "desc"}}
         para = {"search_index": 'document', "search_json": search_json}
         header = {"Content-Type": "application/json"}
         esurl = url + "/searchCustom"
@@ -435,7 +452,7 @@ def get_search_panigation():
         search_result = requests.post(url=esurl, data=json.dumps(para), headers=header)
         # print(search_result, flush=True)
         data = []
-        for doc in eval(search_result.json()['data'])['dataList']:
+        for doc in search_result.json()['data']['dataList']:
             doc_pg = Document.query.filter_by(id=doc['_source']['id']).first()
             path = doc_pg.get_full_path() if doc_pg else '已失效'
             create_username = Customer.get_username_by_id(doc_pg.create_by) if doc_pg else '无效用户'
@@ -444,12 +461,16 @@ def get_search_panigation():
                          'create_username': create_username,
                          'path': path}
             data.append(data_item)
-        total_count = len(data)
-        if total_count > page_size * (cur_page + 1):
-            list_return = data[page_size * cur_page:page_size * (cur_page + 1)]
 
-        elif total_count < page_size * (cur_page + 1) and len(data) > page_size * cur_page:
-            list_return = data[page_size * cur_page:]
+        total_count = len(data)
+
+        if total_count > page_size * cur_page:
+            list_return = data[page_size * (cur_page - 1):page_size * cur_page]
+
+        elif total_count < page_size * cur_page and total_count > page_size * (cur_page - 1):
+            list_return = data[page_size * (cur_page - 1):]
+        else:
+            list_return = []
         # print(esurl, para, flush=True)
         res = {'data': list_return,
                'page_count': int(total_count / page_size) + 1,
