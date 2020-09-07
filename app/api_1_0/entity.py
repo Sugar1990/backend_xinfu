@@ -15,7 +15,7 @@ from werkzeug.utils import secure_filename
 from . import api_entity as blue_print
 from .utils import success_res, fail_res
 from .. import db
-from ..conf import ES_SERVER_IP, ES_SERVER_PORT, YC_ROOT_URL, PLACE_BASE_NAME
+from ..conf import ES_SERVER_IP, ES_SERVER_PORT, YC_ROOT_URL, PLACE_BASE_NAME, USE_PLACE_SERVER
 from ..models import Entity, EntityCategory
 from .place import get_place_from_base_server
 
@@ -443,20 +443,43 @@ def get_entity_list_es():
 
 # 模糊搜索实体分页展示
 @blue_print.route('/get_search_panigation', methods=['GET'])
-def get_search_panigation_es():
+def get_search_panigation():
     try:
-        entity_name = request.args.get('search', "")
+        search = request.args.get('search', "")
         page_size = request.args.get('page_size', 10, type=int)
         cur_page = request.args.get('cur_page', 1, type=int)
         category_id = request.args.get('category_id', 0, type=int)
+        data, total_count = get_search_panigation_es(search=search, page_size=page_size, cur_page=cur_page,
+                                                     category_id=category_id)
+        res = {
+            "data": data,
+            "cur_page": cur_page,
+            "page_size": page_size,
+            "total_count": total_count
+        }
+    except Exception as e:
+        print(str(e))
+        res = {
+            "data": [],
+            "cur_page": 0,
+            "page_size": 0,
+            "total_count": 0
+        }
+    return jsonify(res)
 
-        if category_id != EntityCategory.get_category_id(PLACE_BASE_NAME):
+
+def get_search_panigation_es(search='', page_size=10, cur_page=1, category_id=0):
+    try:
+
+        if category_id == EntityCategory.get_category_id(PLACE_BASE_NAME) and USE_PLACE_SERVER:
+            data, total_count = get_place_from_base_server(page_size=page_size, cur_page=cur_page, search=search)
+        else:
             url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
-            if not entity_name:
+            if not search:
                 search_json = {}
             else:
-                search_json = {"name": {"type": "text", "value": entity_name, "boost": 5},
-                               "synonyms": {"type": "text", "value": entity_name, "boost": 1}}
+                search_json = {"name": {"type": "text", "value": search, "boost": 5},
+                               "synonyms": {"type": "text", "value": search, "boost": 1}}
 
             if category_id != 0:
                 search_json['category_id'] = {"type": "id", "value": category_id}
@@ -479,16 +502,11 @@ def get_search_panigation_es():
                 entity['props'] = {} if entity['props'] == "None" else eval(
                     entity['props'])  # json.dumps(entity['props'].replace("\"",""),ensure_ascii= False)
                 entity['synonyms'] = [] if entity['synonyms'] == "None" else eval(entity['synonyms'])
-        else:
-            data, total_count = get_place_from_base_server(page_size=page_size, cur_page=cur_page, search=entity_name)
 
-        res = {'data': data,
-               'page_size': page_size,
-               'cur_page': cur_page,
-               'total_count': total_count}
+        res = data, total_count
     except:
-        res = []
-    return jsonify(res)
+        res = [], 0
+    return res
 
 
 # 精准搜索
@@ -556,27 +574,10 @@ def get_entity_data():
 @blue_print.route('/get_top_list', methods=['GET'])
 def get_top_list():
     try:
-        entity_name = request.args.get('search', '')
+        search = request.args.get('search', '')
         category_id = request.args.get('category_id', 0)
-        entity_top5_list = Entity.query
-
-        entity_top5_list = entity_top5_list.filter(and_(
-            or_(Entity.name.like("%" + entity_name + "%"), Entity.synonyms.has_key(entity_name)),
-            Entity.category_id == category_id)).all()
-
-        if not entity_top5_list:
-            search_cuts = analyse.extract_tags(entity_name, topK=5)
-            conditions = [Entity.name.like("%" + i + "%") for i in search_cuts]
-            conditions.extend([Entity.synonyms.has_key(i) for i in search_cuts])
-
-            conditions = tuple(conditions)
-            entity_top5_list = Entity.query.filter(
-                and_(or_(*conditions), Entity.category_id == category_id, Entity.valid == 1)).all()
-
-        res = [{'id': entity.id,
-                'name': entity.name,
-                'category': entity.category_name()
-                } for entity in entity_top5_list[:5]]
+        data, _ = get_search_panigation_es(search=search, category_id=category_id, page_size=5, cur_page=1)
+        res = data
     except Exception as e:
         print(str(e))
         res = []
