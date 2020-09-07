@@ -1,0 +1,739 @@
+# -*- coding: UTF-8 -*-
+import datetime
+import jieba
+import jieba.analyse as analyse
+import json
+import os
+import re
+import requests
+import xlrd
+from flask import request, jsonify
+from pypinyin import lazy_pinyin
+from sqlalchemy import or_, and_, not_
+from werkzeug.utils import secure_filename
+
+from . import api_entity as blue_print
+from .utils import success_res, fail_res
+from .. import db
+from ..conf import ES_SERVER_IP, ES_SERVER_PORT, YC_ROOT_URL, PLACE_BASE_NAME
+from ..models import Entity, EntityCategory
+
+# -*- coding:utf-8 -*-
+# author: Scandium
+# work_location: Bei Jing
+# File : entity_port.py
+# time: 2020/8/28 8:56
+
+
+ES_SERVER_IP = '172.11.0.21'
+ES_SERVER_PORT = 6789
+
+
+# get_entity
+@blue_print.route('/get_all', methods=['GET'])
+def get_all():
+    ### 重要参数:(当前页和每页条目数)
+    current_page = request.args.get('cur_page', 0, type=int)
+    page_size = request.args.get('page_size', 0, type=int)
+    category_id = request.args.get('category_id', 0, type=int)
+
+    conditions = [Entity.valid == 1]
+    if category_id:
+        conditions.append(Entity.category_id == category_id)
+
+    conditions = tuple(conditions)
+    pagination = Entity.query.filter(and_(*conditions)).order_by(Entity.id.desc()).paginate(current_page, page_size,
+                                                                                            False)
+
+    data = [{
+        "id": item.id,
+        "name": item.name,
+        'props': item.props if item.props else {},
+        'synonyms': item.synonyms if item.synonyms else [],
+        "summary": item.summary,
+        'category': item.category_name(),
+        'category_id': item.category_id
+    } for item in pagination.items]
+
+    res = {
+        "total_count": pagination.total,
+        "page_count": pagination.pages,
+        "data": data,
+        "cur_page": pagination.page
+
+    }
+
+    return jsonify(res)
+
+
+@blue_print.route('/insert_entity', methods=['POST'])
+def insert_entity():
+    try:
+        name = request.json.get('name', "")
+        category_id = request.json.get('category_id', 0)
+        props = request.json.get('props', {})
+        synonyms = request.json.get('synonyms', [])
+        summary = request.json.get('summary', '')
+
+        category = EntityCategory.query.filter_by(id=category_id, valid=1).first()
+        if not category:
+            res = fail_res("实体类型不存在，添加失败！")
+            return jsonify(res)
+        if category.name == PLACE_BASE_NAME:
+            res = fail_res("地名库由专业团队维护,不能添加！")
+            return jsonify(res)
+
+        entity = Entity.query.filter(and_(or_(Entity.name == name, Entity.synonyms.has_key(name))),
+                                     Entity.valid == 1).first()
+
+        if not entity:
+            # todo 前端修改props默认类型
+            props = props if props else {}
+
+            entity = Entity(name=name, category_id=category_id, props=props, synonyms=synonyms, summary=summary,
+                            valid=1)
+            db.session.add(entity)
+            db.session.commit()
+
+            # es 插入操作
+            data_insert_json = [{
+                'name': name,
+                'category_id': category_id,
+                'summary': summary,
+                'props': json.dumps(props),
+                'synonyms': json.dumps(synonyms),
+                'id': entity.id
+            }]
+            url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+
+            header = {"Content-Type": "application/json; charset=UTF-8"}
+
+            # print(entity)
+            para = {"data_insert_index": "entity", "data_insert_json": data_insert_json}
+            search_result = requests.post(url + '/dataInsert', data=json.dumps(para), headers=header)
+            # print(search_result.text, flush=True)
+
+            # 雨辰同步
+            if YC_ROOT_URL:
+                header = {"Content-Type": "application/json; charset=UTF-8"}
+                url = YC_ROOT_URL + "/entitysync/add"
+                data = json.dumps({"id": entity.id,
+                                   "name": name,
+                                   "categoryId": category_id,
+                                   "props": props,
+                                   "synonyms": synonyms
+                                   })
+                yc_res = requests.post(url=url, data=data, headers=header)
+
+            res = success_res()
+        else:
+            res = fail_res("该实体名称已存在")
+    except Exception as e:
+        print(str(e))
+        db.session.rollback()
+        res = fail_res(str(e))
+    return jsonify(res)
+
+
+@blue_print.route('/update_entity', methods=['PUT'])
+def update_entity():
+    try:
+        id = request.json.get('id', 0)
+        name = request.json.get('name', '')
+        category_id = request.json.get('category_id', 0)
+        props = request.json.get('props', {})
+        synonyms = request.json.get('synonyms', [])
+        summary = request.json.get('summary', '')
+
+        entityPlace = Entity.query.filter_by(id=id, valid=1).first()
+        category_place = EntityCategory.query.filter_by(id=entityPlace.category_id, valid=1).first()
+        if category_place.name == PLACE_BASE_NAME:
+            res = fail_res("地名库由专业团队维护,不能修改！")
+            return jsonify(res)
+
+        categoryPlace = EntityCategory.query.filter_by(id=category_id, valid=1).first()
+        if categoryPlace.name == PLACE_BASE_NAME:
+            res = fail_res("地名库由专业团队维护,不能修改！")
+            return jsonify(res)
+
+        entity = Entity.query.filter_by(id=id, valid=1).first()
+
+        if entity:
+            key_value_json = {}
+            if name:
+                entity.name = name
+                key_value_json['name'] = name
+            if category_id:
+                entity.category_id = category_id
+                key_value_json['category_id'] = category_id
+            if props:
+                entity.props = props
+                key_value_json['props'] = str(props)
+            if synonyms:
+                entity.synonyms = synonyms
+                key_value_json['synonyms'] = str(synonyms)
+            if summary:
+                entity.synonyms = summary
+                key_value_json['summary'] = summary
+            db.session.commit()
+
+            # 获得es对应实体
+            url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+            header = {"Content-Type": "application/json; charset=UTF-8"}
+            search_json = {
+                "id": {"type": "id", "value": entity.id}
+            }
+            es_id_para = {"search_index": "entity", "search_json": search_json}
+
+            search_result = requests.post(url + '/searchId', data=json.dumps(es_id_para), headers=header)
+
+            es_id = search_result.json()['data']['dataList'][0]
+
+            # 更新ES实体
+            inesert_para = {"update_index": 'entity',
+                            "data_update_json": [{es_id: key_value_json}]}
+
+            search_result = requests.post(url + '/updatebyId', data=json.dumps(inesert_para), headers=header)
+
+            print(YC_ROOT_URL, flush=True)
+            # 雨辰同步
+            if YC_ROOT_URL:
+                header = {"Content-Type": "application/json; charset=UTF-8"}
+                url = YC_ROOT_URL + "/entitysync/update"
+                data = json.dumps({"id": entity.id,
+                                   "name": name,
+                                   "categoryId": category_id,
+                                   "props": props,
+                                   "synonyms": synonyms
+                                   })
+                yc_res = requests.post(url=url, data=data, headers=header)
+
+            res = success_res("修改成功")
+        else:
+            res = fail_res('实体不存在')
+    except Exception as e:
+        print(str(e))
+        db.session.rollback()
+        res = fail_res()
+    return jsonify(res)
+
+
+@blue_print.route('/delete_entity', methods=['POST'])
+def delete_entity():
+    try:
+        id = request.json.get('id', 0)
+
+        entity = Entity.query.filter_by(id=id, valid=1).first()
+        if entity:
+            category_place = EntityCategory.query.filter_by(id=entity.category_id, valid=1).first()
+            if category_place.name == PLACE_BASE_NAME:
+                res = fail_res("地名库由专业团队维护,不能删除！")
+                return jsonify(res)
+
+        try:
+            entity.valid = 0
+            db.session.commit()
+
+        except:
+            print(id, 'already_delete_done')
+
+        url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+        header = {"Content-Type": "application/json; charset=UTF-8"}
+        search_json = {
+            "id": {"type": "id", "value": id}
+        }
+        es_id_para = {"search_index": "entity", "search_json": search_json}
+        search_result = requests.post(url + '/searchId', data=json.dumps(es_id_para), headers=header)
+        try:
+            es_id = [search_result.json()['data']['dataList'][0]]
+        except:
+            es_id = []
+        delete_para = {"delete_index": "entity", "id_json": es_id}
+        search_result = requests.post(url + '/deletebyId', data=json.dumps(delete_para), headers=header)
+
+        # 雨辰同步
+        if YC_ROOT_URL:
+            header = {"Content-Type": "application/x-www-form-urlencoded; charset=UTF-8"}
+            url = YC_ROOT_URL + "/entitysync/delete".format(id)
+            yc_res = requests.post(url=url, data={"id": id}, headers=header)
+
+        res = success_res()
+    except Exception as e:
+        print(str(e))
+        db.session.rollback()
+        res = fail_res()
+    return jsonify(res)
+
+
+@blue_print.route('/delete_entity_by_ids', methods=['POST'])
+# TO DO finish this module
+def delete_entity_by_ids():
+    try:
+        ids = request.json.get('ids')
+        entity = db.session.query(Entity).filter(Entity.id.in_(ids), Entity.valid == 1).all()
+        for uni_entity in entity:
+            try:
+                # db.session.delete(uni_entity)
+                uni_entity.valid = 0
+            except:
+                pass
+        db.session.commit()
+
+        for id in ids:
+
+            if YC_ROOT_URL:
+                # 雨辰同步
+                header = {"Content-Type": "application/x-www-form-urlencoded; charset=UTF-8"}
+                url = YC_ROOT_URL + "/entitysync/delete".format(id)
+                yc_res = requests.post(url=url, data={"id": id}, headers=header)
+
+        url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+        for id in ids:
+            search_json = {
+                'id': {'type': 'id', 'value': id}}
+            header_es = {"Content-Type": "application/json; charset=UTF-8"}
+            es_id_para = {"search_index": "entity", "search_json": search_json}
+            search_result = requests.post(url + '/searchId', data=json.dumps(es_id_para), headers=header_es)
+            try:
+                es_id = [search_result.json()['data']['dataList'][0]]
+
+            except:
+                es_id = []
+
+            # es_ids.append(es_id)
+            delete_para = {"delete_index": "entity", "id_json": es_id}
+            delete_result = requests.post(url + '/deletebyId', data=json.dumps(delete_para), headers=header_es)
+        res = success_res()
+        return jsonify(res)
+    except Exception as e:
+        print(str(e))
+        db.session.rollback()
+        res = fail_res(str(e))
+
+
+@blue_print.route('/add_synonyms', methods=['PUT'])
+def add_synonyms():
+    try:
+        id = request.json.get('id', 0)
+        synonyms = request.json.get('synonyms', [])
+        entity = Entity.query.filter_by(id=id, valid=1).first()
+        if entity.synonyms:
+            synonyms.extend(entity.synonyms)
+
+        entity.synonyms = synonyms
+
+        db.session.commit()
+
+        # 获得es对应实体
+
+        url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+        header = {"Content-Type": "application/json; charset=UTF-8"}
+        search_json = {
+            "id": {"type": "id", "value": entity.id}
+        }
+        es_id_para = {"search_index": "entity", "search_json": search_json}
+        search_result = requests.post(url + '/searchId', data=json.dumps(es_id_para), headers=header)
+        es_id = search_result.json()['data']['dataList'][0]
+
+        # 更新ES实体
+        key_value_json = {'synonyms': entity.synonyms}
+        inesert_para = {"update_index": 'entity',
+                        "data_update_json": [{es_id: key_value_json}]}
+        search_result = requests.post(url + '/updatebyId', params=json.dumps(inesert_para), headers=header)
+
+        # 雨辰同步
+        if YC_ROOT_URL:
+            header = {"Content-Type": "application/json; charset=UTF-8"}
+            url = YC_ROOT_URL + "/entitysync/update"
+            data = json.dumps({"id": entity.id,
+                               "synonyms": entity.synonyms})
+            yc_res = requests.post(url=url, data=data, headers=header)
+        res = success_res()
+    except:
+        db.session.rollback()
+        res = fail_res()
+    return jsonify(res)
+
+
+@blue_print.route('/delete_synonyms', methods=['PUT'])
+def delete_synonyms():
+    try:
+        id = request.json.get('id', 0)
+        synonyms = request.json.get('synonyms', [])
+        entity = Entity.query.filter_by(id=id, valid=1).first()
+        original_list = [item for item in entity.synonyms if item not in synonyms]
+        entity.synonyms = original_list
+        db.session.commit()
+        # 获得es对应实体
+        url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+        header = {"Content-Type": "application/json; charset=UTF-8"}
+        search_json = {
+            "id": {"type": "id", "value": id}
+        }
+        es_id_para = {"search_index": "entity", "search_json": search_json}
+        search_result = requests.post(url + '/searchId', data=json.dumps(es_id_para), headers=header)
+        es_id = search_result.json()['data']['dataList'][0]
+        # 更新ES实体
+        key_value_json = {"synonyms": entity.synonyms}
+        inesert_para = {"update_index": 'entity',
+                        "data_update_json": [{es_id: key_value_json}]}
+        search_result = requests.post(url + '/updatebyId', params=json.dumps(inesert_para), headers=header)
+
+        # 雨辰同步
+        if YC_ROOT_URL:
+            header = {"Content-Type": "application/json; charset=UTF-8"}
+            url = YC_ROOT_URL + "/entitysync/update"
+            data = json.dumps({"id": entity.id,
+                               "synonyms": entity.synonyms})
+            yc_res = requests.post(url=url, data=data, headers=header)
+        res = success_res()
+    except:
+        db.session.rollback()
+        res = fail_res()
+    return jsonify(res)
+
+
+# 获取某词语所指向实体（只返回id，name，category_id）
+@blue_print.route('/get_linking_entity', methods=['GET'])
+def get_linking_entity():
+    try:
+        entity_name = request.args.get('search', '')
+        category_id = request.args.get('category_id', 0, type=int)
+        entity = Entity.query.filter(
+            and_(Entity.valid == 1, or_(Entity.name == entity_name, Entity.synonyms.has_key(entity_name))))
+
+        if category_id:
+            entity = entity.filter_by(category_id=category_id, valid=1)
+        entity = entity.first()
+
+        if entity:
+            res = {'id': entity.id, 'name': entity.name, 'category': entity.category_name()}
+        else:
+            res = {'id': -1, 'name': '', 'category': ''}
+    except:
+        res = {'id': -1, 'name': '', 'category': ''}
+    return res
+
+
+# es数据库中模糊搜索
+@blue_print.route('/get_top_list_es', methods=['GET'])
+def get_entity_list_es():
+    try:
+        entity_name = str(request.args.get('search', ''))
+        category_id = request.args.get('category_id', 0, type=int)
+        url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+        search_json = {"name": {"type": "text", "value": entity_name, "boost": 5},
+                       'synonyms': {"type": "text", "value": entity_name, "boost": 1}}
+        if category_id != 0:
+            search_json['category_id'] = {"type": "id", "value": category_id}
+        null = 'None'
+        para = {"search_index": 'entity', "search_json": str(search_json)}
+        search_result = requests.get(url + '/searchCustom', params=para, headers={})
+        res = [{'id': entity['_source']['id'],
+                'name': entity['_source']['name'],
+                'category': EntityCategory.get_category_name(entity['_source']['category_id'])
+                } for entity in search_result.json()['data']['dataList']]
+    except:
+        res = []
+    return jsonify(res[:5])
+
+
+# 模糊搜索实体分页展示
+@blue_print.route('/get_search_panigation', methods=['GET'])
+def get_search_panigation_es():
+    try:
+        entity_name = request.args.get('search', "")
+        page_size = request.args.get('page_size', 10, type=int)
+        cur_page = request.args.get('cur_page', 1, type=int)
+        category_id = request.args.get('category_id', 0, type=int)
+
+        url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+        if not entity_name:
+            search_json = {}
+        else:
+            search_json = {"name": {"type": "text", "value": entity_name, "boost": 5},
+                           "synonyms": {"type": "text", "value": entity_name, "boost": 1}}
+
+        if category_id != 0:
+            search_json['category_id'] = {"type": "id", "value": category_id}
+
+        para = {"search_index": 'entity', "search_json": search_json, "pageSize": page_size,
+                "currentPage": cur_page}
+        header = {"Content-Type": "application/json"}
+        esurl = url + "/searchCustomPagination"
+        search_result = requests.post(url=esurl, data=json.dumps(para), headers=header)
+        null = 'None'
+        total_count = search_result.json()['data']['totalCount']
+        data = [{'id': entity['_source']['id'],
+                 'name': entity['_source']['name'],
+                 'props': entity['_source']['props'],
+                 'synonyms': entity['_source']['synonyms'],
+                 'summary': entity['_source']['summary'],
+                 'category': EntityCategory.get_category_name(entity['_source']['category_id'])
+                 } for entity in search_result.json()['data']['dataList']]
+        for entity in data:
+            entity['props'] = {} if entity['props'] == "None" else eval(
+                entity['props'])  # json.dumps(entity['props'].replace("\"",""),ensure_ascii= False)
+            entity['synonyms'] = [] if entity['synonyms'] == "None" else eval(entity['synonyms'])
+        res = {'data': data, 'page_size': page_size,
+               'cur_page': cur_page, 'total_count': total_count}
+    except:
+        res = []
+    return jsonify(res)
+
+
+# 精准搜索
+@blue_print.route('/get_entity_data_es', methods=['GET'])
+def get_entity_data_es():
+    # try:
+    entity_name = request.args.get('search', '')
+    url = 'http://172.11.0.21:6789'
+    # url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+    search_json = {"name": {"type": "keyword", "value": [entity_name]}}
+    para = {"search_index": 'entity', "search_json": json.dumps(search_json)}
+    search_result = requests.get(url + '/searchCustom', params=para, headers={})
+    null = 'None'
+    entity = search_result.json()['data']['dataList'][0]
+    if entity:
+        res = {'id': entity['_source']['id'], 'name': entity['_source']['name'],
+               'synonyms': entity['_source']['synonyms'],
+               'props': entity['_source']['props'],
+               'summary': entity['_source']['summary'],
+               'category': EntityCategory.get_category_name(entity['_source']['category_id'])}
+    else:
+        res = {'id': -1, 'name': '', 'synonyms': [], 'props': {}, 'summary': {},
+               'category': ''}
+    return jsonify(res)
+
+
+# 获取实体信息
+@blue_print.route('/get_entity_info', methods=['GET'])
+def get_entity_info():
+    try:
+        id = request.args.get('id', 0, type=int)
+        entity = Entity.query.filter_by(id=id, valid=1).first()
+        if entity:
+            res = {'id': entity.id, 'name': entity.name, 'synonyms': entity.synonyms if entity.synonyms else [],
+                   'props': entity.props if entity.props else {}, 'category': entity.category_name(),
+                   'summary': entity.summary if entity.summary else ''}
+        else:
+            res = {'id': -1, 'name': '', 'synonyms': [], 'props': {},
+                   'category': ''}
+    except:
+        res = {'id': -1, 'name': '', 'synonyms': [], 'props': {},
+               'category': ''}
+    return jsonify(res)
+
+
+# 获取某词语所有信息
+@blue_print.route('/get_entity_data', methods=['GET'])
+def get_entity_data():
+    try:
+        search = request.args.get('search', '')
+        entity = Entity.query.filter_by(name=search, valid=1).first()
+        if entity:
+            res = {'id': entity.id, 'name': entity.name, 'synonyms': entity.synonyms,
+                   'props': entity.props, 'category': entity.category_name()}
+        else:
+            res = {'id': -1, 'name': '', 'synonyms': [], 'props': {},
+                   'category': ''}
+    except:
+        res = {'id': -1, 'name': '', 'synonyms': [], 'props': {},
+               'category': ''}
+    return jsonify(res)
+
+
+# 获取某词语的5个实体推荐
+@blue_print.route('/get_top_list', methods=['GET'])
+def get_top_list():
+    try:
+        entity_name = request.args.get('search', '')
+        category_id = request.args.get('category_id', 0)
+        entity_top5_list = Entity.query
+
+        entity_top5_list = entity_top5_list.filter(and_(
+            or_(Entity.name.like("%" + entity_name + "%"), Entity.synonyms.has_key(entity_name)),
+            Entity.category_id == category_id)).all()
+
+        if not entity_top5_list:
+            search_cuts = analyse.extract_tags(entity_name, topK=5)
+            conditions = [Entity.name.like("%" + i + "%") for i in search_cuts]
+            conditions.extend([Entity.synonyms.has_key(i) for i in search_cuts])
+
+            conditions = tuple(conditions)
+            entity_top5_list = Entity.query.filter(
+                and_(or_(*conditions), Entity.category_id == category_id, Entity.valid == 1)).all()
+
+        res = [{'id': entity.id,
+                'name': entity.name,
+                'category': entity.category_name()
+                } for entity in entity_top5_list[:5]]
+    except Exception as e:
+        print(str(e))
+        res = []
+
+    return jsonify(res)
+
+
+# 模糊搜索分页展示pg
+@blue_print.route('/get_search_panigation_pg', methods=['GET'])
+def get_search_panigation():
+    try:
+        entity_name = request.args.get('search', '')
+        page_size = request.args.get('page_size', 10, type=int)
+        cur_page = request.args.get('cur_page', 1, type=int)
+
+        entity_list = Entity.query.filter(and_(Entity.valid == 1, or_(Entity.name.like("%" + entity_name + "%"),
+                                                                      Entity.synonyms.has_key(entity_name)))
+                                          ).all()
+
+        entity_ids = [i.id for i in entity_list]
+
+        search_cuts = analyse.extract_tags(entity_name, topK=5)
+        conditions = [Entity.name.like("%" + i + "%") for i in search_cuts]
+        conditions.extend([Entity.synonyms.has_key(i) for i in search_cuts])
+
+        conditions = tuple(conditions)
+        ex_list = Entity.query.filter(and_(or_(*conditions), Entity.valid == 1, ~Entity.id.in_(entity_ids))).all()
+        entity_list.extend(ex_list)
+
+        total_like_list = [{'id': entity.id,
+                            'name': entity.name,
+                            'category': entity.category_name()
+                            } for entity in entity_list]
+
+        res = total_like_list[(cur_page - 1) * page_size:cur_page * page_size]
+    except:
+        res = []
+
+    return jsonify(res)
+
+
+# 下载excel批量导入实体
+@blue_print.route('download_entity_excel_example', methods=['GET'])
+def download_entity_excel_example():
+    return '/static/{0}'.format("shitidaorumuban.xlsx")
+
+
+# excel批量导入实体
+@blue_print.route('import_entity_excel', methods=['POST'])
+def import_entity_excel():
+    file_obj = request.files.get('file', None)
+    try:
+        filename = secure_filename(''.join(lazy_pinyin(file_obj.filename)))
+        save_filename = "{0}{1}{2}".format(os.path.splitext(filename)[0],
+                                           datetime.datetime.now().strftime('%Y%m%d%H%M%S'),
+                                           os.path.splitext(filename)[1])
+        file_savepath = os.path.join(os.getcwd(), 'static', save_filename)
+        file_obj.save(file_savepath)
+
+        data = xlrd.open_workbook(file_savepath)
+        table = data.sheet_by_index(0)
+
+        # 实体名称	实体类型    实体简介    实体别名    实体属性
+        for row_index in range(1, table.nrows):
+            try:
+                row_value = table.row_values(row_index)
+                ex_name = row_value[0].strip()
+                category_id = EntityCategory.get_category_id(row_value[1].strip())
+                ex_summary = row_value[2].strip()
+                # 解析别名
+                ex_synonyms = []
+                for synonym_str in row_value[3].strip().split('\n'):
+                    if synonym_str:
+                        ex_synonyms.append(synonym_str)
+                # 解析属性
+                ex_props = {}
+                for prop_str in row_value[4].strip().split('\n'):
+                    if re.match('(.*)：(.*)', prop_str):
+                        key, value = re.match('(.+?)：(.*)', prop_str).groups()
+                        ex_props[key] = value
+
+                entity = Entity.query.filter(or_(Entity.name == ex_name,
+                                                 Entity.synonyms.has_key(ex_name),
+                                                 Entity.name.in_(ex_synonyms),
+                                                 Entity.synonyms.contains(ex_props)
+                                                 )).first()
+
+                if entity:
+                    entity.name = ex_name
+                    entity.props = ex_props
+                    entity.synonyms = ex_synonyms
+                    entity.summary = ex_summary
+                    entity.category_id = category_id
+
+                    # es 插入操作
+                    data_insert_json = [{
+                        'name': ex_name,
+                        'category_id': category_id,
+                        'summary': ex_summary,
+                        'props': json.dumps(ex_props),
+                        'synonyms': json.dumps(ex_synonyms),
+                        'id': entity.id
+                    }]
+                    url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+
+                    header = {"Content-Type": "application/json; charset=UTF-8"}
+
+                    # print(entity)
+                    para = {"data_insert_index": "entity", "data_insert_json": data_insert_json}
+                    search_result = requests.post(url + '/dataInsert', data=json.dumps(para), headers=header)
+                    # print(search_result.text, flush=True)
+
+                    # 雨辰同步
+                    if YC_ROOT_URL:
+                        header = {"Content-Type": "application/json; charset=UTF-8"}
+                        url = YC_ROOT_URL + "/entitysync/add"
+                        data = json.dumps({"id": entity.id,
+                                           "name": ex_name,
+                                           "categoryId": category_id,
+                                           "props": ex_props,
+                                           "synonyms": ex_synonyms
+                                           })
+                        yc_res = requests.post(url=url, data=data, headers=header)
+
+                else:
+                    entity = Entity(name=ex_name, props=ex_props, synonyms=ex_synonyms, category_id=category_id)
+                    db.session.add(entity)
+                    # db.session.commit()
+
+                    # es 插入操作
+                    data_insert_json = [{
+                        'name': ex_name,
+                        'category_id': category_id,
+                        'summary': ex_summary,
+                        'props': json.dumps(ex_props),
+                        'synonyms': json.dumps(ex_synonyms),
+                        'id': entity.id
+                    }]
+                    url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+
+                    header = {"Content-Type": "application/json; charset=UTF-8"}
+
+                    # print(entity)
+                    para = {"data_insert_index": "entity", "data_insert_json": data_insert_json}
+                    search_result = requests.post(url + '/dataInsert', data=json.dumps(para), headers=header)
+                    # print(search_result.text, flush=True)
+
+                    # 雨辰同步
+                    if YC_ROOT_URL:
+                        header = {"Content-Type": "application/json; charset=UTF-8"}
+                        url = YC_ROOT_URL + "/entitysync/add"
+                        data = json.dumps({"id": entity.id,
+                                           "name": ex_name,
+                                           "categoryId": category_id,
+                                           "props": ex_props,
+                                           "synonyms": ex_synonyms
+                                           })
+                        yc_res = requests.post(url=url, data=data, headers=header)
+
+            except Exception as e:
+                print(str(e))
+                continue
+        db.session.commit()
+
+    except:
+        db.session.rollback()
+
+    res = success_res()
+    return jsonify(res)

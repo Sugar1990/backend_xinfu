@@ -1,0 +1,119 @@
+权限：权限删除会导致文档和用户丢失power
+
+-- 序列重置到1000
+alter sequence sequence_name restart with 1000
+-- 验证
+SELECT nextval('sequence_name');
+
+
+# 防火墙与docker冲突
+firewall-cmd --permanent --zone=trusted --change-interface=br-71dad0833ad5
+
+postgres	172.11.0.2	10000
+backend		172.11.0.3	10001
+pre_feature	172.11.0.4	10002
+pre_keyphrase	172.11.0.5	10003
+web		172.11.0.6	8088
+
+
+ 1002  firewall-cmd --zone=public --list-ports
+ 1003  firewall-cmd --zone=public --add-port=7474/tcp --permanent
+ 1004  firewall-cmd --zone=public --add-port=3306/tcp --permanent
+ 1005  firewall-cmd --zone=public --add-port=8096/tcp --permanent
+ 1006  firewall-cmd --zone=public --add-port=8012/tcp --permanent
+ 1007  firewall-cmd --reload
+
+# 解决Driver overlay failed to remove root filesystem
+ grep docker /proc/*/mountinfo | grep 37009fefb70a
+
+
+
+# 雨辰启动
+
+
+
+1 修改本地和服务器hosts
+服务器修改 /etc/hosts
+客气端修改
+192.168.3.75 mysql.yuchen.com
+192.168.3.75 neo4j.yuchen.com
+192.168.3.75 fileview.yuchen.com
+192.168.3.75 remote.yuchen.com
+192.168.3.75 mark.yuchen.com
+
+1.2 修改配置文件
+/root/geokg/yuchen/front/application.properties
+将192.168.3.75 替换为实际ip
+
+2 启动前端和文件预览项目
+cd /root/geokg/yuchen
+docker-compose up -d
+
+启动neo4j
+cd /root/geokg/yuchen/db/neo4j/bin
+./neo4j start
+
+
+3 启动后端项目，前提是mysql，前端和neo4j都已启动
+cd /root/geokg/yuchen/backend
+./startup.sh
+
+4 修改远程接口ip
+cd /root/geokg/yuchen/front/dist/js
+修改app.xxx.js 中的192.168.3.75的ip为实际ip和端口
+
+ 1002  firewall-cmd --zone=public --list-ports
+ 1003  firewall-cmd --zone=public --add-port=7474/tcp --permanent
+ 1004  firewall-cmd --zone=public --add-port=3306/tcp --permanent
+ 1005  firewall-cmd --zone=public --add-port=8096/tcp --permanent
+ 1006  firewall-cmd --zone=public --add-port=8012/tcp --permanent
+ 1007  firewall-cmd --reload
+ 1008  firewall-cmd --zone=public --list-ports
+ 1020  firewall-cmd --zone=public --add-port=100001/tcp --permanent
+ 1021  firewall-cmd --zone=public --add-port=10001/tcp --permanent
+ 1022  firewall-cmd --reload
+
+
+ES启动
+修改/etc/sysctl
+添加vm.max_map_count =
+
+修改/etc/
+
+
+
+# 清库命令
+PG
+删除测试实体
+delete from entity
+where id > 73401;
+
+雨辰mysql，数据库为doc_mark
+-- 1、删除实体及实体对应别名、属性
+delete from base_entity where id > 73401;
+delete from base_entity_synonym where entity_id > 73401;
+delete from base_entity_prop where entity_id > 73401;
+
+-- 2 删除测试文档
+delete from doc_mark_doc;
+
+-- 3 删除测试实体标注
+delete from doc_mark_entity;
+
+-- 4 删除测试标注事件
+delete from doc_mark_event;
+delete from event_date;
+
+-- 5 删除测试标注关系
+delete from doc_relation_property;
+-- 6 删除测试标注批注
+delete from doc_mark_comment;
+-- 7 删除测试时间轴
+delete from doc_mark_time_axis;
+
+删除图数据
+http://192.168.3.75:7474/browser/  用户root/123456
+执行命令
+MATCH(n) OPTIONAL MATCH (n)-[r]-() DELETE n,r
+
+
