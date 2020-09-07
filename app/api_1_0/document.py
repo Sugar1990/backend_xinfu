@@ -494,13 +494,16 @@ def get_search_panigation():
     return jsonify(res)
 
 
+
 # 高级搜索
 @blue_print.route('/search_advanced', methods=['POST'])
 def search_advanced():
+
     # doc_id = request.json.get('doc_id', 0)
     dates = request.json.get('dates', [])
     places = request.json.get('places', [])
     entities = request.json.get('entities', [])
+    keywords = request.json.get('keywords', [])
     event_categories = request.json.get('event_categories', {})
     notes = request.json.get('notes', [])
     doc_type = request.json.get('doc_type', 0)
@@ -510,12 +513,14 @@ def search_advanced():
     if content:
         search_json["name"] = {"type": "text", "value": content, "boost": 3}
         search_json["content"] = {"type": "text", "value": content, "boost": 1}
+    if keywords:
+        search_json["keywords'"] = {"type": "text", "value": ''.join(keywords), "boost": 1}
     if dates:
-        search_json["dates"] = {"type": "text", "value": dates, "boost": 1}
+        search_json["dates"] = {"type": "text", "value": ''.join(dates), "boost": 1}
     if places:
-        search_json["places"] = {"type": "text", "value": places, "boost": 1}
+        search_json["places"] = {"type": "text", "value": ''.join(places), "boost": 1}
     if doc_type:
-        search_json["doc_type"] = {"type": "id", "value": doc_type}
+        search_json["doc_type"] = {"type": "id", "value": ''.join(doc_type)}
     if search_json:
         search_json["sort"] = {"type": "normal", "sort": "create_time", "asc_desc": "desc"}
 
@@ -524,13 +529,10 @@ def search_advanced():
     esurl = url + "/searchCustom"
 
     search_result = requests.post(url=esurl, data=json.dumps(para), headers=header)
-    print(search_result.json()['data'], flush=True)
     # print(search_result['data']['dataList'][0]['_source'], flush=True)
     data = [doc['_source'] for doc in search_result.json()['data']['dataList']]
     data_screen = screen_doc(data, entities=entities, event_categories=event_categories, notes=notes)
-    print(data_screen, flush=True)
     return jsonify(data_screen)
-
 
 def screen_doc(data_inppt, dates=[], places=[], entities=[], event_categories=[], notes=[]):
     data_output = []
@@ -706,3 +708,115 @@ def get_keywords(content):
     return res
 
 # ——————————————————————— 提取关键词 —————————————————————————————
+# 高级搜索优化测试
+@blue_print.route('/search_advanced_test', methods=['POST'])
+def search_advanced():
+
+    # doc_id = request.json.get('doc_id', 0)
+    dates = request.json.get('dates', [])
+    places = request.json.get('places', [])
+    entities = request.json.get('entities', [])
+    keywords = request.json.get('keywords', [])
+    event_categories = request.json.get('event_categories', {})
+    notes = request.json.get('notes', [])
+    doc_type = request.json.get('doc_type', 0)
+    content = request.json.get('content', "")
+    url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+    search_json = {}
+    if content:
+        search_json["name"] = {"type": "text", "value": content, "boost": 3}
+        search_json["content"] = {"type": "text", "value": content, "boost": 1}
+    if keywords:
+        search_json["keywords'"] = {"type": "text", "value": ''.join(keywords), "boost": 1}
+    if dates:
+        search_json["dates"] = {"type": "text", "value": ''.join(dates), "boost": 1}
+    if places:
+        search_json["places"] = {"type": "text", "value": ''.join(places), "boost": 1}
+    if doc_type:
+        search_json["doc_type"] = {"type": "id", "value": ''.join(doc_type)}
+    if search_json:
+        search_json["sort"] = {"type": "normal", "sort": "create_time", "asc_desc": "desc"}
+
+    para = {"search_index": 'document1', "search_json": search_json}
+    header = {"Content-Type": "application/json"}
+    esurl = url + "/searchCustom"
+
+    search_result = requests.post(url=esurl, data=json.dumps(para), headers=header)
+    # print(search_result['data']['dataList'][0]['_source'], flush=True)
+    data = [doc['_source'] for doc in search_result.json()['data']['dataList']]
+    data_screen = screen_doc(data, entities=entities, event_categories=event_categories, notes=notes)
+    return jsonify(data_screen)
+
+
+def screen_doc(data_inppt, dates=[], places=[], entities=[], event_categories=[], notes=[]):
+    data_output = []
+    screen_dict = {}
+    if dates:
+        screen_dict["dates"] = dates
+    if places:
+        screen_dict["places"] = places
+    if entities:
+        screen_dict["entities"] = entities
+    if event_categories:
+        screen_dict["event_categories"] = event_categories
+    if notes:
+        screen_dict["notes"] = notes
+    true_value = len(screen_dict)
+    for doc in data_inppt:
+        sum_bool = 0
+        if dates:
+            dates_dic = eval(doc["dates"])
+            date_bool = bool([date for date in dates_dic if date in screen_dict["dates"]])
+            sum_bool += date_bool
+        else:
+            date_bool = False
+        # entities_names = [ent for ent in eval(doc["entities"])]
+        # entities_valess = list(eval(doc["entities"]).values)
+        if places:
+            places_dic = eval(doc["places"])
+            place_bool = bool([place for place in places_dic if place in screen_dict["places"]])
+            sum_bool += place_bool
+        else:
+            place_bool = False
+        if notes:
+            notes_dic = eval(doc["notes"])
+            note_bool = bool([note for note in notes_dic if note in screen_dict["notes"]])
+            sum_bool += note_bool
+            print(note_bool,notes_dic,screen_dict["notes"])
+        else:
+            note_bool = False
+
+        if entities:
+
+            entities_dic = [{ent: eval(doc["entities"])[ent]}
+                            for ent in eval(doc["entities"])]
+
+            for entity in screen_dict["entities"]:
+                if entity in entities_dic:
+                    entites_bool = True
+                else:
+                    entites_bool = False
+
+            sum_bool += entites_bool
+
+        if event_categories:
+            event_categories_dic = eval(doc["event_categories"])
+
+            envent_value = list(screen_dict["event_categories"][0].values())[0]
+
+            envent_key = list(screen_dict["event_categories"][0].keys())[0]
+
+            if str(envent_key) in list(event_categories_dic.keys()):
+                if envent_value:
+                    if envent_value in event_categories_dic[str(envent_key)]:
+                        envent_bool = True
+                    else:
+                        envent_bool = False
+                else:
+                    envent_bool = True
+            else:
+                envent_bool = False
+            sum_bool += envent_bool
+        if sum_bool == true_value:
+            data_output.append(doc)
+    return data_output
