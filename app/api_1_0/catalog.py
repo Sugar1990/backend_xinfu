@@ -2,7 +2,7 @@
 from flask import jsonify, request
 import datetime
 from . import api_catalog as blue_print
-from ..models import Catalog, Document, Customer
+from ..models import Catalog, Document, Customer, Permission
 from .. import db
 from .utils import success_res, fail_res
 
@@ -148,6 +148,11 @@ def get_catalog_files():
         docs = Document.query.filter_by(catalog_id=catalog_id).all()
         customer = Customer.query.filter_by(id=customer_id).first()
         catalogs = Catalog.query.filter_by(parent_id=catalog_id).all()
+
+        if not customer:
+            res = fail_res(msg="无效用户")
+
+        permission = Permission.query.filter_by(id=customer.permission_id).first()
 
         doc_status = lambda x: "上传处理中" if x == 0 else "未标注" if x == 1 else "已标注" if x == 2 else ""
         if customer:

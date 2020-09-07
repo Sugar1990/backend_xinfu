@@ -24,7 +24,7 @@ def add_relation_category():
                                                             target_entity_category_id=target_entity_category_id,
                                                             relation_name=name).first()
                 if relation:
-                    res = fail_res("关联信息已存在")
+                    res = fail_res(msg="关联信息已存在")
                 else:
                     rc = RelationCategory(source_entity_category_id=source_entity_category_id,
                                           target_entity_category_id=target_entity_category_id, relation_name=name,
@@ -34,9 +34,9 @@ def add_relation_category():
 
                     res = success_res()
             else:
-                res = fail_res("关联名称不得为空")
+                res = fail_res(msg="关联名称不得为空")
         else:
-            res = fail_res("实体类型不存在")
+            res = fail_res(msg="实体类型不存在")
     except:
         db.session.rollback()
         res = fail_res()
@@ -112,7 +112,7 @@ def modify_relation_category():
                 db.session.commit()
                 res = success_res()
             else:
-                res = fail_res("实体类型不存在")
+                res = fail_res(msg="实体类型不存在")
 
     except:
         db.session.rollback()

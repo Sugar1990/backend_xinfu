@@ -5,8 +5,8 @@ def success_res(data={}, msg=""):
     return {"code": 1, "msg": msg, "data": data}
 
 
-def fail_res(msg=""):
-    return {"code": 0, "msg": msg}
+def fail_res(data={}, msg=""):
+    return {"code": 0, "msg": msg, "data": data}
 
 
 class RWLock(object):

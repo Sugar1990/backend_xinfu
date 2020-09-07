@@ -65,7 +65,7 @@ def upload_doc():
                 if file_md5:
                     doc = Document.query.filter_by(md5=file_md5, catalog_id=catalog_id).first()
                     if doc:
-                        res = fail_res("{0}文档已存在\n".format(path[-1]))
+                        res = fail_res(msg="{0}文档已存在\n".format(path[-1]))
                     else:
                         doc = Document(name=path[-1],
                                        category=os.path.splitext(filename)[1],
@@ -110,9 +110,9 @@ def upload_doc():
 
                         res = success_res()
                 else:
-                    res = fail_res("计算文件md5异常，上传失败")
+                    res = fail_res(msg="计算文件md5异常，上传失败")
             else:
-                res = fail_res("upload path is empty")
+                res = fail_res(msg="upload path is empty")
 
     except Exception as e:
         print(str(e))
@@ -214,8 +214,9 @@ def modify_doc_info():
 
             res = success_res()
     except Exception as e:
+        print(str(e))
         db.session.rollback()
-        res = fail_res(str(e))
+        res = fail_res()
     return jsonify(res)
 
 
@@ -274,10 +275,11 @@ def del_doc():
                 pass
             res = success_res()
         else:
-            res = fail_res('无效用户，操作失败')
+            res = fail_res(msg='无效用户，操作失败')
     except Exception as e:
+        print(str(e))
         db.session.rollback()
-        res = fail_res(str(e))
+        res = fail_res()
     return jsonify(res)
 
 
@@ -619,7 +621,7 @@ def save_tagging_result():
         notes = request.json.get('notes', [])
         doc_type = request.json.get('doc_type', 0)
         if not doc_id:
-            res = fail_res("No doc_id")
+            res = fail_res(msg="No doc_id")
         else:
             # 替换相应属性,修改es已有doc,如果传递参数做修改，没有传的参数不做修改
             key_value_json = {}
@@ -658,10 +660,11 @@ def save_tagging_result():
                 requests.post(url + '/updatebyId', data=json.dumps(inesert_para), headers=header)
                 res = success_res()
             else:
-                res = fail_res("can't find doc by doc_id in ES")
+                res = fail_res(msg="can't find doc by doc_id in ES")
     except Exception as e:
+        print(str(e))
         db.session.rollback()
-        res = fail_res(str(e))
+        res = fail_res()
     return jsonify(res)
 
 
@@ -695,13 +698,9 @@ def get_keywords(content):
             content = ''.join(content)
             title = ""
             title_segmented = get_lexicon(title)['sentences']
-            print("title_segmented", title_segmented)
             content_segmented = get_lexicon(content)['sentences']
-            print("content_segmented", content_segmented)
             summary_return = get_summary(title_segmented, content_segmented[:30])
-            print("summary_return", summary_return)
             keywords_result = [k[0] for k in summary_return['keywords'][:5]]
-            print("keywords_result", keywords_result)
 
             res = keywords_result
         else:

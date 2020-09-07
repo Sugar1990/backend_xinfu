@@ -119,7 +119,7 @@ def delete_index():
             search_result = requests.get(url=esurl, params=para, headers={})
             res = success_res()
         else:
-            res = fail_res("only support es_index == 'entity' or es_index == 'document' ")
+            res = fail_res(msg="only support es_index == 'entity' or es_index == 'document' ")
     except Exception as e:
         print(str(e))
         db.session.rollback()
