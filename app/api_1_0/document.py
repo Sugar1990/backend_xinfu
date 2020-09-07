@@ -96,6 +96,17 @@ def upload_doc():
 
                         insert_result = requests.post(url + '/dataInsert', data=json.dumps(para),
                                                       headers=header)
+
+                        if YC_ROOT_URL:
+                            header = {"Content-Type": "application/x-form-urlencode; charset=UTF-8"}
+                            url = YC_ROOT_URL + '/doc/preprocess'
+                            data = json.dumps({"docId": doc.id})
+                            yc_res = requests.post(url=url, data=data, headers=header)
+                            print("doc_preprocess", yc_res)
+                            doc.status = 1
+                            db.session.commit()
+
+
                         res = success_res()
                 else:
                     res = fail_res("计算文件md5异常，上传失败")
