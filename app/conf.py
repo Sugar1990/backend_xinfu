@@ -38,4 +38,4 @@ PLACE_BASE_NAME = os.getenv('PLACE_BASE_NAME', '地名')
 YC_ROOT_URL = os.getenv('YC_ROOT_URL', "http://124.207.211.146:8810/dev")
 
 # 标注tab功能
-TAG_TABS = os.getenv('TAG_TABS', "{\"实体标注\":1,\"事件标注\":2,\"关系标注\":3,\"批注\":4,\"时间轴\":5}")
+TAG_TABS = os.getenv('TAG_TABS', "{\"实体标注\":1,\"时间标注\":2,\"地点标注\":3,\"事件标注\":4,\"关系标注\":5,\"批注\":6,\"思维导图\":7}")
