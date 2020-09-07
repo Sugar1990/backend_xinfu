@@ -47,7 +47,9 @@ def upload_doc():
                 content_list, keywords = [], []
                 if doc_extension in ['.docx', '.doc']:
                     content_list = extract_word_content(file_savepath)
+                    print(content_list)
                     keywords = get_keywords(content_list)
+                    print(keywords)
 
                 permission_id = 0
                 customer = Customer.query.filter_by(id=uid).first()
@@ -105,7 +107,6 @@ def upload_doc():
                             print("doc_preprocess", yc_res)
                             doc.status = 1
                             db.session.commit()
-
 
                         res = success_res()
                 else:
@@ -694,14 +695,19 @@ def get_keywords(content):
             content = ''.join(content)
             title = ""
             title_segmented = get_lexicon(title)['sentences']
+            print("title_segmented", title_segmented)
             content_segmented = get_lexicon(content)['sentences']
+            print("content_segmented", content_segmented)
             summary_return = get_summary(title_segmented, content_segmented[:30])
+            print("summary_return", summary_return)
             keywords_result = [k[0] for k in summary_return['keywords'][:5]]
+            print("keywords_result", keywords_result)
 
             res = keywords_result
         else:
             res = []
-    except:
+    except Exception as e:
+        print("get_keywords error: ", str(e))
         res = []
     return res
 

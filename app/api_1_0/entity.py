@@ -25,10 +25,6 @@ from ..models import Entity, EntityCategory
 # time: 2020/8/28 8:56
 
 
-ES_SERVER_IP = '172.11.0.21'
-ES_SERVER_PORT = 6789
-
-
 # get_entity
 @blue_print.route('/get_all', methods=['GET'])
 def get_all():
