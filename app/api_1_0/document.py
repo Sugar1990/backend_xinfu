@@ -786,20 +786,22 @@ def search_advanced_Pagination():
     if places:
         if type(places).__name__ == 'str':
             places = places.split(' ')
-        search_json["places"] = {"type": "text", "value": ''.join(places), "boost": 1}
+
+        # search_json["places"] = {"type": "text", "value": ''.join(places), "boost": 1}
     if doc_type:
         search_json["doc_type"] = {"type": "id", "value": doc_type}
     if search_json:
         search_json["sort"] = {"type": "normal", "sort": "create_time", "asc_desc": "desc"}
 
+    # 直接es查询
     para = {"search_index": 'document', "search_json": search_json}
     header = {"Content-Type": "application/json"}
     esurl = url + "/searchCustom"
     search_result = requests.post(url=esurl, data=json.dumps(para), headers=header)
-    # print(search_result['data']['dataList'][0]['_source'], flush=True)
     data = [doc['_source'] for doc in search_result.json()['data']['dataList']]
     data_screen = screen_doc(data, places=places, entities=entities, event_categories=event_categories,
-                             notes=notes)  # dates=dates,
+                             notes=notes)
+
     key_list = ["dates",
                 "entities",
                 "event_categories",
@@ -807,11 +809,13 @@ def search_advanced_Pagination():
                 "notes",
                 "places",
                 "doc_type"]
+    # 组装ids，和结构化数据
     for data in data_screen:
         eval_list = data.keys()
         for key in eval_list:
-            if key in key_list:
-                data[key] = eval(data[key])
+            if doc_type:
+                if key in key_list:
+                    data[key] = eval(data[key])
 
     total_count = len(data_screen)
     if total_count > page_size * cur_page:
@@ -821,7 +825,7 @@ def search_advanced_Pagination():
         list_return = data_screen[page_size * (cur_page - 1):]
     else:
         list_return = []
-    # print(esurl, para, flush=True)
+
     res = {'data': list_return,
            'page_count': int(total_count / page_size) + 1,
            'total_count': total_count}
