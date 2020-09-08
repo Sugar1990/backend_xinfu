@@ -177,7 +177,6 @@ def modify_doc_info():
         doc_id = request.json.get('doc_id', 0)
         name = request.json.get('name', '')
         status = request.json.get('status', 0)
-        print(status)
 
         doc = Document.query.filter_by(id=doc_id).first()
         if not doc:
