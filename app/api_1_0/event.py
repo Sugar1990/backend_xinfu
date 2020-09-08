@@ -3,6 +3,7 @@ from . import api_event as blue_print
 from flask import jsonify, request
 import os
 from ..conf import YC_ROOT_URL
+import requests
 
 @blue_print.route('/get_base_names', methods=['GET'])
 def get_base_names():
