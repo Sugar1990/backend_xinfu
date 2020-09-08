@@ -1,14 +1,13 @@
 # -*- coding: utf-8 -*-
 import datetime
+import hashlib
 import json
 import os
-
 import requests
 from flask import jsonify, request
 from pypinyin import lazy_pinyin
 from sqlalchemy import or_
 from werkzeug.utils import secure_filename
-import hashlib
 
 from . import api_document as blue_print
 from .utils import success_res, fail_res, get_status_name
@@ -588,31 +587,42 @@ def screen_doc(data_inppt, dates=[], places=[], entities=[], event_categories=[]
     true_value = len(screen_dict)
     for doc in data_inppt:
         sum_bool = 0
-        if dates:
-            dates_dic = eval(doc["dates"])
+        if dates and doc.get("dates", False):
+            if type(doc["dates"]).__name__ == "str":
+                dates_dic = eval(doc["dates"])
+            else:
+                dates_dic = doc["dates"]
             date_bool = bool([date for date in dates_dic if date in screen_dict["dates"]])
             sum_bool += date_bool
         else:
             date_bool = False
-
-        if places:
-            places_dic = eval(doc["places"])
+        if places and doc.get("places", False):
+            if type(doc["places"]).__name__ == "str":
+                places_dic = eval(doc["places"])
+            else:
+                places_dic = doc["places"]
             place_bool = bool([place for place in places_dic if place in screen_dict["places"]])
             sum_bool += place_bool
         else:
             place_bool = False
-        if notes:
-            notes_dic = eval(doc["notes"])
+        if notes and doc.get("notes", False):
+            if type(doc["notes"]).__name__ == "str":
+                notes_dic = eval(doc["notes"])
+            else:
+                notes_dic = doc["notes"]
             note_bool = bool([note for note in notes_dic if note in screen_dict["notes"]])
             sum_bool += note_bool
         else:
             note_bool = False
 
-        if entities:
+        if entities and doc.get("entities", False):
             entites_bool = True
-
-            entities_dic = [{ent: eval(doc["entities"])[ent]}
-                            for ent in eval(doc["entities"])]
+            if type(doc["entities"]).__name__ == "str":
+                entities_dic = [{ent: eval(doc["entities"])[ent]}
+                                for ent in eval(doc["entities"])]
+            else:
+                entities_dic = [{ent: doc["entities"][ent]}
+                                for ent in doc["entities"]]
 
             entities_names = [ent for ent in eval(doc["entities"])]
 
@@ -635,9 +645,11 @@ def screen_doc(data_inppt, dates=[], places=[], entities=[], event_categories=[]
 
             sum_bool += entites_bool
 
-        if event_categories:
-
-            event_categories_dic = eval(doc["event_categories"])
+        if event_categories and doc.get("event_categories", False):
+            if type(doc["event_categories"]).__name__ == "str":
+                event_categories_dic = eval(doc["event_categories"])
+            else:
+                event_categories_dic = doc["event_categories"]
 
             event_value = list(screen_dict["event_categories"][0].values())[0]
 
