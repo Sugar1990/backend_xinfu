@@ -512,29 +512,37 @@ def search_advanced():
     doc_type = request.json.get('doc_type', 0)
     content = request.json.get('content', "")
     url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+
     search_json = {}
     if content:
         search_json["name"] = {"type": "text", "value": content, "boost": 3}
         search_json["content"] = {"type": "text", "value": content, "boost": 1}
+    if dates:
+        if type(dates).__name__ == 'str':
+            dates = dates.spli(' - ')
+        search_json["dates"] = {"type": "text", "value": ''.join(dates), "boost": 1}
     if keywords:
         search_json["keywords'"] = {"type": "text", "value": ''.join(keywords), "boost": 1}
-    if dates:
-        search_json["dates"] = {"type": "text", "value": ''.join(dates), "boost": 1}
     if places:
+        if type(places).__name__ == 'str':
+            places = dates.spli(' ')
         search_json["places"] = {"type": "text", "value": ''.join(places), "boost": 1}
     if doc_type:
-        search_json["doc_type"] = {"type": "id", "value": ''.join(doc_type)}
+        search_json["doc_type"] = {"type": "id", "value": doc_type}
     if search_json:
         search_json["sort"] = {"type": "normal", "sort": "create_time", "asc_desc": "desc"}
 
     para = {"search_index": 'document', "search_json": search_json}
     header = {"Content-Type": "application/json"}
     esurl = url + "/searchCustom"
-
     search_result = requests.post(url=esurl, data=json.dumps(para), headers=header)
     # print(search_result['data']['dataList'][0]['_source'], flush=True)
     data = [doc['_source'] for doc in search_result.json()['data']['dataList']]
-    data_screen = screen_doc(data, entities=entities, event_categories=event_categories, notes=notes)
+    data_screen = screen_doc(data, places=places, entities=entities, event_categories=event_categories,
+                             notes=notes)  # dates=dates,
+    # for data in data_screen:
+    #     for key in data:
+    #         data[key] = eval(str(data[key]))
     return jsonify(data_screen)
 
 
@@ -546,9 +554,22 @@ def screen_doc(data_inppt, dates=[], places=[], entities=[], event_categories=[]
     if places:
         screen_dict["places"] = places
     if entities:
-        screen_dict["entities"] = entities
+        screen_dict["entities"] = {}
+        screen_dict["entities"]["entities"] = []
+        screen_dict["entities"]["name"] = []
+        screen_dict["entities"]["value"] = []
+        for ent in entities:
+            if ent["entity"] and ent["category_id"]:
+                screen_dict["entities"]["entities"].append({ent["entity"]: ent["category_id"]})
+            elif ent["entity"] and not ent["category_id"]:
+                screen_dict["entities"]["name"].append(ent["entity"])
+            elif not ent["entity"] and ent["category_id"]:
+                screen_dict["entities"]["value"].append(ent["category_id"])
+
     if event_categories:
-        screen_dict["event_categories"] = event_categories
+        screen_dict["event_categories"] = []
+        for eve in event_categories:
+            screen_dict["event_categories"].append({eve["event_class"]: eve["event_category_id"]})
     if notes:
         screen_dict["notes"] = notes
     true_value = len(screen_dict)
@@ -560,8 +581,7 @@ def screen_doc(data_inppt, dates=[], places=[], entities=[], event_categories=[]
             sum_bool += date_bool
         else:
             date_bool = False
-        # entities_names = [ent for ent in eval(doc["entities"])]
-        # entities_valess = list(eval(doc["entities"]).values)
+
         if places:
             places_dic = eval(doc["places"])
             place_bool = bool([place for place in places_dic if place in screen_dict["places"]])
@@ -577,36 +597,51 @@ def screen_doc(data_inppt, dates=[], places=[], entities=[], event_categories=[]
             note_bool = False
 
         if entities:
+            entites_bool = True
 
             entities_dic = [{ent: eval(doc["entities"])[ent]}
                             for ent in eval(doc["entities"])]
 
-            for entity in screen_dict["entities"]:
-                if entity in entities_dic:
-                    entites_bool = True
-                else:
+            entities_names = [ent for ent in eval(doc["entities"])]
+
+            entities_values = list(eval(doc["entities"]).values())
+
+            for entity in screen_dict["entities"]["entities"]:
+                if entity not in entities_dic:
                     entites_bool = False
+                    break
+            if entites_bool and screen_dict["entities"]["name"]:
+                for entity_name in screen_dict["entities"]["name"]:
+                    if entity_name not in entities_names:
+                        entites_bool = False
+                        break
+            if entites_bool and screen_dict["entities"]["value"]:
+                for entity_value in screen_dict["entities"]["value"]:
+                    if entity_value not in entities_values:
+                        entites_bool = False
+                        break
 
             sum_bool += entites_bool
 
         if event_categories:
+
             event_categories_dic = eval(doc["event_categories"])
 
-            envent_value = list(screen_dict["event_categories"][0].values())[0]
+            event_value = list(screen_dict["event_categories"][0].values())[0]
 
-            envent_key = list(screen_dict["event_categories"][0].keys())[0]
+            event_key = list(screen_dict["event_categories"][0].keys())[0]
 
-            if str(envent_key) in list(event_categories_dic.keys()):
-                if envent_value:
-                    if envent_value in event_categories_dic[str(envent_key)]:
-                        envent_bool = True
+            if str(event_key) in list(event_categories_dic.keys()):
+                if event_value:
+                    if event_value in event_categories_dic[str(event_key)]:
+                        event_bool = True
                     else:
-                        envent_bool = False
+                        event_bool = False
                 else:
-                    envent_bool = True
+                    event_bool = True
             else:
-                envent_bool = False
-            sum_bool += envent_bool
+                event_bool = False
+            sum_bool += event_bool
         if sum_bool == true_value:
             data_output.append(doc)
     return data_output
@@ -715,150 +750,3 @@ def get_keywords(content):
 
 
 # ——————————————————————— 提取关键词 —————————————————————————————
-# 高级搜索优化测试
-@blue_print.route('/search_advanced_test', methods=['POST'])
-def search_advanced_test():
-
-    # doc_id = request.json.get('doc_id', 0)
-    dates = request.json.get('dates', [])
-    places = request.json.get('places', [])
-    entities = request.json.get('entities', [])
-    keywords = request.json.get('keywords', [])
-    event_categories = request.json.get('event_categories', {})
-    notes = request.json.get('notes', [])
-    doc_type = request.json.get('doc_type', 0)
-    content = request.json.get('content', "")
-    url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
-
-    search_json = {}
-    if content:
-        search_json["name"] = {"type": "text", "value": content, "boost": 3}
-        search_json["content"] = {"type": "text", "value": content, "boost": 1}
-    if dates:
-        if type(dates).__name__ == 'str':
-            dates = dates.spli(' - ')
-        search_json["dates"] = {"type": "text", "value": ''.join(dates), "boost": 1}
-    if keywords:
-        search_json["keywords'"] = {"type": "text", "value": ''.join(keywords), "boost": 1}
-    if places:
-        if type(places).__name__ == 'str':
-            places = dates.spli(' ')
-        search_json["places"] = {"type": "text", "value": ''.join(places), "boost": 1}
-    if doc_type:
-        search_json["doc_type"] = {"type": "id", "value": doc_type}
-    if search_json:
-        search_json["sort"] = {"type": "normal", "sort": "create_time", "asc_desc": "desc"}
-
-    para = {"search_index": 'document1', "search_json": search_json}
-    header = {"Content-Type": "application/json"}
-    esurl = url + "/searchCustom"
-    search_result = requests.post(url=esurl, data=json.dumps(para), headers=header)
-    # print(search_result['data']['dataList'][0]['_source'], flush=True)
-    data = [doc['_source'] for doc in search_result.json()['data']['dataList']]
-    data_screen = screen_doc(data, places=places, entities=entities, event_categories=event_categories, notes=notes)# dates=dates,
-    # for data in data_screen:
-    #     for key in data:
-    #         data[key] = eval(str(data[key]))
-    return jsonify(data_screen)
-
-
-def screen_doc(data_inppt, dates=[], places=[], entities=[], event_categories=[], notes=[]):
-    data_output = []
-    screen_dict = {}
-    if dates:
-        screen_dict["dates"] = dates
-    if places:
-        screen_dict["places"] = places
-    if entities:
-        screen_dict["entities"] = {}
-        screen_dict["entities"]["entities"] = []
-        screen_dict["entities"]["name"] = []
-        screen_dict["entities"]["value"] = []
-        for ent in entities:
-            if ent["entity"] and ent["category_id"]:
-                screen_dict["entities"]["entities"].append({ent["entity"]: ent["category_id"]})
-            elif ent["entity"] and not ent["category_id"]:
-                screen_dict["entities"]["name"].append(ent["entity"])
-            elif not ent["entity"] and ent["category_id"]:
-                screen_dict["entities"]["value"].append(ent["category_id"])
-
-    if event_categories:
-        screen_dict["event_categories"] = []
-        for eve in event_categories:
-            screen_dict["event_categories"].append({eve["event_class"]: eve["event_category_id"]})
-    if notes:
-        screen_dict["notes"] = notes
-    true_value = len(screen_dict)
-    for doc in data_inppt:
-        sum_bool = 0
-        if dates:
-            dates_dic = eval(doc["dates"])
-            date_bool = bool([date for date in dates_dic if date in screen_dict["dates"]])
-            sum_bool += date_bool
-        else:
-            date_bool = False
-
-        if places:
-            places_dic = eval(doc["places"])
-            place_bool = bool([place for place in places_dic if place in screen_dict["places"]])
-            sum_bool += place_bool
-        else:
-            place_bool = False
-        if notes:
-            notes_dic = eval(doc["notes"])
-            note_bool = bool([note for note in notes_dic if note in screen_dict["notes"]])
-            sum_bool += note_bool
-            print(note_bool, notes_dic, screen_dict["notes"])
-        else:
-            note_bool = False
-
-        if entities:
-            entites_bool = True
-
-            entities_dic = [{ent: eval(doc["entities"])[ent]}
-                            for ent in eval(doc["entities"])]
-
-            entities_names = [ent for ent in eval(doc["entities"])]
-
-            entities_values = list(eval(doc["entities"]).values())
-
-            for entity in screen_dict["entities"]["entities"]:
-                if entity not in entities_dic:
-                    entites_bool = False
-                    break
-            if entites_bool and screen_dict["entities"]["name"]:
-                for entity_name in screen_dict["entities"]["name"]:
-                    if entity_name not in entities_names:
-                        entites_bool = False
-                        break
-            if entites_bool and screen_dict["entities"]["value"]:
-                for entity_value in screen_dict["entities"]["value"]:
-                    if entity_value not in entities_values:
-                        entites_bool = False
-                        break
-
-            sum_bool += entites_bool
-
-        if event_categories:
-
-            event_categories_dic = eval(doc["event_categories"])
-
-            event_value = list(screen_dict["event_categories"][0].values())[0]
-
-            event_key = list(screen_dict["event_categories"][0].keys())[0]
-
-            if str(event_key) in list(event_categories_dic.keys()):
-                if event_value:
-                    if event_value in event_categories_dic[str(event_key)]:
-                        event_bool = True
-                    else:
-                        event_bool = False
-                else:
-                    event_bool = True
-            else:
-                event_bool = False
-            sum_bool += event_bool
-        if sum_bool == true_value:
-            data_output.append(doc)
-    return data_output
-
