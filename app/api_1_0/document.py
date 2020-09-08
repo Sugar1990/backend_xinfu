@@ -606,7 +606,6 @@ def screen_doc(data_inppt, dates=[], places=[], entities=[], event_categories=[]
             notes_dic = eval(doc["notes"])
             note_bool = bool([note for note in notes_dic if note in screen_dict["notes"]])
             sum_bool += note_bool
-            print(note_bool, notes_dic, screen_dict["notes"])
         else:
             note_bool = False
 
