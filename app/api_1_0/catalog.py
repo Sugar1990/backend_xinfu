@@ -270,7 +270,7 @@ def get_tagging_tabs():
 @blue_print.route('/get_1stfloor_catalog', methods=['GET'])
 def get_1stfloor_catalog():
     try:
-        cataloges = Catalog.query.all()
+        cataloges = Catalog.query.filter_by(parent_id=0).all()
         if not cataloges:
             res = []
         else:
