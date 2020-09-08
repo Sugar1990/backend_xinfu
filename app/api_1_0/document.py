@@ -673,7 +673,7 @@ def screen_doc(data_inppt, dates=[], places=[], entities=[], event_categories=[]
 
             event_key = list(screen_dict["event_categories"][0].keys())[0]
 
-            if str(event_key) in list(event_categories_dic.keys()):
+            if event_categories_dic.get(event_key,False):
                 if event_value:
                     if event_value in event_categories_dic[str(event_key)]:
                         event_bool = True
@@ -733,10 +733,10 @@ def save_tagging_result():
             except:
                 es_id = ''
             if es_id:
-                print(key_value_json, flush=True)
+                # print(key_value_json, flush=True)
                 inesert_para = {"update_index": 'document',
                                 "data_update_json": [{es_id: key_value_json}]}
-                print(inesert_para, flush=True)
+                # print(inesert_para, flush=True)
                 requests.post(url + '/updatebyId', data=json.dumps(inesert_para), headers=header)
                 res = success_res()
             else:
