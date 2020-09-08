@@ -85,7 +85,7 @@ def upload_doc():
                             "id": doc.id,
                             "name": doc.name,
                             "content": str(doc.content),
-                            "create_time": doc.create_time.strftime('%Y%m%d%H%M%S'),
+                            "create_time": doc.create_time.strftime('%Y-%m-%d %H:%M:%S'),
                             "keywords": doc.keywords
                         }]
 
