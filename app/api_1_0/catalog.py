@@ -293,19 +293,13 @@ def get_1stfloor_catalog():
         if not cataloges:
             res = []
         else:
-            res = []
-            for catalog in cataloges:
-                if catalog.tagging_tabs:
-                    res.append(
-                        {
-                            "catalog_id": catalog.id,
-                            "name": catalog.name,
-                            "parent_id": catalog.parent_id,
-                            "create_by": catalog.create_by,
-                            "create_time": catalog.create_time,
-                            "tagging_tabs": catalog.tagging_tabs
-                        }
-                    )
+            res = [{"catalog_id": catalog.id,
+                    "name": catalog.name,
+                    "parent_id": catalog.parent_id,
+                    "create_by": catalog.create_by,
+                    "create_time": catalog.create_time,
+                    "tagging_tabs": catalog.tagging_tabs if catalog.tagging_tabs else []
+                    } for catalog in cataloges]
     except Exception:
         res = []
 
