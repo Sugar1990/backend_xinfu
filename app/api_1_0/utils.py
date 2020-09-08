@@ -9,6 +9,11 @@ def fail_res(data={}, msg=""):
     return {"code": 0, "msg": msg, "data": data}
 
 
+def get_status_name(status):
+    doc_status = lambda x: "上传处理中" if x == 0 else "未标注" if x == 1 else "已标注" if x == 2 else ""
+    return doc_status(status)
+
+
 class RWLock(object):
     # __instance = None
     #
