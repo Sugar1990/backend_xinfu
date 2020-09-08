@@ -8,21 +8,21 @@ from sqlalchemy import and_
 
 
 # insert
-@blue_print.route('/add_ relation_category', methods=['POST'])
+@blue_print.route('/add_relation_category', methods=['POST'])
 def add_relation_category():
     source_entity_category_id = request.json.get('source_entity_category_id', 0)
     target_entity_category_id = request.json.get('target_entity_category_id', 0)
     name = request.json.get('name', '')
     try:
         entity_category_id_list = []
-        entity_category = EntityCategory.query.all()
+        entity_category = EntityCategory.query.filter_by(valid=1).all()
         for item in entity_category:
             entity_category_id_list.append(item.id)
         if source_entity_category_id in entity_category_id_list and target_entity_category_id in entity_category_id_list:
             if name:
                 relation = RelationCategory.query.filter_by(source_entity_category_id=source_entity_category_id,
                                                             target_entity_category_id=target_entity_category_id,
-                                                            relation_name=name).first()
+                                                            relation_name=name,valid=1).first()
                 if relation:
                     res = fail_res(msg="关联信息已存在")
                 else:
@@ -42,6 +42,7 @@ def add_relation_category():
         res = fail_res()
 
     return jsonify(res)
+
 
 
 # delete
