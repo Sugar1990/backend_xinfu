@@ -770,12 +770,13 @@ def screen_doc(data_inppt, dates=[], places=[], entities=[], event_categories=[]
     if places:
         screen_dict["places"] = places
     if entities:
-        screen_dict["entities"]["entites"] = []
+        screen_dict["entities"] = {}
+        screen_dict["entities"]["entities"] = []
         screen_dict["entities"]["name"] = []
         screen_dict["entities"]["value"] = []
         for ent in entities:
             if ent["entity"] and ent["category_id"]:
-                screen_dict["entities"].append({ent["entity"]: ent["category_id"]})
+                screen_dict["entities"]["entities"].append({ent["entity"]: ent["category_id"]})
             elif ent["entity"] and not ent["category_id"]:
                 screen_dict["entities"]["name"].append(ent["entity"])
             elif not ent["entity"] and ent["category_id"]:
@@ -819,9 +820,9 @@ def screen_doc(data_inppt, dates=[], places=[], entities=[], event_categories=[]
 
             entities_names = [ent for ent in eval(doc["entities"])]
 
-            entities_values = list(eval(doc["entities"]).values)
+            entities_values = list(eval(doc["entities"]).values())
 
-            for entity in screen_dict["entities"]["entites"]:
+            for entity in screen_dict["entities"]["entities"]:
                 if entity not in entities_dic:
                     entites_bool = False
                     break
