@@ -756,9 +756,9 @@ def search_advanced_test():
     # print(search_result['data']['dataList'][0]['_source'], flush=True)
     data = [doc['_source'] for doc in search_result.json()['data']['dataList']]
     data_screen = screen_doc(data, places=places, entities=entities, event_categories=event_categories, notes=notes)# dates=dates,
-    for data in data_screen:
-        for key in data:
-            data[key] = eval(str(data[key]))
+    # for data in data_screen:
+    #     for key in data:
+    #         data[key] = eval(str(data[key]))
     return jsonify(data_screen)
 
 
