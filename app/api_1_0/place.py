@@ -66,39 +66,43 @@ def get_search_pagination():
 
 # 调取地名服务
 def get_place_from_base_server(page_size=10, cur_page=1, search=''):
-    if not search:
-        url = PLACE_BASE_SERVER_IP + '/query/batch'
-        resp = requests.get(url, params={"limit": page_size, "offset": (cur_page - 1) * page_size})
+    try:
+        if not search:
+            url = PLACE_BASE_SERVER_IP + '/query/batch'
+            resp = requests.get(url, params={"limit": page_size, "offset": (cur_page - 1) * page_size})
 
-        server_data = json.loads(resp.text)
-        get_location = lambda x: re.search("POINT\((.*)\)", x).groups()
-        data = [{
-            "id": i.get('DMBS', ''),
-            "name": i.get('DMMC', ''),
-            "props": {"坐标": get_location(i.get('WZ', ''))[0]},
-            "synonyms": [],
-            "category": '地名',
-            "category_id": 8,
-        } for i in server_data]
+            server_data = json.loads(resp.text)
+            get_location = lambda x: re.search("POINT\((.*)\)", x).groups()
+            data = [{
+                "id": i.get('DMBS', ''),
+                "name": i.get('DMMC', ''),
+                "props": {"坐标": get_location(i.get('WZ', ''))[0]},
+                "synonyms": [],
+                "category": '地名',
+                "category_id": 8,
+            } for i in server_data]
 
-        url = PLACE_BASE_SERVER_IP + '/query/count'
-        resp = requests.get(url)
-        total_count = int(resp.text) if resp.text else 0
-    else:
-        url = PLACE_BASE_SERVER_IP + '/query/placeName={0}'.format(search)
-        resp = requests.get(url)
+            url = PLACE_BASE_SERVER_IP + '/query/count'
+            resp = requests.get(url)
+            total_count = int(resp.text) if resp.text else 0
+        else:
+            url = PLACE_BASE_SERVER_IP + '/query/placeName={0}'.format(search)
+            resp = requests.get(url)
 
-        server_data = json.loads(resp.text)
-        get_location = lambda x: re.search("POINT\((.*)\)", x).groups()
-        data = [{
-            "id": i.get('DMBS', ''),
-            "name": i.get('DMMC', ''),
-            "props": {"坐标": get_location(i.get('WZ', ''))[0]},
-            "synonyms": [],
-            "category": '地名',
-            "category_id": 8,
-        } for i in server_data]
+            server_data = json.loads(resp.text)
+            get_location = lambda x: re.search("POINT\((.*)\)", x).groups()
+            data = [{
+                "id": i.get('DMBS', ''),
+                "name": i.get('DMMC', ''),
+                "props": {"坐标": get_location(i.get('WZ', ''))[0]},
+                "synonyms": [],
+                "category": '地名',
+                "category_id": 8,
+            } for i in server_data]
 
-        total_count = page_size * cur_page
+            total_count = page_size * cur_page
 
-    return data, total_count
+        return data, total_count
+    except Exception as e:
+        print(str(e))
+        return [], 0
