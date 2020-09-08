@@ -37,7 +37,7 @@ def get_one_entity_category():
                 "name": category.name
             }
         else:
-            res = False, "实体类型不存在"
+            res = fail_res("实体类型不存在")
     except:
         res = []
 
@@ -114,27 +114,27 @@ def delete_entity_category():
 
 def del_entity_category(id):
     try:
-        entity_category = EntityCategory.query.filter_by(id=id, valid=1).first()
-        relation_category = RelationCategory.query.filter(and_(RelationCategory.valid == 1, or_(RelationCategory.source_entity_category_id == id,
-                RelationCategory.target_entity_category_id == id))).all()
-        entity = Entity.query.filter_by(category_id=id, valid=1).first()
+        entity_category = EntityCategory.query.filter_by(id=id).first()
+        relation_category = RelationCategory.query.filter(
+            or_(RelationCategory.source_entity_category_id == id,
+                RelationCategory.target_entity_category_id == id)).all()
+        entity = Entity.query.filter_by(category_id=id).first()
 
         if not entity_category:
-            res = False, "实体类型不存在"
+            res = fail_res(msg="实体类型不存在")
         elif entity_category.name == PLACE_BASE_NAME:
-            res = False, "地名库由专业团队维护，不能修改"
+            res = fail_res(msg="地名库由专业团队维护，不能修改")
         elif entity:
-            res = False, "该类型存在实体，不能删除"
+            res = fail_res(msg="该类型存在实体，不能删除")
         elif relation_category:
-            res = False, "该类型存在关联关系，不能删除"
+            res = fail_res(msg="该类型存在关联关系，不能删除")
         else:
             entity_category.valid = 0
-            res = True, ""
+            res = success_res()
     except Exception as e:
-        print(str(e))
-        res = False, ""
+        # print(str(e))
+        res = fail_res()
     return res
-
 
 # 批量删除
 @blue_print.route('/delete_entity_category_by_ids', methods=['POST'])
