@@ -502,7 +502,6 @@ def get_search_panigation():
                'total_count': 0}
     return jsonify(res)
 
-
 # 高级搜索
 @blue_print.route('/search_advanced', methods=['POST'])
 def search_advanced():
@@ -513,7 +512,7 @@ def search_advanced():
     keywords = request.json.get('keywords', [])
     event_categories = request.json.get('event_categories', {})
     notes = request.json.get('notes', [])
-    doc_type = request.json.get('doc_type', 0)
+    doc_type = request.json.get('doc_type', '')
     content = request.json.get('content', "")
     url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
 
@@ -523,13 +522,13 @@ def search_advanced():
         search_json["content"] = {"type": "text", "value": content, "boost": 1}
     if dates:
         if type(dates).__name__ == 'str':
-            dates = dates.spli(' - ')
+            dates = dates.split(' - ')
         search_json["dates"] = {"type": "text", "value": ''.join(dates), "boost": 1}
     if keywords:
         search_json["keywords'"] = {"type": "text", "value": ''.join(keywords), "boost": 1}
     if places:
         if type(places).__name__ == 'str':
-            places = dates.spli(' ')
+            places = places.split(' ')
         search_json["places"] = {"type": "text", "value": ''.join(places), "boost": 1}
     if doc_type:
         search_json["doc_type"] = {"type": "id", "value": doc_type}
@@ -554,8 +553,9 @@ def search_advanced():
     for data in data_screen:
         eval_list = data.keys()
         for key in eval_list:
-            if key in key_list:
-                data[key] = eval(data[key])
+            if doc_type:
+                if key in key_list:
+                    data[key] = eval(data[key])
     return jsonify(data_screen)
 
 
@@ -716,6 +716,76 @@ def save_tagging_result():
         print(str(e))
         db.session.rollback()
         res = fail_res()
+    return jsonify(res)
+
+
+#高级搜索分页展示
+@blue_print.route('/search_advanced_Pagination', methods=['POST'])
+def search_advanced_Pagination():
+    # doc_id = request.json.get('doc_id', 0)
+    page_size = request.json.get('page_size', 10)
+    cur_page = request.json.get('cur_page', 1)
+    dates = request.json.get('dates', [])
+    places = request.json.get('places', [])
+    entities = request.json.get('entities', [])
+    keywords = request.json.get('keywords', [])
+    event_categories = request.json.get('event_categories', {})
+    notes = request.json.get('notes', [])
+    doc_type = request.json.get('doc_type', 0)
+    content = request.json.get('content', "")
+    url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+
+    search_json = {}
+    if content:
+        search_json["name"] = {"type": "text", "value": content, "boost": 3}
+        search_json["content"] = {"type": "text", "value": content, "boost": 1}
+    if dates:
+        if type(dates).__name__ == 'str':
+            dates = dates.split(' - ')
+        search_json["dates"] = {"type": "text", "value": ''.join(dates), "boost": 1}
+    if keywords:
+        search_json["keywords'"] = {"type": "text", "value": ''.join(keywords), "boost": 1}
+    if places:
+        if type(places).__name__ == 'str':
+            places = places.split(' ')
+        search_json["places"] = {"type": "text", "value": ''.join(places), "boost": 1}
+    if doc_type:
+        search_json["doc_type"] = {"type": "id", "value": doc_type}
+    if search_json:
+        search_json["sort"] = {"type": "normal", "sort": "create_time", "asc_desc": "desc"}
+
+    para = {"search_index": 'document', "search_json": search_json}
+    header = {"Content-Type": "application/json"}
+    esurl = url + "/searchCustom"
+    search_result = requests.post(url=esurl, data=json.dumps(para), headers=header)
+    # print(search_result['data']['dataList'][0]['_source'], flush=True)
+    data = [doc['_source'] for doc in search_result.json()['data']['dataList']]
+    data_screen = screen_doc(data, places=places, entities=entities, event_categories=event_categories, notes=notes)# dates=dates,
+    key_list = ["dates",
+                "entities",
+                "event_categories",
+                "keywords",
+                "notes",
+                "places",
+                "doc_type"]
+    for data in data_screen:
+        eval_list = data.keys()
+        for key in eval_list:
+            if key in key_list:
+                data[key] = eval(data[key])
+
+    total_count = len(data_screen)
+    if total_count > page_size * cur_page:
+        list_return = data_screen[page_size * (cur_page - 1):page_size * cur_page]
+
+    elif total_count < page_size * cur_page and total_count > page_size * (cur_page - 1):
+        list_return = data_screen[page_size * (cur_page - 1):]
+    else:
+        list_return = []
+    # print(esurl, para, flush=True)
+    res = {'data': list_return,
+           'page_count': int(total_count / page_size) + 1,
+           'total_count': total_count}
     return jsonify(res)
 
 
