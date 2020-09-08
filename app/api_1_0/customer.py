@@ -67,7 +67,7 @@ def update_customer():
         customer = db.session.query(Customer).filter(and_(Customer.id == uid, Customer.valid == 1)).first()
         if customer:
             customer1 = db.session.query(Customer).filter(and_(Customer.username == username, Customer.pwd == pwd,
-                                                               Customer.permission_id == permission_id)).first()
+                                                               Customer.permission_id == permission_id, Customer.valid == 1)).first()
             if customer1:
                 res = fail_res(msg="相同用户已存在")
             else:
@@ -123,7 +123,7 @@ def query_by_id():
 @blue_print.route('/query_all', methods=['GET'])
 def query_all():
     try:
-        customer = Customer.query.all()
+        customer = Customer.query.filter_by(valid=1).all()
         res = []
         for i in customer:
             if i.valid:

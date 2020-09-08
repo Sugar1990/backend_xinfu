@@ -320,7 +320,6 @@ def get_info():
     try:
         doc_id = request.args.get('doc_id', 0, type=int)
         doc = Document.query.filter_by(id=doc_id).first()
-        catalog = Catalog.query.filter_by(id=doc.catalog_id).first()
         customer = Customer.query.filter_by(id=doc.create_by, valid=1).first()
         permission = Permission.query.filter_by(id=customer.permission_id, valid=1).first()
         permission_list = Permission.query.filter_by(valid=1).all()
@@ -348,7 +347,11 @@ def get_info():
                 "next_doc_id": 0
             }
         else:
-            flag, ancestorn_catalog_tagging_tabs = get_ancestorn_catalog_tagging_tabs(catalog)
+            if doc.catalog_id:
+                catalog = Catalog.query.filter_by(id=doc.catalog_id).first()
+                flag, ancestorn_catalog_tagging_tabs = get_ancestorn_catalog_tagging_tabs(catalog)
+            else:
+                flag, ancestorn_catalog_tagging_tabs = True, []
             doc_info = {
                 "id": doc.id,
                 "name": doc.name,
@@ -498,11 +501,9 @@ def get_search_panigation():
     return jsonify(res)
 
 
-
 # 高级搜索
 @blue_print.route('/search_advanced', methods=['POST'])
 def search_advanced():
-
     # doc_id = request.json.get('doc_id', 0)
     dates = request.json.get('dates', [])
     places = request.json.get('places', [])
@@ -537,6 +538,7 @@ def search_advanced():
     data = [doc['_source'] for doc in search_result.json()['data']['dataList']]
     data_screen = screen_doc(data, entities=entities, event_categories=event_categories, notes=notes)
     return jsonify(data_screen)
+
 
 def screen_doc(data_inppt, dates=[], places=[], entities=[], event_categories=[], notes=[]):
     data_output = []
@@ -713,11 +715,11 @@ def get_keywords(content):
         res = []
     return res
 
+
 # ——————————————————————— 提取关键词 —————————————————————————————
 # 高级搜索优化测试
 @blue_print.route('/search_advanced_test', methods=['POST'])
 def search_advanced_test():
-
     # doc_id = request.json.get('doc_id', 0)
     dates = request.json.get('dates', [])
     places = request.json.get('places', [])
@@ -788,7 +790,7 @@ def screen_doc(data_inppt, dates=[], places=[], entities=[], event_categories=[]
             notes_dic = eval(doc["notes"])
             note_bool = bool([note for note in notes_dic if note in screen_dict["notes"]])
             sum_bool += note_bool
-            print(note_bool,notes_dic,screen_dict["notes"])
+            print(note_bool, notes_dic, screen_dict["notes"])
         else:
             note_bool = False
 

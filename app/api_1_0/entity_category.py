@@ -114,11 +114,12 @@ def delete_entity_category():
 
 def del_entity_category(id):
     try:
-        entity_category = EntityCategory.query.filter_by(id=id).first()
-        relation_category = RelationCategory.query.filter(
-            or_(RelationCategory.source_entity_category_id == id,
-                RelationCategory.target_entity_category_id == id)).all()
-        entity = Entity.query.filter_by(category_id=id).first()
+        entity_category = EntityCategory.query.filter_by(id=id, valid=1).first()
+        relation_category = RelationCategory.query.filter(RelationCategory.valid == 1,
+                                                          and_(or_(RelationCategory.source_entity_category_id == id,
+                                                                   RelationCategory.target_entity_category_id == id))
+                                                          ).all()
+        entity = Entity.query.filter_by(category_id=id, valid=1).first()
 
         if not entity_category:
             res = fail_res(msg="实体类型不存在")
