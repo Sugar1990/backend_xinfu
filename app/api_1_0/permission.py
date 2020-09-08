@@ -40,7 +40,7 @@ def del_permission():
         permission = db.session.query(Permission).filter(not_(Permission.name.in_([ADMIN_ROLE_NAME, ASSIS_ROLE_NAME])),
                                                          Permission.id == permission_id, Permission.valid == 1).first()
         if permission:
-            customers = Customer.query.filter_by(permission_id=permission_id).all()
+            customers = Customer.query.filter_by(permission_id=permission_id, valid=1).all()
             if customers:
                 res = fail_res(msg="该权限下存在用户，不能删除")
             else:
@@ -66,7 +66,7 @@ def batch_del_permission():
                                                          and_(Permission.id.in_(ids), Permission.valid == 1)).all()
         if permissions:
             for permission_item in permissions:
-                customers = Customer.query.filter_by(permission_id=permission_item.id).all()
+                customers = Customer.query.filter_by(permission_id=permission_item.id, valid=1).all()
                 if not customers:
                     permission_item.valid = 0
                     res = success_res()
