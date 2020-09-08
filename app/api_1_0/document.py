@@ -623,7 +623,7 @@ def save_tagging_result():
         notes = request.json.get('notes', [])
         doc_type = request.json.get('doc_type', 0)
         if not doc_id:
-            res = fail_res("No doc_id")
+            res = fail_res(msg="No doc_id")
         else:
             # 替换相应属性,修改es已有doc,如果传递参数做修改，没有传的参数不做修改
             key_value_json = {}
@@ -662,10 +662,11 @@ def save_tagging_result():
                 requests.post(url + '/updatebyId', data=json.dumps(inesert_para), headers=header)
                 res = success_res()
             else:
-                res = fail_res("can't find doc by doc_id in ES")
+                res = fail_res(msg="can't find doc by doc_id in ES")
     except Exception as e:
+        print(str(e))
         db.session.rollback()
-        res = fail_res(str(e))
+        res = fail_res()
     return jsonify(res)
 
 
@@ -706,7 +707,8 @@ def get_keywords(content):
             res = keywords_result
         else:
             res = []
-    except:
+    except Exception as e:
+        print("get_keywords error: ", str(e))
         res = []
     return res
 

@@ -95,16 +95,19 @@ def modify_event_category():
 
         event_category_find = EventCategory.query.filter_by(id=event_category_id, valid=1).first()
         if event_category_find:
-            event_category_find1 = EventCategory.query.filter_by(name=event_category_name, event_class_id=event_class_id, valid=1).first()
-            if event_category_find1:
+            event_category_find_same_name = EventCategory.query.filter_by(name=event_category_name, event_class_id=event_class_id, valid=1).first()
+            if event_category_find_same_name:
                 res = fail_res("同名实体类型已存在")
             else:
-                event_category_find.name = event_category_name
-                event_category_find.event_class_id = event_class_id
-                db.session.commit()
-                res = success_res()
-
-    except RuntimeError:
+                if not eventCategory_find:
+                    res = fail_res(msg="找不到修改对象")
+                else:
+                    event_category_find.name = event_category_name
+                    event_category_find.event_class_id = event_class_id
+                    db.session.commit()
+                    res = success_res()
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = fail_res(msg="修改失败！")
 
