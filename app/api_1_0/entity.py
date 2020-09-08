@@ -25,9 +25,6 @@ from ..models import Entity, EntityCategory
 # time: 2020/8/28 8:56
 
 
-ES_SERVER_IP = '172.11.0.21'
-ES_SERVER_PORT = 6789
-
 
 # get_entity
 @blue_print.route('/get_all', methods=['GET'])
@@ -266,20 +263,26 @@ def delete_entity():
 
 
 @blue_print.route('/delete_entity_by_ids', methods=['POST'])
-# TO DO finish this module
 def delete_entity_by_ids():
     try:
         ids = request.json.get('ids')
         entity = db.session.query(Entity).filter(Entity.id.in_(ids), Entity.valid == 1).all()
+        valid_ids = []
+        feedback = set()
         for uni_entity in entity:
             try:
-                # db.session.delete(uni_entity)
-                uni_entity.valid = 0
+                category_place = EntityCategory.query.filter_by(id=uni_entity.category_id, valid=1).first()
+                if category_place.name == PLACE_BASE_NAME:
+                    feedback.add(PLACE_BASE_NAME)
+                else:
+                    valid_ids.append(uni_entity.id)
+                    uni_entity.valid = 0
+                    feedback.add(category_place.name)
             except:
                 pass
         db.session.commit()
 
-        for id in ids:
+        for id in valid_ids:
 
             if YC_ROOT_URL:
                 # 雨辰同步
@@ -288,7 +291,7 @@ def delete_entity_by_ids():
                 yc_res = requests.post(url=url, data={"id": id}, headers=header)
 
         url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
-        for id in ids:
+        for id in valid_ids:
             search_json = {
                 'id': {'type': 'id', 'value': id}}
             header_es = {"Content-Type": "application/json; charset=UTF-8"}
@@ -303,12 +306,18 @@ def delete_entity_by_ids():
             # es_ids.append(es_id)
             delete_para = {"delete_index": "entity", "id_json": es_id}
             delete_result = requests.post(url + '/deletebyId', data=json.dumps(delete_para), headers=header_es)
-        res = success_res()
+        if len(feedback) == 1 and PLACE_BASE_NAME in feedback:
+            res = success_res("删除项均在地名库中，由专业团队维护,不能删除！")
+        elif PLACE_BASE_NAME in feedback:
+            res = success_res("非地名已成功删除，地名由于地名库由专业团队维护,不能删除！")
+        else:
+            res = success_res("全部成功删除！")
         return jsonify(res)
     except Exception as e:
         print(str(e))
         db.session.rollback()
         res = fail_res(str(e))
+        return jsonify(res)
 
 
 @blue_print.route('/add_synonyms', methods=['PUT'])

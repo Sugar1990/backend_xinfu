@@ -58,28 +58,28 @@ def add_event_class():
 
     return jsonify(res)
 
-
 @blue_print.route('/modify_event_class', methods=['PUT'])
 def modify_event_class():
     try:
         event_id = request.json.get('id')
         name = request.json.get('name')
         event_class = EventClass.query.filter_by(id=event_id, valid=1).first()
-
-        if not event_class:
-            res = fail_res(msg="事件类别id不存在!")
+        if event_class:
+            event_class1 = EventClass.query.filter_by(name=name,valid=1).first()
+            if event_class1:
+                res = fail_res(msg="相同事件类别已存在")
+            else:
+                if name:
+                    event_class.name = name
+                db.session.commit()
+                res = success_res()
         else:
-            event_class.name = name
-            event_class.valid = 1
-            db.session.commit()
-            res = success_res()
+            res = fail_res(msg="事件类别id不存在!")
 
     except RuntimeError:
         db.session.rollback()
         res = fail_res(msg="修改失败！")
-
     return jsonify(res)
-
 
 @blue_print.route('/delete_event_class', methods=['POST'])
 def delete_event_class():

@@ -237,3 +237,50 @@ def if_match(content, event_object, event, start_date, end_date, place):
         return False
     else:
         return True
+
+
+@blue_print.route('/get_doc_events', methods=['GET'])
+def get_doc_events():
+
+    docId = request.args.get('docId', 0, type=int)
+    if YC_ROOT_URL:
+        # 雨辰同步
+        # header = {"Content-Type": "application/x-form-urlencode; charset=UTF-8"}
+        url = YC_ROOT_URL + "/event/listByDocId"
+        data = {"docId": docId}
+        res_result = requests.get(url=url, params=data, headers={})
+        res = []
+        for result in (res_result.json()['data']):
+            res.append({
+                "title": result['title'],  # 事件标题
+                "subject": result['eventSubjcet'],  # 事件主语
+                "object": result['eventObject'],  # 事件宾语
+                "datetime": result['eventTime'],  # 发生时间
+                "place": result['eventAddress'],  # 发生地点
+                    })
+
+    return jsonify(res)
+
+@blue_print.route('/get_during_events', methods=['GET'])
+def get_during_events():
+    start_date = request.args.get('start_date', "")
+    end_date = request.args.get('end_date', "")
+    data = []
+    if YC_ROOT_URL:
+        # 雨辰同步
+        header = {"Content-Type": "application/json; charset=UTF-8"}
+        url = YC_ROOT_URL + "/event/search"
+        body = {"startTime": start_date,"endTime":end_date}
+        search_result = requests.post(url, data=json.dumps(body), headers=header)
+        data = search_result.json()['data']
+    res = []
+    for item in data:
+        res.append({
+            "title": item['title'],  # 事件标题
+            "subjcet": item['eventSubjcet'],  #事件主语
+            "object": item['eventObject'],    #事件宾语
+            "datetime": item['eventTime'],    #发生时间
+            "address": item['eventAddress']   #发生地点（字符串，无坐标）
+
+        })
+    return jsonify(res)
