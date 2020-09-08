@@ -33,9 +33,10 @@ def insert_records():
             db.session.add(documentRecords)
             db.session.commit()
             res = success_res()
-    except:
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
-        res = fail_res("文件操作记录添加失败!")
+        res = fail_res()
 
     return jsonify(res)
 

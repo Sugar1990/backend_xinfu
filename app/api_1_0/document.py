@@ -47,7 +47,9 @@ def upload_doc():
                 content_list, keywords = [], []
                 if doc_extension in ['.docx', '.doc']:
                     content_list = extract_word_content(file_savepath)
+                    print(content_list)
                     keywords = get_keywords(content_list)
+                    print(keywords)
 
                 permission_id = 0
                 customer = Customer.query.filter_by(id=uid).first()
@@ -63,7 +65,7 @@ def upload_doc():
                 if file_md5:
                     doc = Document.query.filter_by(md5=file_md5, catalog_id=catalog_id).first()
                     if doc:
-                        res = fail_res("{0}文档已存在\n".format(path[-1]))
+                        res = fail_res(msg="{0}文档已存在\n".format(path[-1]))
                     else:
                         doc = Document(name=path[-1],
                                        category=os.path.splitext(filename)[1],
@@ -106,12 +108,11 @@ def upload_doc():
                             doc.status = 1
                             db.session.commit()
 
-
                         res = success_res()
                 else:
-                    res = fail_res("计算文件md5异常，上传失败")
+                    res = fail_res(msg="计算文件md5异常，上传失败")
             else:
-                res = fail_res("upload path is empty")
+                res = fail_res(msg="upload path is empty")
 
     except Exception as e:
         print(str(e))
@@ -213,8 +214,9 @@ def modify_doc_info():
 
             res = success_res()
     except Exception as e:
+        print(str(e))
         db.session.rollback()
-        res = fail_res(str(e))
+        res = fail_res()
     return jsonify(res)
 
 
@@ -273,10 +275,11 @@ def del_doc():
                 pass
             res = success_res()
         else:
-            res = fail_res('无效用户，操作失败')
+            res = fail_res(msg='无效用户，操作失败')
     except Exception as e:
+        print(str(e))
         db.session.rollback()
-        res = fail_res(str(e))
+        res = fail_res()
     return jsonify(res)
 
 
@@ -435,9 +438,9 @@ def judge_doc_permission():
         if doc_power <= cus_power:
             res = success_res()
         else:
-            res = fail_res("此文档权限较高，无法打开")
+            res = fail_res(msg="此文档权限较高，无法打开")
     else:
-        res = fail_res("无效用户，无法操作")
+        res = fail_res(msg="无效用户，无法操作")
 
     return res
 
@@ -618,7 +621,7 @@ def save_tagging_result():
         notes = request.json.get('notes', [])
         doc_type = request.json.get('doc_type', 0)
         if not doc_id:
-            res = fail_res("No doc_id")
+            res = fail_res(msg="No doc_id")
         else:
             # 替换相应属性,修改es已有doc,如果传递参数做修改，没有传的参数不做修改
             key_value_json = {}
@@ -657,10 +660,11 @@ def save_tagging_result():
                 requests.post(url + '/updatebyId', data=json.dumps(inesert_para), headers=header)
                 res = success_res()
             else:
-                res = fail_res("can't find doc by doc_id in ES")
+                res = fail_res(msg="can't find doc by doc_id in ES")
     except Exception as e:
+        print(str(e))
         db.session.rollback()
-        res = fail_res(str(e))
+        res = fail_res()
     return jsonify(res)
 
 
@@ -701,7 +705,8 @@ def get_keywords(content):
             res = keywords_result
         else:
             res = []
-    except:
+    except Exception as e:
+        print("get_keywords error: ", str(e))
         res = []
     return res
 

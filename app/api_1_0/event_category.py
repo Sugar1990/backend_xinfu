@@ -93,11 +93,11 @@ def modify_event_category():
 
     event_category_find = EventCategory.query.filter_by(name=event_category_name).first()
     if event_category_find:
-        res = fail_res("同名实体类型已存在")
+        res = fail_res(msg="同名实体类型已存在")
     else:
         eventCategory_find = EventCategory.query.filter_by(id=event_category_id, valid=1).first()
         if not eventCategory_find:
-            res = fail_res("找不到修改对象")
+            res = fail_res(msg="找不到修改对象")
         else:
             try:
                 eventCategory_find.name = event_category_name

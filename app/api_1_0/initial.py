@@ -3,9 +3,10 @@ import json
 from . import api_initial as blue_print
 from ..models import Customer, EntityCategory
 from .. import db
-from ..conf import ADMIN_NAME, ADMIN_PWD, ASSIS_NAME, ASSIS_PWD, TAG_TABS, PLACE_BASE_NAME,ES_SERVER_IP, ES_SERVER_PORT
+from ..conf import ADMIN_NAME, ADMIN_PWD, ASSIS_NAME, ASSIS_PWD, TAG_TABS, PLACE_BASE_NAME, ES_SERVER_IP, ES_SERVER_PORT
 from .utils import success_res, fail_res
 import requests
+
 
 @blue_print.route("/init", methods=['GET'])
 def init():
@@ -40,7 +41,7 @@ def init():
     try:
         category = EntityCategory.query.filter_by(username=PLACE_BASE_NAME).first()
         if not category:
-            data = [EntityCategory(name="PLACE_BASE_NAME")]
+            data = [EntityCategory(name="PLACE_BASE_NAME", valid=1)]
             db.session.add_all(data)
             db.session.commit()
         res = success_res()
@@ -54,46 +55,45 @@ def init():
     return jsonify(res)
 
 
-
 @blue_print.route('/pg_insert_es', methods=['GET'])
 def pg_insert_es():
-    pg_table = request.args.get('pg_table', '') # 同步数据为entity或者document
+    pg_table = request.args.get('pg_table', '')  # 同步数据为entity或者document
     try:
-        if  pg_table == 'entity':
+        if pg_table == 'entity':
             es_mapping_dict = {
-                                "id": "id",
-                                "name": "ik_keyword",
-                                "synonyms": "ik",
-                                "props": "ik",
-                                "summary": "ik",
-                                "category_id": "id"
-                            }
-            pg_dict ={"id":{"col_type":"align","entity":"id"},
-                    "name":{"col_type":"","entity":"name"},
-                    "synonyms":{"col_type":"","entity":"synonyms"},
-                    "props":{"col_type":"","entity":"props"},
-                    "category_id":{"col_type":"","entity":"category_id"},
-                    "summary":{"col_type":"","entity":"summary"}}
+                "id": "id",
+                "name": "ik_keyword",
+                "synonyms": "ik",
+                "props": "ik",
+                "summary": "ik",
+                "category_id": "id"
+            }
+            pg_dict = {"id": {"col_type": "align", "entity": "id"},
+                       "name": {"col_type": "", "entity": "name"},
+                       "synonyms": {"col_type": "", "entity": "synonyms"},
+                       "props": {"col_type": "", "entity": "props"},
+                       "category_id": {"col_type": "", "entity": "category_id"},
+                       "summary": {"col_type": "", "entity": "summary"}}
         elif pg_table == 'document':
             es_mapping_dict = {
-                                "id": "id",
-                                "name": "ik_keyword",
-                                "content": "ik",
-                                "keywords": "ik",
-                                "create_time": "time",
-                                "dates": "ik" ,# 多个时间，
-                                "places": "ik" , # 多个地点
-                                "entities": "ik",#[{name: category_id}, …]  # 多个实体，含名称和类型id
-                                "event_categories":"ik",#[{event_class: event_category}, …]
-                                "doc_type": "id",
-                                "notes": "notes"
-                                 }
-            pg_dict = {"id":{"col_type":"align","document":"id"},
-                        "name":{"col_type":"","document":"name"},
-                        "content":{"col_type":"","document":"content"},
-                        "keywords":{"col_type":"","document":"keywords"},
-                        "create_time":{"col_type":"","document":"create_time"}
-                        }
+                "id": "id",
+                "name": "ik_keyword",
+                "content": "ik",
+                "keywords": "ik",
+                "create_time": "time",
+                "dates": "ik",  # 多个时间，
+                "places": "ik",  # 多个地点
+                "entities": "ik",  # [{name: category_id}, …]  # 多个实体，含名称和类型id
+                "event_categories": "ik",  # [{event_class: event_category}, …]
+                "doc_type": "id",
+                "notes": "ik"
+            }
+            pg_dict = {"id": {"col_type": "align", "document": "id"},
+                       "name": {"col_type": "", "document": "name"},
+                       "content": {"col_type": "", "document": "content"},
+                       "keywords": {"col_type": "", "document": "keywords"},
+                       "create_time": {"col_type": "", "document": "create_time"}
+                       }
 
         url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
         header = {"Content-Type": "application/json"}
@@ -110,7 +110,7 @@ def pg_insert_es():
 
 @blue_print.route('/delete_index', methods=['GET'])
 def delete_index():
-    es_index= request.args.get('es_index', '') # 删除数据为entity或者document
+    es_index = request.args.get('es_index', '')  # 删除数据为entity或者document
     try:
         if es_index == 'entity' or es_index == 'document':
             para = {"delete_index": es_index}
@@ -119,7 +119,7 @@ def delete_index():
             search_result = requests.get(url=esurl, params=para, headers={})
             res = success_res()
         else:
-            res = fail_res("only support es_index == 'entity' or es_index == 'document' ")
+            res = fail_res(msg="only support es_index == 'entity' or es_index == 'document' ")
     except Exception as e:
         print(str(e))
         db.session.rollback()
@@ -129,57 +129,56 @@ def delete_index():
 
 @blue_print.route('/pg_insert_es_test', methods=['GET'])
 def pg_insert_test():
-    pg_table = request.args.get('pg_table', '') # 同步数据为entity或者document
+    pg_table = request.args.get('pg_table', '')  # 同步数据为entity或者document
 
-    if  pg_table == 'entity':
+    if pg_table == 'entity':
         es_mapping_dict = {
-                            "id": "id",
-                            "name": "ik_keyword",
-                            "synonyms": "ik",
-                            "props": "ik",
-                            "summary": "ik",
-                            "category_id": "id"
-                        }
-        pg_dict ={"id":{"col_type":"align","entity":"id"},
-                "name":{"col_type":"","entity":"name"},
-                "synonyms":{"col_type":"","entity":"synonyms"},
-                "props":{"col_type":"","entity":"props"},
-                "category_id":{"col_type":"","entity":"category_id"},
-                "summary":{"col_type":"","entity":"summary"}}
+            "id": "id",
+            "name": "ik_keyword",
+            "synonyms": "ik",
+            "props": "ik",
+            "summary": "ik",
+            "category_id": "id"
+        }
+        pg_dict = {"id": {"col_type": "align", "entity": "id"},
+                   "name": {"col_type": "", "entity": "name"},
+                   "synonyms": {"col_type": "", "entity": "synonyms"},
+                   "props": {"col_type": "", "entity": "props"},
+                   "category_id": {"col_type": "", "entity": "category_id"},
+                   "summary": {"col_type": "", "entity": "summary"}}
     elif pg_table == 'document1':
         es_mapping_dict = {
-                            "id": "id",
-                            "name": "ik_keyword",
-                            "content": "ik",
-                            "keywords": "ik",
-                            "create_time": "time",
-                            "dates": "ik" ,
-                            "places": "ik" ,
-                            "entities": "ik",
-                            "event_categories":"ik",
-                            "doc_type":"id",
-                            "notes":"ik"
-                             }
-        pg_dict = {"id":{"col_type":"align","document1":"id"},
-                    "name":{"col_type":"","document1":"name"},
-                    "content":{"col_type":"","document1":"content"},
-                    "keywords":{"col_type":"","document1":"keywords"},
-                    "create_time":{"col_type":"","document1":"create_time"},
-                    "dates": {"col_type": "", "document1": "dates"},
-                    "places": {"col_type": "", "document1": "places"},
-                    "entities": {"col_type": "", "document1": "entities"},
-                    "event_categories": {"col_type": "", "document1": "event_categories"},
-                    "doc_type": {"col_type": "", "document1": "doc_type"},
-                    "notes": {"col_type": "", "document1": "notes"}
+            "id": "id",
+            "name": "ik_keyword",
+            "content": "ik",
+            "keywords": "ik",
+            "create_time": "time",
+            "dates": "ik",
+            "places": "ik",
+            "entities": "ik",
+            "event_categories": "ik",
+            "doc_type": "id",
+            "notes": "ik"
+        }
+        pg_dict = {"id": {"col_type": "align", "document1": "id"},
+                   "name": {"col_type": "", "document1": "name"},
+                   "content": {"col_type": "", "document1": "content"},
+                   "keywords": {"col_type": "", "document1": "keywords"},
+                   "create_time": {"col_type": "", "document1": "create_time"},
+                   "dates": {"col_type": "", "document1": "dates"},
+                   "places": {"col_type": "", "document1": "places"},
+                   "entities": {"col_type": "", "document1": "entities"},
+                   "event_categories": {"col_type": "", "document1": "event_categories"},
+                   "doc_type": {"col_type": "", "document1": "doc_type"},
+                   "notes": {"col_type": "", "document1": "notes"}
 
-                    }
+                   }
 
     url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
     header = {"Content-Type": "application/json"}
     esurl = url + "/pg_insert_es"
     para = {"pg_dict": pg_dict, "es_index_name": pg_table, "es_mapping_dict": es_mapping_dict}
-    print(para,flush=True)
+    print(para, flush=True)
     search_result = requests.post(url=esurl, data=json.dumps(para), headers=header)
     print(search_result, flush=True)
     return success_res()
-

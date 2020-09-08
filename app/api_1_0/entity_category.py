@@ -50,16 +50,16 @@ def add_entity_category():
     try:
         name = request.json.get('name', '')
         if name == PLACE_BASE_NAME:
-            res = fail_res("地名库由专业团队维护，不能添加！")
+            res = fail_res(msg="地名库由专业团队维护，不能添加！")
             return jsonify(res)
         entity_category = EntityCategory.query.filter_by(name=name, valid=1).all()
         if entity_category:
-            res = fail_res("同名实体类型已存在")
+            res = fail_res(msg="同名实体类型已存在")
         else:
             entity = EntityCategory(name=name, valid=1)
             db.session.add(entity)
             db.session.commit()
-            res = success_res('', "实体类型已添加")
+            res = success_res()
     except:
         db.session.rollback()
         res = fail_res()
@@ -75,7 +75,7 @@ def modify_entity_category():
         if name:
             entity_category = EntityCategory.query.filter_by(name=name, valid=1).first()
             if entity_category:
-                res = fail_res("同名实体类型已存在")
+                res = fail_res(msg="同名实体类型已存在")
             else:
                 entity_category = EntityCategory.query.filter_by(id=id, valid=1).first()
                 if entity_category:
@@ -84,11 +84,11 @@ def modify_entity_category():
                         db.session.commit()
                         res = success_res()
                     else:
-                        res = fail_res("地名库由专业团队维护，不能修改")
+                        res = fail_res(msg="地名库由专业团队维护，不能修改")
                 else:
-                    res = fail_res("实体类型不存在")
+                    res = fail_res(msg="实体类型不存在")
         else:
-            res = fail_res("修改名称不能为空")
+            res = fail_res(msg="修改名称不能为空")
     except:
         db.session.rollback()
         res = fail_res()
@@ -104,7 +104,7 @@ def delete_entity_category():
         if flag:
             res = success_res()
         else:
-            res = fail_res(msg)
+            res = fail_res(msg=msg)
     except Exception as e:
         print(str(e))
         db.session.rollback()
@@ -148,7 +148,7 @@ def delete_entity_category_by_ids():
         if res_flag:
             res = success_res()
         else:
-            res = fail_res("部分数据无法删除")
+            res = fail_res(msg="部分数据无法删除")
     except:
         db.session.rollback()
         res = fail_res()
