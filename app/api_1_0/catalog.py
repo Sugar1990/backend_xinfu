@@ -254,20 +254,24 @@ def modify_catalog():
 def move_catalog():
     catalog_id = request.json.get('catalog_id', 0)
     parent_id = request.json.get('parent_id', 0)
+
     try:
-        catalog = Catalog.query.filter_by(id=catalog_id).first()
-        if catalog:
-            catalog_same = Catalog.query.filter_by(name=catalog.name, parent_id=parent_id).all()
-
-            catalog.parent_id = parent_id
-
-            if len(catalog_same):
-                catalog.name = catalog.name + '-（{0}）'.format(len(catalog_same))
-
-            db.session.commit()
-            res = success_res()
+        if not parent_id:
+            res = fail_res(msg="请移动到已知目录类型下")
         else:
-            res = fail_res(msg="操作对象不存在")
+            catalog = Catalog.query.filter_by(id=catalog_id).first()
+            if catalog:
+                catalog_same = Catalog.query.filter_by(name=catalog.name, parent_id=parent_id).all()
+
+                catalog.parent_id = parent_id
+
+                if len(catalog_same):
+                    catalog.name = catalog.name + '-（{0}）'.format(len(catalog_same))
+
+                db.session.commit()
+                res = success_res()
+            else:
+                res = fail_res(msg="操作对象不存在")
     except:
         db.session.rollback()
         res = fail_res()
