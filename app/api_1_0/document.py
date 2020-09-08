@@ -47,9 +47,7 @@ def upload_doc():
                 content_list, keywords = [], []
                 if doc_extension in ['.docx', '.doc']:
                     content_list = extract_word_content(file_savepath)
-                    print(content_list)
                     keywords = get_keywords(content_list)
-                    print(keywords)
 
                 permission_id = 0
                 customer = Customer.query.filter_by(id=uid).first()
@@ -98,6 +96,8 @@ def upload_doc():
 
                         insert_result = requests.post(url + '/dataInsert', data=json.dumps(para),
                                                       headers=header)
+
+                        print(insert_result.text)
 
                         if YC_ROOT_URL:
                             header = {"Content-Type": "application/x-form-urlencode; charset=UTF-8"}
@@ -178,7 +178,8 @@ def modify_doc_info():
     try:
         doc_id = request.json.get('doc_id', 0)
         name = request.json.get('name', '')
-        status = request.json.get('status', 1)
+        status = request.json.get('status', 0)
+        print(status)
 
         doc = Document.query.filter_by(id=doc_id).first()
         if not doc:
@@ -715,7 +716,7 @@ def get_keywords(content):
 # ——————————————————————— 提取关键词 —————————————————————————————
 # 高级搜索优化测试
 @blue_print.route('/search_advanced_test', methods=['POST'])
-def search_advanced():
+def search_advanced_test():
 
     # doc_id = request.json.get('doc_id', 0)
     dates = request.json.get('dates', [])
