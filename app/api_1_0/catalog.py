@@ -251,7 +251,7 @@ def modify_catalog():
 
 
 @blue_print.route('/move_catalog', methods=['PUT'])
-def modify_catalog():
+def move_catalog():
     catalog_id = request.json.get('catalog_id', 0)
     parent_id = request.json.get('parent_id', 0)
     try:
