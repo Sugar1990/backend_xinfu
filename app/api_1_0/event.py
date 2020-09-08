@@ -5,6 +5,7 @@ import os
 from ..conf import YC_ROOT_URL
 import requests
 
+
 @blue_print.route('/get_base_names', methods=['GET'])
 def get_base_names():
     res = ["文件标注库", "人员库", "部队库", "地名库", "装备库", "工程库", "机构库", "国家库"]
@@ -242,7 +243,6 @@ def if_match(content, event_object, event, start_date, end_date, place):
 
 @blue_print.route('/get_doc_events', methods=['GET'])
 def get_doc_events():
-
     docId = request.args.get('docId', 0, type=int)
     if YC_ROOT_URL:
         # 雨辰同步
@@ -258,9 +258,10 @@ def get_doc_events():
                 "object": result['eventObject'],  # 事件宾语
                 "datetime": result['eventTime'],  # 发生时间
                 "place": result['eventAddress'],  # 发生地点
-                    })
+            })
 
     return jsonify(res)
+
 
 @blue_print.route('/get_during_events', methods=['GET'])
 def get_during_events():
@@ -271,17 +272,17 @@ def get_during_events():
         # 雨辰同步
         header = {"Content-Type": "application/json; charset=UTF-8"}
         url = YC_ROOT_URL + "/event/search"
-        body = {"startTime": start_date,"endTime":end_date}
+        body = {"startTime": start_date, "endTime": end_date}
         search_result = requests.post(url, data=json.dumps(body), headers=header)
         data = search_result.json()['data']
     res = []
     for item in data:
         res.append({
             "title": item['title'],  # 事件标题
-            "subjcet": item['eventSubjcet'],  #事件主语
-            "object": item['eventObject'],    #事件宾语
-            "datetime": item['eventTime'],    #发生时间
-            "address": item['eventAddress']   #发生地点（字符串，无坐标）
+            "subjcet": item['eventSubjcet'],  # 事件主语
+            "object": item['eventObject'],  # 事件宾语
+            "datetime": item['eventTime'],  # 发生时间
+            "address": item['eventAddress']  # 发生地点（字符串，无坐标）
 
         })
     return jsonify(res)

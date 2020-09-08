@@ -96,14 +96,12 @@ def upload_doc():
 
                         insert_result = requests.post(url + '/dataInsert', data=json.dumps(para),
                                                       headers=header)
-
                         print(insert_result.text)
 
                         if YC_ROOT_URL:
                             header = {"Content-Type": "application/x-form-urlencode; charset=UTF-8"}
-                            url = YC_ROOT_URL + '/doc/preprocess'
-                            data = json.dumps({"docId": doc.id})
-                            yc_res = requests.post(url=url, data=data, headers=header)
+                            url = YC_ROOT_URL + '/doc/preprocess?docId={0}'.format(doc.id)
+                            yc_res = requests.post(url=url, headers=header)
                             print("doc_preprocess", yc_res)
                             doc.status = 1
                             db.session.commit()
