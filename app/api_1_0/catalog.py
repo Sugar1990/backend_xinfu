@@ -1,10 +1,13 @@
 # -*- coding: UTF-8 -*-
 from flask import jsonify, request
 import datetime
+import json
+
 from . import api_catalog as blue_print
 from ..models import Catalog, Document, Customer, Permission
 from .. import db
-from .utils import success_res, fail_res
+from .utils import success_res, fail_res, get_status_name
+from ..conf import TAG_TABS
 
 
 @blue_print.route('/insert_catalog', methods=['POST'])
@@ -104,8 +107,6 @@ def del_catalog():
 @blue_print.route('/get_all', methods=['GET'])
 def get_all():
     try:
-        # customer_id = request.args.get("customer_id", 0, type=int)
-
         catalog = Catalog.query.all()
 
         catalog_dictory = {}
@@ -151,27 +152,25 @@ def get_catalog_files():
 
         if not customer:
             res = fail_res(msg="无效用户")
-
-        permission = Permission.query.filter_by(id=customer.permission_id).first()
-
-        doc_status = lambda x: "上传处理中" if x == 0 else "未标注" if x == 1 else "已标注" if x == 2 else ""
-        if customer:
-            res = {
-                "files": [{
-                    "id": i.id,
-                    "name": i.name,
-                    "createtime": i.create_time,
-                    "create_username": Customer.get_username_by_id(i.create_by),
-                    "extension": i.category.replace('\n\"', ""),
-                    "status": doc_status(i.status)
-                } for i in docs if i.get_power() <= customer.get_power()],
-                "catalogs": [{
-                    'id': i.id,
-                    'name': i.name
-                } for i in catalogs]
-            }
         else:
-            res = {"files": [], "catalogs": []}
+            if customer:
+                res = {
+                    "files": [{
+                        "id": i.id,
+                        "name": i.name,
+                        "createtime": i.create_time,
+                        "create_username": Customer.get_username_by_id(i.create_by),
+                        "extension": i.category.replace('\n\"', ""),
+                        "status": get_status_name(i.status),
+                        "permission": 1 if Permission.judge_power(customer_id, i.id) else 0
+                    } for i in docs if i.get_power() <= customer.get_power()],
+                    "catalogs": [{
+                        'id': i.id,
+                        'name': i.name
+                    } for i in catalogs]
+                }
+            else:
+                res = {"files": [], "catalogs": []}
     except Exception as e:
         print(str(e))
         res = {"files": [], "catalogs": []}
@@ -229,21 +228,48 @@ def modify_catalog():
     try:
         catalog = Catalog.query.filter_by(id=catalog_id).first()
         if catalog:
-            if not catalog.tagging_tabs:  # 不是根目录   ??修改的必须是根目录吗
-                res = fail_res(msg="非文档类型目录")
+            catalog1 = Catalog.query.filter_by(name=name, parent_id=parent_id).first()
+            if catalog1:
+                res = fail_res(msg="相同目录已存在")
             else:
-                catalog1 = Catalog.query.filter_by(name=name, parent_id=parent_id, tagging_tabs=tabs).first()
-                if catalog1:
-                    res = fail_res(msg="相同目录已存在")
-                else:
-                    if name:
-                        catalog.name = name
-                    if parent_id:
-                        catalog.parent_id = parent_id
-                    if tabs:
-                        catalog.tagging_tabs = tabs
-                    db.session.commit()
-                    res = success_res()
+                if name:
+                    catalog.name = name
+                if parent_id:
+                    catalog.parent_id = parent_id
+                if tabs:
+                    catalog.tagging_tabs = tabs
+                db.session.commit()
+                res = success_res()
+        else:
+            res = fail_res(msg="操作对象不存在")
+    except:
+        db.session.rollback()
+        res = fail_res()
+    return jsonify(res)
+
+
+@blue_print.route('/move_catalog', methods=['PUT'])
+def move_catalog():
+    catalog_id = request.json.get('catalog_id', 0)
+    parent_id = request.json.get('parent_id', 0)
+
+    try:
+        if not parent_id:
+            res = fail_res(msg="请移动到已知目录类型下")
+        else:
+            catalog = Catalog.query.filter_by(id=catalog_id).first()
+            if catalog:
+                catalog_same = Catalog.query.filter_by(name=catalog.name, parent_id=parent_id).all()
+
+                catalog.parent_id = parent_id
+
+                if len(catalog_same):
+                    catalog.name = catalog.name + '-（{0}）'.format(len(catalog_same))
+
+                db.session.commit()
+                res = success_res()
+            else:
+                res = fail_res(msg="操作对象不存在")
     except:
         db.session.rollback()
         res = fail_res()
@@ -253,16 +279,9 @@ def modify_catalog():
 @blue_print.route('/get_tagging_tabs', methods=['GET'])
 def get_tagging_tabs():
     try:
-        cataloges = Catalog.query.all()
-        if not cataloges:
-            res = []
-        else:
-            res = []
-            for catalog in cataloges:
-                if catalog.tagging_tabs:
-                    res.append(catalog.tagging_tabs)
+        res = json.loads(TAG_TABS)
     except Exception:
-        res = []
+        res = {}
 
     return jsonify(res)
 

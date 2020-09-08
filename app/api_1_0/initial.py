@@ -156,7 +156,7 @@ def pg_insert_test():
             "dates": "ik",
             "places": "ik",
             "entities": "ik",
-            "event_categories": "ik",
+            "event_categories": "ik", # 存储示例 [{"event_class":3,"event_category_id":1}]
             "doc_type": "id",
             "notes": "ik"
         }

@@ -2,6 +2,8 @@ import json
 from . import api_event as blue_print
 from flask import jsonify, request
 import os
+from ..conf import YC_ROOT_URL
+import requests
 
 
 @blue_print.route('/get_base_names', methods=['GET'])
@@ -241,14 +243,13 @@ def if_match(content, event_object, event, start_date, end_date, place):
 
 @blue_print.route('/get_doc_events', methods=['GET'])
 def get_doc_events():
-
     docId = request.args.get('docId', 0, type=int)
     if YC_ROOT_URL:
         # 雨辰同步
         # header = {"Content-Type": "application/x-form-urlencode; charset=UTF-8"}
-        url = YC_ROOT_URL + "/event/listByDocId"
-        data = {"docId": docId}
-        res_result = requests.get(url=url, params=data, headers={})
+        url = YC_ROOT_URL + "/event/listByDocId?docId={0}".format(docId)
+        res_result = requests.get(url=url, headers={})
+        print("/event/listByDocId", res_result.text)
         res = []
         for result in (res_result.json()['data']):
             res.append({
@@ -257,9 +258,10 @@ def get_doc_events():
                 "object": result['eventObject'],  # 事件宾语
                 "datetime": result['eventTime'],  # 发生时间
                 "place": result['eventAddress'],  # 发生地点
-                    })
+            })
 
     return jsonify(res)
+
 
 @blue_print.route('/get_during_events', methods=['GET'])
 def get_during_events():
@@ -270,17 +272,18 @@ def get_during_events():
         # 雨辰同步
         header = {"Content-Type": "application/json; charset=UTF-8"}
         url = YC_ROOT_URL + "/event/search"
-        body = {"startTime": start_date,"endTime":end_date}
+        body = {"startTime": start_date, "endTime": end_date}
         search_result = requests.post(url, data=json.dumps(body), headers=header)
+        print("/event/listByDocId", search_result.text)
         data = search_result.json()['data']
     res = []
     for item in data:
         res.append({
             "title": item['title'],  # 事件标题
-            "subjcet": item['eventSubjcet'],  #事件主语
-            "object": item['eventObject'],    #事件宾语
-            "datetime": item['eventTime'],    #发生时间
-            "address": item['eventAddress']   #发生地点（字符串，无坐标）
+            "subjcet": item['eventSubjcet'],  # 事件主语
+            "object": item['eventObject'],  # 事件宾语
+            "datetime": item['eventTime'],  # 发生时间
+            "address": item['eventAddress']  # 发生地点（字符串，无坐标）
 
         })
     return jsonify(res)

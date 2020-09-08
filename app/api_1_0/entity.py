@@ -256,7 +256,7 @@ def delete_entity():
             # 雨辰同步
             if YC_ROOT_URL:
                 header = {"Content-Type": "application/x-www-form-urlencoded; charset=UTF-8"}
-                url = YC_ROOT_URL + "/entitysync/delete".format(id)
+                url = YC_ROOT_URL + "/entitysync/delete?id={0}".format(id)
                 yc_res = requests.post(url=url, data={"id": id}, headers=header)
 
             res = success_res()
@@ -293,7 +293,7 @@ def delete_entity_by_ids():
             if YC_ROOT_URL:
                 # 雨辰同步
                 header = {"Content-Type": "application/x-www-form-urlencoded; charset=UTF-8"}
-                url = YC_ROOT_URL + "/entitysync/delete".format(id)
+                url = YC_ROOT_URL + "/entitysync/delete?id={0}".format(id)
                 yc_res = requests.post(url=url, data={"id": id}, headers=header)
 
         url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
