@@ -92,7 +92,6 @@ def insert_entity():
                                      Entity.valid == 1).first()
 
         if not entity:
-            # todo 前端修改props默认类型
             props = props if props else {}
 
             entity = Entity(name=name, category_id=category_id, props=props, synonyms=synonyms, summary=summary,
@@ -105,8 +104,8 @@ def insert_entity():
                 'name': name,
                 'category_id': category_id,
                 'summary': summary,
-                'props': json.dumps(props),
-                'synonyms': json.dumps(synonyms),
+                'props': props,
+                'synonyms': synonyms,
                 'id': entity.id
             }]
             url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
@@ -172,10 +171,10 @@ def update_entity():
                 key_value_json['category_id'] = category_id
             if props:
                 entity.props = props
-                key_value_json['props'] = str(props)
+                key_value_json['props'] = props
             if synonyms:
                 entity.synonyms = synonyms
-                key_value_json['synonyms'] = str(synonyms)
+                key_value_json['synonyms'] = synonyms
             if summary:
                 entity.synonyms = summary
                 key_value_json['summary'] = summary
@@ -429,11 +428,11 @@ def get_linking_entity():
     return res
 
 
-# es数据库中模糊搜索
+# 暂无使用，es数据库中模糊搜索
 @blue_print.route('/get_top_list_es', methods=['GET'])
 def get_entity_list_es():
     try:
-        entity_name = str(request.args.get('search', ''))
+        entity_name = request.args.get('search', '')
         category_id = request.args.get('category_id', 0, type=int)
         url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
         search_json = {"name": {"type": "text", "value": entity_name, "boost": 5},
@@ -441,7 +440,7 @@ def get_entity_list_es():
         if category_id != 0:
             search_json['category_id'] = {"type": "id", "value": category_id}
         null = 'None'
-        para = {"search_index": 'entity', "search_json": str(search_json)}
+        para = {"search_index": 'entity', "search_json": search_json}
         search_result = requests.get(url + '/searchCustom', params=para, headers={})
         res = [{'id': entity['_source']['id'],
                 'name': entity['_source']['name'],
@@ -481,7 +480,6 @@ def get_search_panigation():
 
 def get_search_panigation_es(search='', page_size=10, cur_page=1, category_id=0):
     try:
-
         if category_id == EntityCategory.get_category_id(PLACE_BASE_NAME) and USE_PLACE_SERVER:
             data, total_count = get_place_from_base_server(page_size=page_size, cur_page=cur_page, search=search)
         else:
@@ -509,13 +507,14 @@ def get_search_panigation_es(search='', page_size=10, cur_page=1, category_id=0)
                      'summary': entity['_source']['summary'],
                      'category': EntityCategory.get_category_name(entity['_source']['category_id'])
                      } for entity in search_result.json()['data']['dataList']]
-            for entity in data:
-                entity['props'] = {} if entity['props'] == "None" else eval(
-                    entity['props'])  # json.dumps(entity['props'].replace("\"",""),ensure_ascii= False)
-                entity['synonyms'] = [] if entity['synonyms'] == "None" else eval(entity['synonyms'])
+            # for entity in data:
+            #     entity['props'] = {} if entity['props'] == "None" else eval(
+            #         entity['props'])  # json.dumps(entity['props'].replace("\"",""),ensure_ascii= False)
+            #     entity['synonyms'] = [] if entity['synonyms'] == "None" else eval(entity['synonyms'])
 
         res = data, total_count
-    except:
+    except Exception as e:
+        print(str(e))
         res = [], 0
     return res
 
@@ -525,10 +524,9 @@ def get_search_panigation_es(search='', page_size=10, cur_page=1, category_id=0)
 def get_entity_data_es():
     # try:
     entity_name = request.args.get('search', '')
-    url = 'http://172.11.0.21:6789'
-    # url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+    url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
     search_json = {"name": {"type": "keyword", "value": [entity_name]}}
-    para = {"search_index": 'entity', "search_json": json.dumps(search_json)}
+    para = {"search_index": 'entity', "search_json": search_json}
     search_result = requests.get(url + '/searchCustom', params=para, headers={})
     null = 'None'
     entity = search_result.json()['data']['dataList'][0]
@@ -691,8 +689,8 @@ def import_entity_excel():
                             'name': ex_name,
                             'category_id': category_id,
                             'summary': ex_summary,
-                            'props': json.dumps(ex_props),
-                            'synonyms': json.dumps(ex_synonyms),
+                            'props': ex_props,
+                            'synonyms': ex_synonyms,
                             'id': entity.id
                         }]
                         url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
@@ -726,8 +724,8 @@ def import_entity_excel():
                             'name': ex_name,
                             'category_id': category_id,
                             'summary': ex_summary,
-                            'props': json.dumps(ex_props),
-                            'synonyms': json.dumps(ex_synonyms),
+                            'props': ex_props,
+                            'synonyms': ex_synonyms,
                             'id': entity.id
                         }]
                         url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'

@@ -85,7 +85,7 @@ def upload_doc():
                         data_insert_json = [{
                             "id": doc.id,
                             "name": doc.name,
-                            "content": str(doc.content),
+                            "content": doc.content,
                             "create_time": doc.create_time.strftime('%Y-%m-%d %H:%M:%S'),
                             "keywords": doc.keywords
                         }]
@@ -200,7 +200,7 @@ def modify_doc_info():
 
             search_result = requests.post(url + '/searchId', data=json.dumps(es_id_para), headers=header)
             try:
-                es_id = eval(search_result.json()['data'])['dataList'][0]
+                es_id = search_result.json()['data']['dataList'][0]
             except:
                 es_id = ''
 
@@ -257,7 +257,7 @@ def del_doc():
                 search_result = requests.post(url + '/searchId', data=json.dumps(es_id_para), headers=header)
 
                 try:
-                    list_out = eval(search_result.json()['data'])['dataList']
+                    list_out = search_result.json()['data']['dataList']
 
                     if list_out:
                         es_id_list.append(list_out[0])
@@ -534,7 +534,7 @@ def search_advanced():
         if type(places).__name__ == 'str':
             places = places.split(' ')
 
-        # search_json["places"] = {"type": "text", "value": ''.join(places), "boost": 1}
+            # search_json["places"] = {"type": "text", "value": ''.join(places), "boost": 1}
     if doc_type:
         search_json["doc_type"] = {"type": "id", "value": doc_type}
     if search_json:
@@ -548,29 +548,16 @@ def search_advanced():
     data = [doc['_source'] for doc in search_result.json()['data']['dataList']]
     data_screen = screen_doc(data, places=places, entities=entities, event_categories=event_categories,
                              notes=notes)
-    key_list = ["dates",
-                "entities",
-                "event_categories",
-                "keywords",
-                "notes",
-                "places",
-                "doc_type"]
+
     # 组装ids，和结构化数据
     ids = []
     for data in data_screen:
         if data.get("id", False):
-            ids.append(data_screen["id"])
-        eval_list = data.keys()
-        for key in eval_list:
-            # if doc_type:
-            if key in key_list:
-                try:
-                    data[key] = eval(data[key])
-                except Exception as e:
-                    print(e)
+            ids.append(data["id"])
+
     # 雨辰接口
     if YC_ROOT_URL:
-        body={}
+        body = {}
         if ids:
             body["ids"] = ids
         if start_date:
@@ -585,7 +572,7 @@ def search_advanced():
             "doc": data_screen,
             "event_list": search_result.json()['data']
         }
-    return jsonify(final_data)#doc:原来格式数据 event_list:事件数据
+    return jsonify(final_data)  # doc:原来格式数据 event_list:事件数据
 
 
 def screen_doc(data_inppt, dates=[], places=[], entities=[], event_categories=[], notes=[]):
@@ -685,7 +672,7 @@ def screen_doc(data_inppt, dates=[], places=[], entities=[], event_categories=[]
 
             event_key = list(screen_dict["event_categories"][0].keys())[0]
 
-            if event_categories_dic.get(event_key,False):
+            if event_categories_dic.get(event_key, False):
                 if event_value:
                     if event_value in event_categories_dic[str(event_key)]:
                         event_bool = True
@@ -722,9 +709,9 @@ def save_tagging_result():
             if places:
                 key_value_json["places"] = places
             if entities:
-                key_value_json["entities"] = json.dumps(entities, ensure_ascii=False)
+                key_value_json["entities"] = entities
             if event_categories:
-                key_value_json["event_categories"] = json.dumps(event_categories, ensure_ascii=False)
+                key_value_json["event_categories"] = event_categories
             if notes:
                 key_value_json["notes"] = notes
             if doc_type:
@@ -801,27 +788,10 @@ def search_advanced_Pagination():
     header = {"Content-Type": "application/json"}
     esurl = url + "/searchCustom"
     search_result = requests.post(url=esurl, data=json.dumps(para), headers=header)
+    # print(search_result['data']['dataList'][0]['_source'], flush=True)
     data = [doc['_source'] for doc in search_result.json()['data']['dataList']]
     data_screen = screen_doc(data, places=places, entities=entities, event_categories=event_categories,
-                             notes=notes)
-
-    key_list = ["dates",
-                "entities",
-                "event_categories",
-                "keywords",
-                "notes",
-                "places",
-                "doc_type"]
-    # 组装ids，和结构化数据
-    for data in data_screen:
-        eval_list = data.keys()
-        for key in eval_list:
-            # if doc_type:
-            if key in key_list:
-                try:
-                    data[key] = eval(data[key])
-                except Exception as e:
-                    print(e)
+                             notes=notes)  # dates=dates,
 
     total_count = len(data_screen)
     if total_count > page_size * cur_page:
