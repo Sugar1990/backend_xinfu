@@ -582,7 +582,7 @@ def search_advanced():
             "doc": data_screen,
             "event_list": search_result.json()['data']
         }
-    return jsonify(final_data)
+    return jsonify(final_data)#doc:原来格式数据 event_list:事件数据
 
 
 def screen_doc(data_inppt, dates=[], places=[], entities=[], event_categories=[], notes=[]):
