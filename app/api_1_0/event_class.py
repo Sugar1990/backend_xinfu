@@ -87,7 +87,7 @@ def delete_event_class():
         event_id = request.json.get("id", 0)
         event_class = EventClass.query.filter_by(id=event_id, valid=1).first()
         if event_class:
-            event_category = EventCategory.query.filter_by(event_class_id=event_class.id, ).first()
+            event_category = EventCategory.query.filter_by(event_class_id=event_class.id, valid=1).first()
             if event_category:
                 res = fail_res(msg="该类型下有事件类型，不能删除！")
                 return jsonify(res)
@@ -108,7 +108,7 @@ def delete_event_class_by_ids():
         for event_id in event_ids:
             event_class = EventClass.query.filter_by(id=event_id, valid=1).first()
             if event_class:
-                event_category = EventCategory.query.filter_by(event_class_id=event_class.id).first()
+                event_category = EventCategory.query.filter_by(event_class_id=event_class.id, valid=1).first()
                 if event_category:
                     res = fail_res(msg="某些类型下有事件类型，不能全部删除！")
                     return jsonify(res)
