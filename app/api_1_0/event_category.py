@@ -99,7 +99,7 @@ def modify_event_category():
             if event_category_find_same_name:
                 res = fail_res("同名实体类型已存在")
             else:
-                if not eventCategory_find:
+                if not event_category_find:
                     res = fail_res(msg="找不到修改对象")
                 else:
                     event_category_find.name = event_category_name
