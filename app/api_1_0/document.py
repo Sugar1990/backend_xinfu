@@ -3,6 +3,7 @@ import datetime
 import hashlib
 import json
 import os
+
 import requests
 from flask import jsonify, request
 from pypinyin import lazy_pinyin
@@ -566,14 +567,22 @@ def search_advanced():
                     data[key] = eval(data[key])
     # 雨辰接口
     if YC_ROOT_URL:
+        body={}
+        if ids:
+            body["ids"] = ids
+        if start_date:
+            body["startTime"] = start_date
+        if end_date:
+            body["endTime"] = end_date
         header = {"Content-Type": "application/json; charset=UTF-8"}
         url = YC_ROOT_URL + "/event/listByDocIds"
-        body = {"ids" : ids, "startTime": start_date, "endTime": end_date}
         search_result = requests.post(url, data=json.dumps(body), headers=header)
-        print("/event/listByDocIds", search_result.text)
-        if search_result.json()['data']:
-            data_screen["event_list"] = search_result.json()['data']
-    return jsonify(data_screen)
+        # print("/event/listByDocIds", search_result.text)
+        final_data = {
+            "doc": data_screen,
+            "event_list": search_result.json()['data']
+        }
+    return jsonify(final_data)
 
 
 def screen_doc(data_inppt, dates=[], places=[], entities=[], event_categories=[], notes=[]):
