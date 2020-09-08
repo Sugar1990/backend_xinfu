@@ -558,13 +558,16 @@ def search_advanced():
     # 组装ids，和结构化数据
     ids = []
     for data in data_screen:
-        if data_screen.get("id", False):
+        if data.get("id", False):
             ids.append(data_screen["id"])
         eval_list = data.keys()
         for key in eval_list:
-            if doc_type:
-                if key in key_list:
+            # if doc_type:
+            if key in key_list:
+                try:
                     data[key] = eval(data[key])
+                except Exception as e:
+                    print(e)
     # 雨辰接口
     if YC_ROOT_URL:
         body={}
@@ -813,9 +816,12 @@ def search_advanced_Pagination():
     for data in data_screen:
         eval_list = data.keys()
         for key in eval_list:
-            if doc_type:
-                if key in key_list:
+            # if doc_type:
+            if key in key_list:
+                try:
                     data[key] = eval(data[key])
+                except Exception as e:
+                    print(e)
 
     total_count = len(data_screen)
     if total_count > page_size * cur_page:
