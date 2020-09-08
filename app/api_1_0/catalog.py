@@ -6,7 +6,7 @@ import json
 from . import api_catalog as blue_print
 from ..models import Catalog, Document, Customer, Permission
 from .. import db
-from .utils import success_res, fail_res
+from .utils import success_res, fail_res, get_status_name
 from ..conf import TAG_TABS
 
 
@@ -153,7 +153,6 @@ def get_catalog_files():
         if not customer:
             res = fail_res(msg="无效用户")
         else:
-            doc_status = lambda x: "上传处理中" if x == 0 else "未标注" if x == 1 else "已标注" if x == 2 else ""
             if customer:
                 res = {
                     "files": [{
@@ -162,7 +161,7 @@ def get_catalog_files():
                         "createtime": i.create_time,
                         "create_username": Customer.get_username_by_id(i.create_by),
                         "extension": i.category.replace('\n\"', ""),
-                        "status": doc_status(i.status),
+                        "status": get_status_name(i.status),
                         "permission": 1 if Permission.judge_power(customer_id, i.id) else 0
                     } for i in docs if i.get_power() <= customer.get_power()],
                     "catalogs": [{
