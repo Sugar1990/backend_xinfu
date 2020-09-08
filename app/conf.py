@@ -38,6 +38,8 @@ USE_PLACE_SERVER = os.getenv('USE_PLACE_SERVER', 0)
 
 # 雨辰团队接口url, http://192.168.3.75:8096/dev
 YC_ROOT_URL = os.getenv('YC_ROOT_URL', "http://124.207.211.146:8810/dev")
+# 雨辰团队标注页面
+YC_TAGGING_PAGE_URL = os.getenv('YC_TAGGING_PAGE_URL', "http://192.168.6.82:8098/index")
 
 # 标注tab功能
 TAG_TABS = os.getenv('TAG_TABS', "{\"实体标注\":1,\"时间标注\":2,\"地点标注\":3,\"事件标注\":4,\"关系标注\":5,\"批注\":6,\"思维导图\":7}")

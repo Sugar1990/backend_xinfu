@@ -13,7 +13,8 @@ import hashlib
 from . import api_document as blue_print
 from .utils import success_res, fail_res, get_status_name
 from .. import db, lock
-from ..conf import LEXICON_IP, LEXICON_PORT, SUMMARY_IP, SUMMARY_PORT, YC_ROOT_URL, ES_SERVER_IP, ES_SERVER_PORT
+from ..conf import LEXICON_IP, LEXICON_PORT, SUMMARY_IP, SUMMARY_PORT, YC_ROOT_URL, ES_SERVER_IP, ES_SERVER_PORT, \
+    YC_TAGGING_PAGE_URL
 from ..models import Document, Entity, Customer, Permission, Catalog
 from ..serve.word_parse import extract_word_content
 
@@ -502,6 +503,7 @@ def get_search_panigation():
                'total_count': 0}
     return jsonify(res)
 
+
 # 高级搜索
 @blue_print.route('/search_advanced', methods=['POST'])
 def search_advanced():
@@ -718,7 +720,7 @@ def save_tagging_result():
     return jsonify(res)
 
 
-#高级搜索分页展示
+# 高级搜索分页展示
 @blue_print.route('/search_advanced_Pagination', methods=['POST'])
 def search_advanced_Pagination():
     # doc_id = request.json.get('doc_id', 0)
@@ -759,7 +761,8 @@ def search_advanced_Pagination():
     search_result = requests.post(url=esurl, data=json.dumps(para), headers=header)
     # print(search_result['data']['dataList'][0]['_source'], flush=True)
     data = [doc['_source'] for doc in search_result.json()['data']['dataList']]
-    data_screen = screen_doc(data, places=places, entities=entities, event_categories=event_categories, notes=notes)# dates=dates,
+    data_screen = screen_doc(data, places=places, entities=entities, event_categories=event_categories,
+                             notes=notes)  # dates=dates,
     key_list = ["dates",
                 "entities",
                 "event_categories",
@@ -786,6 +789,20 @@ def search_advanced_Pagination():
            'page_count': int(total_count / page_size) + 1,
            'total_count': total_count}
     return jsonify(res)
+
+
+# 获取最新上传文档的标注页面地址
+@blue_print.route('/get_latest_upload_file_tagging_url', methods=['POST'])
+def get_latest_upload_file_tagging_url():
+    try:
+        customer_id = request.args.get("uid", 0)
+        doc = Document.query.filter_by(create_by=customer_id).first()
+        if doc and customer_id:
+            return YC_TAGGING_PAGE_URL + "?doc_id={0}&uid={1}".format(doc.id, customer_id)
+        else:
+            return "/#"
+    except:
+        return "/#"
 
 
 # ——————————————————————— 提取关键词 —————————————————————————————
