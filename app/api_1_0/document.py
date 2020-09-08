@@ -804,7 +804,7 @@ def search_advanced_Pagination():
 
 
 # 获取最新上传文档的标注页面地址
-@blue_print.route('/get_latest_upload_file_tagging_url', methods=['POST'])
+@blue_print.route('/get_latest_upload_file_tagging_url', methods=['GET'])
 def get_latest_upload_file_tagging_url():
     try:
         customer_id = request.args.get("uid", 0)
