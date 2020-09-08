@@ -249,7 +249,7 @@ def get_doc_events():
         # header = {"Content-Type": "application/x-form-urlencode; charset=UTF-8"}
         url = YC_ROOT_URL + "/event/listByDocId?docId={0}".format(docId)
         res_result = requests.get(url=url, headers={})
-        print("/event/listByDocId", res_result.text)
+        #print("/event/listByDocId", res_result.text)
         res = []
         for result in (res_result.json()['data']):
             res.append({
@@ -274,7 +274,7 @@ def get_during_events():
         url = YC_ROOT_URL + "/event/search"
         body = {"startTime": start_date, "endTime": end_date}
         search_result = requests.post(url, data=json.dumps(body), headers=header)
-        print("/event/listByDocId", search_result.text)
+        #print("/event/listByDocId", search_result.text)
         data = search_result.json()['data']
     res = []
     for item in data:

@@ -511,8 +511,10 @@ def search_advanced():
     keywords = request.json.get('keywords', [])
     event_categories = request.json.get('event_categories', {})
     notes = request.json.get('notes', [])
-    doc_type = request.json.get('doc_type', '')
+    doc_type = request.json.get('doc_type', "")
     content = request.json.get('content', "")
+    start_date = request.json.get('start_date', "")
+    end_date = request.json.get('end_date', "")
     url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
 
     search_json = {}
@@ -528,20 +530,21 @@ def search_advanced():
     if places:
         if type(places).__name__ == 'str':
             places = places.split(' ')
-        search_json["places"] = {"type": "text", "value": ''.join(places), "boost": 1}
+
+        # search_json["places"] = {"type": "text", "value": ''.join(places), "boost": 1}
     if doc_type:
         search_json["doc_type"] = {"type": "id", "value": doc_type}
     if search_json:
         search_json["sort"] = {"type": "normal", "sort": "create_time", "asc_desc": "desc"}
 
+    # 直接es查询
     para = {"search_index": 'document', "search_json": search_json}
     header = {"Content-Type": "application/json"}
     esurl = url + "/searchCustom"
     search_result = requests.post(url=esurl, data=json.dumps(para), headers=header)
-    # print(search_result['data']['dataList'][0]['_source'], flush=True)
     data = [doc['_source'] for doc in search_result.json()['data']['dataList']]
     data_screen = screen_doc(data, places=places, entities=entities, event_categories=event_categories,
-                             notes=notes)  # dates=dates,
+                             notes=notes)
     key_list = ["dates",
                 "entities",
                 "event_categories",
@@ -549,12 +552,24 @@ def search_advanced():
                 "notes",
                 "places",
                 "doc_type"]
+    # 组装ids，和结构化数据
+    ids = []
     for data in data_screen:
+        if data_screen.get("id", False):
+            ids.append(data_screen["id"])
         eval_list = data.keys()
         for key in eval_list:
             if doc_type:
                 if key in key_list:
                     data[key] = eval(data[key])
+    # 雨辰接口
+    header = {"Content-Type": "application/json; charset=UTF-8"}
+    url = YC_ROOT_URL + "/event/listByDocIds"
+    body = {"ids" : ids, "startTime": start_date, "endTime": end_date}
+    search_result = requests.post(url, data=json.dumps(body), headers=header)
+    print("/event/listByDocIds", search_result.text)
+    if search_result.json()['data']:
+        data_screen["event_list"] = search_result.json()['data']
     return jsonify(data_screen)
 
 
