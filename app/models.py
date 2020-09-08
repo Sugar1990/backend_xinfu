@@ -133,6 +133,17 @@ class Permission(db.Model):
             power = permission.power if permission else 0
         return power
 
+    @staticmethod
+    def judge_power(customer_id, doc_id):
+        doc = Document.query.filter_by(id=doc_id).first()
+        cus = Customer.query.filter_by(id=customer_id).first()
+        doc_power = doc.get_power() if doc else 0
+        cus_power = cus.get_power() if cus else 0
+        if cus_power and doc_power <= cus_power:
+            return True
+        else:
+            return False
+
     def __repr__(self):
         return '<Permission %r>' % self.name
 

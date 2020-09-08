@@ -152,27 +152,26 @@ def get_catalog_files():
 
         if not customer:
             res = fail_res(msg="无效用户")
-
-        permission = Permission.query.filter_by(id=customer.permission_id).first()
-
-        doc_status = lambda x: "上传处理中" if x == 0 else "未标注" if x == 1 else "已标注" if x == 2 else ""
-        if customer:
-            res = {
-                "files": [{
-                    "id": i.id,
-                    "name": i.name,
-                    "createtime": i.create_time,
-                    "create_username": Customer.get_username_by_id(i.create_by),
-                    "extension": i.category.replace('\n\"', ""),
-                    "status": doc_status(i.status)
-                } for i in docs if i.get_power() <= customer.get_power()],
-                "catalogs": [{
-                    'id': i.id,
-                    'name': i.name
-                } for i in catalogs]
-            }
         else:
-            res = {"files": [], "catalogs": []}
+            doc_status = lambda x: "上传处理中" if x == 0 else "未标注" if x == 1 else "已标注" if x == 2 else ""
+            if customer:
+                res = {
+                    "files": [{
+                        "id": i.id,
+                        "name": i.name,
+                        "createtime": i.create_time,
+                        "create_username": Customer.get_username_by_id(i.create_by),
+                        "extension": i.category.replace('\n\"', ""),
+                        "status": doc_status(i.status),
+                        "permission": Permission.judge_power(customer_id, i.id)
+                    } for i in docs if i.get_power() <= customer.get_power()],
+                    "catalogs": [{
+                        'id': i.id,
+                        'name': i.name
+                    } for i in catalogs]
+                }
+            else:
+                res = {"files": [], "catalogs": []}
     except Exception as e:
         print(str(e))
         res = {"files": [], "catalogs": []}
