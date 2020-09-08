@@ -563,13 +563,14 @@ def search_advanced():
                 if key in key_list:
                     data[key] = eval(data[key])
     # 雨辰接口
-    header = {"Content-Type": "application/json; charset=UTF-8"}
-    url = YC_ROOT_URL + "/event/listByDocIds"
-    body = {"ids" : ids, "startTime": start_date, "endTime": end_date}
-    search_result = requests.post(url, data=json.dumps(body), headers=header)
-    print("/event/listByDocIds", search_result.text)
-    if search_result.json()['data']:
-        data_screen["event_list"] = search_result.json()['data']
+    if YC_ROOT_URL:
+        header = {"Content-Type": "application/json; charset=UTF-8"}
+        url = YC_ROOT_URL + "/event/listByDocIds"
+        body = {"ids" : ids, "startTime": start_date, "endTime": end_date}
+        search_result = requests.post(url, data=json.dumps(body), headers=header)
+        print("/event/listByDocIds", search_result.text)
+        if search_result.json()['data']:
+            data_screen["event_list"] = search_result.json()['data']
     return jsonify(data_screen)
 
 
