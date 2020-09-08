@@ -4,7 +4,8 @@ import json
 import re
 
 from . import api_place as blue_print
-from ..conf import ES_SERVER_PORT, ES_SERVER_IP, PLACE_BASE_NAME, PLACE_BASE_SERVER_IP, USE_PLACE_SERVER
+from ..conf import ES_SERVER_PORT, ES_SERVER_IP, PLACE_BASE_NAME, PLACE_BASE_SERVER_IP, USE_PLACE_SERVER, \
+    PLACE_BASE_OLD_SERVER_IP
 from ..models import Entity, EntityCategory
 from .. import db
 from .utils import success_res, fail_res
@@ -68,7 +69,7 @@ def get_search_pagination():
 def get_place_from_base_server(page_size=10, cur_page=1, search=''):
     try:
         if not search:
-            url = PLACE_BASE_SERVER_IP + '/query/batch'
+            url = PLACE_BASE_OLD_SERVER_IP + '/query/batch'
             resp = requests.get(url, params={"limit": page_size, "offset": (cur_page - 1) * page_size})
 
             server_data = json.loads(resp.text)

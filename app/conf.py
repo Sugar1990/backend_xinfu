@@ -33,7 +33,8 @@ ASSIS_PWD = os.getenv('ASSIS_PWD', 'assistant')
 
 # 地名库名称
 PLACE_BASE_NAME = os.getenv('PLACE_BASE_NAME', '地名')
-PLACE_BASE_SERVER_IP = os.getenv('PLACE_BASE_SERVER_IP', 'http://192.168.6.82:9001/api/v1')
+PLACE_BASE_SERVER_IP = os.getenv('PLACE_BASE_SERVER_IP', 'http://192.168.6.82:28080/api/v1')
+PLACE_BASE_OLD_SERVER_IP = os.getenv('PLACE_BASE_OLD_SERVER_IP', 'http://192.168.6.82:9001/api/v1')
 USE_PLACE_SERVER = os.getenv('USE_PLACE_SERVER', 0)
 
 # 雨辰团队接口url, http://192.168.3.75:8096/dev
