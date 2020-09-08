@@ -70,6 +70,8 @@ def batch_del_permission():
                 if not customers:
                     permission_item.valid = 0
                     res = success_res()
+                else:
+                    res = fail_res(msg="该权限下存在用户，不能删除")
         else:
             res = fail_res(msg="权限不存在")
 

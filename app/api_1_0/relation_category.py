@@ -77,7 +77,7 @@ def delete_relation_category_by_ids():
                 rc.valid = 0
             res = success_res()
         else:
-            res = False, "关系记录不存在"
+            res = fail_res(msg="关系记录不存在")
 
     except:
         db.session.rollback()
