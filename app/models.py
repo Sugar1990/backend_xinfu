@@ -113,6 +113,19 @@ class Catalog(db.Model):
         else:
             return ""
 
+    @staticmethod
+    def get_ancestorn_catalog(catalog_id):
+        cur_catalog = Catalog.query.filter_by(id=catalog_id).first()
+        if cur_catalog:
+            parent_catalog = Catalog.query.filter_by(id=cur_catalog.parent_id).first()
+            if parent_catalog:
+                if not parent_catalog.parent_id:
+                    return parent_catalog
+                else:
+                    return Catalog.get_ancestorn_catalog(parent_catalog)
+            else:
+                return None
+
     def __repr__(self):
         return '<Catalog %r>' % self.name
 

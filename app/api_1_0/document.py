@@ -348,11 +348,14 @@ def get_info():
                 "next_doc_id": 0
             }
         else:
+            flag, ancestorn_catalog_tagging_tabs = True, []
             if doc.catalog_id:
                 catalog = Catalog.query.filter_by(id=doc.catalog_id).first()
-                flag, ancestorn_catalog_tagging_tabs = get_ancestorn_catalog_tagging_tabs(catalog)
-            else:
-                flag, ancestorn_catalog_tagging_tabs = True, []
+                if catalog:
+                    an_catalog = Catalog.get_ancestorn_catalog(catalog.id)
+                    if an_catalog:
+                        flag, ancestorn_catalog_tagging_tabs = True, an_catalog.tagging_tabs
+
             doc_info = {
                 "id": doc.id,
                 "name": doc.name,
@@ -375,17 +378,6 @@ def get_info():
                     }
 
     return jsonify(doc_info)
-
-
-# 递归查询父目录id
-def get_ancestorn_catalog_tagging_tabs(catalog):
-    if not catalog.parent_id:
-        return True, catalog.tagging_tabs
-    else:
-        tmp_catalog = Catalog.query.filter_by(id=catalog.parent_id).first()
-        if not tmp_catalog:
-            return False, []
-        return get_ancestorn_catalog_tagging_tabs(tmp_catalog)
 
 
 # 获取实体分页展示
