@@ -119,10 +119,10 @@ def delete_event_class_by_ids():
                     event_class.valid = 0
                     flag = True
                     res_flag = res_flag & flag
-            if res_flag:
-                res = success_res()
-            else:
-                res = fail_res(msg="部分数据无法删除")
+        if res_flag:
+            res = success_res()
+        else:
+            res = fail_res(msg="部分数据无法删除")
     except:
         db.session.rollback()
         res = fail_res(msg="删除失败！")
