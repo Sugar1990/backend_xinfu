@@ -136,29 +136,39 @@ def query_all():
 
 @blue_print.route('/query_customer_paginate', methods=['GET'])
 def query_customer_paginate():
-    current_page = request.args.get('cur_page', 1, type=int)
-    page_size = request.args.get('page_size', 15, type=int)
-    search = request.args.get("search", "")
+    try:
+        current_page = request.args.get('cur_page', 1, type=int)
+        page_size = request.args.get('page_size', 15, type=int)
+        search = request.args.get("search", "")
 
-    cons = [
-        Customer.username.like('%' + search + '%'), Customer.valid == 1,
-        not_(Customer.username.in_([ADMIN_NAME, ASSIS_NAME]))
-    ]
-    pagination = Customer.query.filter(*cons).order_by(
-        Customer.id.desc()).paginate(current_page, page_size, False)
-    data = []
-    for item in pagination.items:
-        data.append({
-            "id": item.id,
-            "name": item.username,
-            "permission_id": item.permission_id
-        })
-    data = {
-        "totalCount": pagination.total,
-        "totalPage": pagination.pages,
-        "data": data,
-        "currentPage": pagination.page
-    }
+        cons = [
+            Customer.username.like('%' + search + '%'), Customer.valid == 1,
+            not_(Customer.username.in_([ADMIN_NAME, ASSIS_NAME]))
+        ]
+        pagination = Customer.query.filter(*cons).order_by(
+            Customer.id.desc()).paginate(current_page, page_size, False)
+        data = []
+        for item in pagination.items:
+            data.append({
+                "id": item.id,
+                "name": item.username,
+                "permission_id": item.permission_id
+            })
+        data = {
+            "totalCount": pagination.total,
+            "totalPage": pagination.pages,
+            "data": data,
+            "currentPage": pagination.page
+        }
+
+    except Exception as e:
+        print(str(e))
+        data = {
+            "totalCount": 0,
+            "totalPage": 0,
+            "data": [],
+            "currentPage": 0
+        }
     return jsonify(data)
 
 
