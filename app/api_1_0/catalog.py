@@ -156,14 +156,14 @@ def get_catalog_files():
             if customer:
                 res = {
                     "files": [{
-                        "id": i.id,
-                        "name": i.name,
-                        "create_time": i.create_time,
-                        "create_username": Customer.get_username_by_id(i.create_by),
-                        "extension": i.category.replace('\n\"', ""),
-                        "status": i.get_status_name(),
-                        "permission": 1 if Permission.judge_power(customer_id, i.id) else 0
-                    } for i in docs],
+                        "id": d.id,
+                        "name": d.name,
+                        "create_time": d.create_time,
+                        "create_username": Customer.get_username_by_id(d.create_by),
+                        "extension": d.category.replace('\n\"', ""),
+                        "status": d.get_status_name(),
+                        "permission": 1 if Permission.judge_power(customer_id, d.id) else 0
+                    } for d in docs],
                     # } for i in docs if i.get_power() <= customer.get_power()],
                     "catalogs": [{
                         'id': i.id,

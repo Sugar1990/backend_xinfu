@@ -5,6 +5,20 @@ alter sequence sequence_name restart with 1000
 -- 验证
 SELECT nextval('sequence_name');
 
+select nextval('catalog_id_seq');
+select nextval('customer_id_seq');
+select nextval('document_id_seq');
+select nextval('document_records_id_seq');
+select nextval('entity_serial_id_seq');
+select nextval('entity_category_id_seq');
+select nextval('event_category_id_seq');
+select nextval('event_class_id_seq');
+select nextval('permission_id_seq');
+select nextval('relation_category_id_seq');
+
+-- alter SEQUENCE entity_serial_id_seq restart with 34765;
+
+
 
 # 防火墙与docker冲突
 firewall-cmd --permanent --zone=trusted --change-interface=br-71dad0833ad5

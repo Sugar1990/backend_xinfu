@@ -433,6 +433,7 @@ def get_entity_in_list_pagination():
                            "page_count": int(count / page_size) + 1,
                            "total_count": count}
     except Exception as e:
+        print(str(e))
         res = {"data": [],
                "page_count": 0,
                "total_count": 0}
@@ -645,7 +646,7 @@ def search_advanced_doc_type():
         for data in data_screen:
             if data.get("id", False):
                 ids.append(data["id"])
-            if data.get("doc_type",False):
+            if data.get("doc_type", False):
                 if data_by_doc_id.get(data["doc_type"], False):
                     data_by_doc_id[data["doc_type"]].append(data)
                 else:
@@ -653,7 +654,7 @@ def search_advanced_doc_type():
 
         print(data_by_doc_id, flush=True)
         data_forms = [
-            {"name":doc_type , "data":data_by_doc_id[doc_type]}
+            {"name": doc_type, "data": data_by_doc_id[doc_type]}
             for doc_type in data_by_doc_id
         ]
         print(data_forms, flush=True)

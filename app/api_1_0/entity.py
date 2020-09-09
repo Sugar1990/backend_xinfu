@@ -690,7 +690,7 @@ def import_entity_excel():
                             'summary': ex_summary,
                             'props': ex_props,
                             'synonyms': ex_synonyms,
-                            'id': entity.id,
+                            'id': entity.id
                         }]
                         url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
 
