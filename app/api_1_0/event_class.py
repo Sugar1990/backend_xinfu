@@ -28,14 +28,17 @@ def get_event_classes():
 
 @blue_print.route('/get_one_event_class', methods=['GET'])
 def get_one_event_class():
-    event_id = request.args.get('id', 0)
-    event_class = EventClass.query.filter_by(id=event_id, valid=1).first()
-    if not event_class:
-        res = []
-    else:
+    try:
+        event_id = request.args.get('id', 0)
+        event_class = EventClass.query.filter_by(id=event_id, valid=1).first()
         res = {
             "id": event_class.id,
             "name": event_class.name
+        }
+    except:
+        res = {
+            "id": -1,
+            "name": ""
         }
     return jsonify(res)
 
@@ -124,25 +127,35 @@ def delete_event_class_by_ids():
 
 @blue_print.route('/get_event_class_paginate', methods=['GET'])
 def get_event_class_paginate():
-    # 重要参数:(当前页和每页条目数)
-    search = request.args.get("search", "")
-    current_page = request.args.get('cur_page', 1, type=int)
-    page_size = request.args.get('page_size', 15, type=int)
-    # 注意下面的order_by:(目前可以只实现以id排序查看，后续可能实现多种排序方式)
-    pagination = EventClass.query.filter(EventClass.name.like('%' + search + '%'), EventClass.valid == 1).order_by(
-        EventClass.id.desc()).paginate(current_page, page_size, False)
+    try:
+        # 重要参数:(当前页和每页条目数)
+        search = request.args.get("search", "")
+        current_page = request.args.get('cur_page', 1, type=int)
+        page_size = request.args.get('page_size', 15, type=int)
+        # 注意下面的order_by:(目前可以只实现以id排序查看，后续可能实现多种排序方式)
+        pagination = EventClass.query.filter(EventClass.name.like('%' + search + '%'), EventClass.valid == 1).order_by(
+            EventClass.id.desc()).paginate(current_page, page_size, False)
 
-    data = []
-    for item in pagination.items:
-        data.append({
-            ## 对应models.py中的字段
-            "id": item.id,
-            "name": item.name
-        })
-    data = {
-        "total_count": pagination.total,  # 总条目数
-        "page_count": pagination.pages,  # 总页数
-        "data": data,  # 当前页数据
-        "cur_page": pagination.page  # 当前页标记
-    }
+        data = []
+        for item in pagination.items:
+            data.append({
+                ## 对应models.py中的字段
+                "id": item.id,
+                "name": item.name
+            })
+        data = {
+            "total_count": pagination.total,  # 总条目数
+            "page_count": pagination.pages,  # 总页数
+            "data": data,  # 当前页数据
+            "cur_page": pagination.page  # 当前页标记
+        }
+
+    except Exception as e:
+        print(str(e))
+        data = {
+            "total_count": 0,
+            "page_count": 0,
+            "data": [],
+            "cur_page": 0
+        }
     return jsonify(data)

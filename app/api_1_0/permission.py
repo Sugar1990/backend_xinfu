@@ -71,7 +71,7 @@ def batch_del_permission():
                     permission_item.valid = 0
                     res = success_res()
                 else:
-                    res = fail_res(msg="该权限下存在用户，不能删除")
+                    res = fail_res(msg="权限下存在用户，部分数据无法删除")
         else:
             res = fail_res(msg="权限不存在")
 
@@ -176,6 +176,12 @@ def query_permission_paginate():
             "cur_page": pagination.page
         }
 
-    except:
-        res = []
+    except Exception as e:
+        print(str(e))
+        res = {
+            "total_count": 0,
+            "page_count": 0,
+            "data": [],
+            "cur_page": 0
+        }
     return jsonify(res)
