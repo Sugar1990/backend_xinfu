@@ -227,7 +227,7 @@ def modify_doc_info():
 @blue_print.route('/del_doc', methods=['POST'])
 def del_doc():
     doc_ids = request.json.get('doc_ids', [])
-    customer_id = request.json.get('customer_id', 1)
+    customer_id = request.json.get('customer_id', 0)
     permission_flag = False
     status_flag = False
     try:
@@ -410,7 +410,7 @@ def get_info():
 def get_entity_in_list_pagination():
     try:
         search = request.args.get("search", "")
-        cusotmer_id = request.args.get("cusotmer_id", 0, type=int)
+        customer_id = request.args.get("customer_id", 0, type=int)
         cur_page = request.args.get("cur_page", 1, type=int)
         page_size = request.args.get("page_size", 10, type=int)
 
@@ -423,7 +423,7 @@ def get_entity_in_list_pagination():
                 if YC_ROOT_URL:
                     url = YC_ROOT_URL + "/doc/get_entity_in_list_pagination"
                     print(url, flush=True)
-                    resp = requests.get(url=url, params={"cusotmer_id": cusotmer_id,
+                    resp = requests.get(url=url, params={"cusotmer_id": customer_id,
                                                          "entity_id": entitiy.id,
                                                          "cur_page": cur_page,
                                                          "page_size": page_size})
@@ -441,6 +441,7 @@ def get_entity_in_list_pagination():
                             i['path'] = doc.get_full_path() if doc.get_full_path() else '已失效'
                             i['extension'] = doc.category,
                             i['status'] = doc.get_status_name()
+                            i['permission'] = 1 if Permission.judge_power(customer_id, doc.id) else 0
                     res = {"data": data,
                            "page_count": int(count / page_size) + 1,
                            "total_count": count}
@@ -932,7 +933,7 @@ def search_advanced_Pagination():
 def get_latest_upload_file_tagging_url():
     try:
         customer_id = request.args.get("uid", 0, type=int)
-        doc = Document.query.filter_by(create_by=customer_id).first()
+        doc = Document.query.filter_by(create_by=customer_id).order_by(Document.id.desc()).first()
         if doc and customer_id:
             url = YC_TAGGING_PAGE_URL + "?doc_id={0}&uid={1}".format(doc.id, customer_id)
             res = success_res(data=url)

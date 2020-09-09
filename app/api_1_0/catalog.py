@@ -131,13 +131,12 @@ def del_catalog():
 @blue_print.route('/get_all', methods=['GET'])
 def get_all():
     try:
-        catalog = Catalog.query.all()
+        catalog = Catalog.query.order_by(Catalog.id.asc()).all()
 
         catalog_dictory = {}
         # 构建目录字典
         for i in catalog:
             if i.parent_id not in catalog_dictory.keys():
-
                 catalog_dictory[i.parent_id] = [{i.id: i.name}]
             else:
                 catalog_dictory[i.parent_id].append({i.id: i.name})
@@ -328,11 +327,11 @@ def move_catalog_recursive(source_catalog_id, target_catalog_id):
     source_catalog_children = Catalog.query.filter_by(parent_id=source_catalog_id).all()
     target_catalog_children = Catalog.query.filter_by(parent_id=target_catalog_id).all()
 
-    target_catalog_children_names = {i.name: i for i in target_catalog_children}
+    target_catalog_children_name_dict = {i.name: i for i in target_catalog_children}
 
     for source_catalog_child in source_catalog_children:
-        if source_catalog_child.name in target_catalog_children_names:
-            target_catalog_child = target_catalog_children_names[source_catalog_child.name]
+        if source_catalog_child.name in target_catalog_children_name_dict:
+            target_catalog_child = target_catalog_children_name_dict[source_catalog_child.name]
             move_catalog_recursive(source_catalog_child.id, target_catalog_child.id)
 
     source_catalog = Catalog.query.filter_by(id=source_catalog_id).first()
@@ -353,7 +352,7 @@ def get_tagging_tabs():
 @blue_print.route('/get_1stfloor_catalog', methods=['GET'])
 def get_1stfloor_catalog():
     try:
-        cataloges = Catalog.query.filter_by(parent_id=0).order_by().all()
+        cataloges = Catalog.query.filter_by(parent_id=0).order_by(Catalog.id.asc()).all()
         if not cataloges:
             res = []
         else:
