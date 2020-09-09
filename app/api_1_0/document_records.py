@@ -51,11 +51,13 @@ def get_doc_records():
         if doc_records:
             for doc_record in doc_records:
                 customer = Customer.query.filter_by(id=doc_record.create_by).first()
-                res.append({
-                    # 对应models.py中的字段
-                    "username": customer.username,
-                    "create_time": doc_record.create_time.strftime('%Y-%m-%d %H:%M:%S')
-                })
+                if customer:
+                    res.append({
+                        # 对应models.py中的字段
+                        "username": customer.username,
+                        "create_time": doc_record.create_time.strftime('%Y-%m-%d %H:%M:%S'),
+                        "operate": "标注" if doc_record.operate_type == 2 else "浏览" if doc_record.operate_type == 1 else ""
+                    })
         else:
             res = []
     except Exception:
