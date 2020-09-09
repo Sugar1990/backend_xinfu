@@ -96,7 +96,7 @@ def modify_relation_category():
 
         relation_category = RelationCategory.query.filter_by(id=id, valid=1).first()
         if not relation_category:
-            res = fail_res(msg="关系记录不存在")
+            res = fail_res(msg="关系记录不存在!")
         else:
             relation_category = RelationCategory.query.filter_by(relation_name=name,
                                                                  source_entity_category_id=source_entity_category_id,
@@ -104,7 +104,7 @@ def modify_relation_category():
                                                                  valid=1).first()
 
             if relation_category:
-                res = fail_res(msg="已存在相同关系记录")
+                res = fail_res(msg="已存在相同关系记录!")
             else:
                 entity_category_id_list = []
                 entity_category = EntityCategory.query.filter_by(valid=1).all()
@@ -112,7 +112,7 @@ def modify_relation_category():
                     entity_category_id_list.append(item.id)
                 if source_entity_category_id in entity_category_id_list and target_entity_category_id in entity_category_id_list:
                     if not name:
-                        res = fail_res("关联名称不能为空!")
+                        res = fail_res(msg="关联名称不能为空!")
                     else:
                         RelationCategory.relation_name = name
                         RelationCategory.source_entity_category_id = source_entity_category_id
@@ -120,11 +120,11 @@ def modify_relation_category():
                         db.session.commit()
                         res = success_res()
                 else:
-                    res = fail_res("实体类型不存在")
+                    res = fail_res(msg="实体类型不存在!")
 
     except:
         db.session.rollback()
-        res = fail_res()
+        res = fail_res(msg="修改失败!")
 
     return jsonify(res)
 

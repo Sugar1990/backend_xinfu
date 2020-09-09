@@ -481,6 +481,7 @@ def get_search_panigation():
                 'name': doc['_source']['name'],
                 'create_username': create_username,
                 'path': path,
+                'create_time': doc['_source']['create_time'],
                 "status": get_status_name(doc_pg.status),
                 "permission": 1 if Permission.judge_power(customer_id, doc_pg.id) else 0
             }
@@ -695,12 +696,14 @@ def screen_doc(data_inppt, dates=[], places=[], entities=[], event_categories=[]
 @blue_print.route('/save_tagging_result', methods=['POST'])
 def save_tagging_result():
     try:
+
         doc_id = request.json.get('doc_id', 0)
         dates = request.json.get('dates', [])
         places = request.json.get('places', [])
         entities = request.json.get('entities', [])
         event_categories = request.json.get('event_categories', [])
         notes = request.json.get('notes', [])
+        keywords = request.json.get('keywords', [])
         doc_type = request.json.get('doc_type', 0)
         if not doc_id:
             res = fail_res(msg="No doc_id")
@@ -719,6 +722,8 @@ def save_tagging_result():
                 key_value_json["notes"] = notes
             if doc_type:
                 key_value_json["doc_type"] = doc_type
+            if keywords:
+                key_value_json["keywords"] = keywords
 
             # 获得es对应doc
             url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
@@ -726,7 +731,6 @@ def save_tagging_result():
             search_json = {
                 "id": {"type": "id", "value": doc_id}
             }
-
             es_id_para = {"search_index": "document", "search_json": search_json}
 
             search_result = requests.post(url + '/searchId', data=json.dumps(es_id_para), headers=header)

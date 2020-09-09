@@ -189,9 +189,7 @@ def update_entity():
             es_id_para = {"search_index": "entity", "search_json": search_json}
 
             search_result = requests.post(url + '/searchId', data=json.dumps(es_id_para), headers=header)
-
             es_id = search_result.json()['data']['dataList'][0]
-
             # 更新ES实体
             inesert_para = {"update_index": 'entity',
                             "data_update_json": [{es_id: key_value_json}]}

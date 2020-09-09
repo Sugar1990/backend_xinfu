@@ -37,9 +37,12 @@ def get_one_entity_category():
                 "name": category.name
             }
         else:
-            res = fail_res("实体类型不存在")
+            res = fail_res(msg="实体类型不存在")
     except:
-        res = []
+        res = {
+            "id": -1,
+            "name": ""
+        }
 
     return jsonify(res)
 
@@ -179,6 +182,12 @@ def get_entity_category_paginate():
             "cur_page": pagination.page
         }
 
-    except:
-        res = []
+    except Exception as e:
+        print(str(e))
+        res = {
+            "total_count": 0,
+            "page_count": 0,
+            "data": [],
+            "cur_page": 0
+        }
     return jsonify(res)

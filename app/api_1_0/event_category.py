@@ -89,14 +89,14 @@ def modify_event_category():
         if event_category_find:
             event_category_find1 = EventCategory.query.filter_by(name=event_category_name, event_class_id=event_class_id, valid=1).first()
             if event_category_find1:
-                res = fail_res("同名实体类型已存在")
+                res = fail_res(msg="同名实体类型已存在")
             else:
                 event_category_find.name = event_category_name
                 event_category_find.event_class_id = event_class_id
                 db.session.commit()
                 res = success_res()
         else:
-            res = fail_res("找不到修改对象")
+            res = fail_res(msg="找不到修改对象")
 
     except RuntimeError:
         db.session.rollback()
@@ -117,7 +117,11 @@ def get_one_event_category():
             "event_class_id": eventCategory_find.event_class_id
         }
     except:
-        res = []
+        res = {
+            "id": -1,
+            "name": "",
+            "event_class_id": -1
+        }
 
     return jsonify(res)
 
@@ -140,27 +144,37 @@ def get_event_categories():
 
 @blue_print.route('/get_event_category_paginate', methods=['GET'])
 def get_event_category_paginate():
-    search = request.args.get("search", "")
-    current_page = request.args.get('cur_page', 1, type=int)
-    page_size = request.args.get('page_size', 15, type=int)
-    pagination = EventCategory.query.filter(EventCategory.name.like('%' + search + '%'),
-                                            EventCategory.valid == 1).order_by(
-        EventCategory.id.desc()).paginate(current_page, page_size, False)
+    try:
+        search = request.args.get("search", "")
+        current_page = request.args.get('cur_page', 1, type=int)
+        page_size = request.args.get('page_size', 15, type=int)
+        pagination = EventCategory.query.filter(EventCategory.name.like('%' + search + '%'),
+                                                EventCategory.valid == 1).order_by(
+            EventCategory.id.desc()).paginate(current_page, page_size, False)
 
-    data = []
-    for item in pagination.items:
-        data.append({
-            "id": item.id,
-            "name": item.name,
-            "event_class_id": item.event_class_id,
-            "event_class_name": EventClass.get_classname(item.event_class_id)
-        })
-    data = {
-        "total_count": pagination.total,
-        "page_count": pagination.pages,
-        "data": data,
-        "cur_page": pagination.page
-    }
+        data = []
+        for item in pagination.items:
+            data.append({
+                "id": item.id,
+                "name": item.name,
+                "event_class_id": item.event_class_id,
+                "event_class_name": EventClass.get_classname(item.event_class_id)
+            })
+        data = {
+            "total_count": pagination.total,
+            "page_count": pagination.pages,
+            "data": data,
+            "cur_page": pagination.page
+        }
+
+    except Exception as e:
+        print(str(e))
+        data = {
+            "total_count": 0,
+            "page_count": 0,
+            "data": [],
+            "cur_page": 0
+        }
     return jsonify(data)
 
 
