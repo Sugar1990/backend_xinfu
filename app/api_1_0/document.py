@@ -594,80 +594,90 @@ def search_advanced():
 # 高级搜索 doc_type
 @blue_print.route('/search_advanced_doc_type', methods=['POST'])
 def search_advanced_doc_type():
-    # doc_id = request.json.get('doc_id', 0)
-    dates = request.json.get('dates', [])
-    places = request.json.get('places', [])
-    entities = request.json.get('entities', [])
-    keywords = request.json.get('keywords', [])
-    event_categories = request.json.get('event_categories', {})
-    notes = request.json.get('notes', [])
-    doc_type = request.json.get('doc_type', "")
-    content = request.json.get('content', "")
-    start_date = request.json.get('start_date', "")
-    end_date = request.json.get('end_date', "")
-    url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+    try:
+        # doc_id = request.json.get('doc_id', 0)
+        dates = request.json.get('dates', [])
+        places = request.json.get('places', [])
+        entities = request.json.get('entities', [])
+        keywords = request.json.get('keywords', [])
+        event_categories = request.json.get('event_categories', {})
+        notes = request.json.get('notes', [])
+        doc_type = request.json.get('doc_type', "")
+        content = request.json.get('content', "")
+        start_date = request.json.get('start_date', "")
+        end_date = request.json.get('end_date', "")
+        url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
 
-    search_json = {}
-    if content:
-        search_json["name"] = {"type": "text", "value": content, "boost": 3}
-        search_json["content"] = {"type": "text", "value": content, "boost": 1}
-    if dates:
-        if type(dates).__name__ == 'str':
-            dates = dates.split(' - ')
-        search_json["dates"] = {"type": "text", "value": ''.join(dates), "boost": 1}
-    if keywords:
-        search_json["keywords'"] = {"type": "text", "value": ''.join(keywords), "boost": 1}
-    if places:
-        if type(places).__name__ == 'str':
-            places = places.split(' ')
+        search_json = {}
+        if content:
+            search_json["name"] = {"type": "text", "value": content, "boost": 3}
+            search_json["content"] = {"type": "text", "value": content, "boost": 1}
+        if dates:
+            if type(dates).__name__ == 'str':
+                dates = dates.split(' - ')
+            search_json["dates"] = {"type": "text", "value": ''.join(dates), "boost": 1}
+        if keywords:
+            search_json["keywords'"] = {"type": "text", "value": ''.join(keywords), "boost": 1}
+        if places:
+            if type(places).__name__ == 'str':
+                places = places.split(' ')
 
-            # search_json["places"] = {"type": "text", "value": ''.join(places), "boost": 1}
-    if doc_type:
-        search_json["doc_type"] = {"type": "id", "value": doc_type}
-    if search_json:
-        search_json["sort"] = {"type": "normal", "sort": "create_time", "asc_desc": "desc"}
+                # search_json["places"] = {"type": "text", "value": ''.join(places), "boost": 1}
+        if doc_type:
+            search_json["doc_type"] = {"type": "id", "value": doc_type}
+        if search_json:
+            search_json["sort"] = {"type": "normal", "sort": "create_time", "asc_desc": "desc"}
 
-    # 直接es查询
-    para = {"search_index": 'document', "search_json": search_json}
-    header = {"Content-Type": "application/json"}
-    esurl = url + "/searchCustom"
-    search_result = requests.post(url=esurl, data=json.dumps(para), headers=header)
-    data = [doc['_source'] for doc in search_result.json()['data']['dataList']]
-    data_screen = screen_doc(data, places=places, entities=entities, event_categories=event_categories,
-                             notes=notes)
+        # 直接es查询
+        para = {"search_index": 'document', "search_json": search_json}
+        header = {"Content-Type": "application/json"}
+        esurl = url + "/searchCustom"
+        search_result = requests.post(url=esurl, data=json.dumps(para), headers=header)
+        data = [doc['_source'] for doc in search_result.json()['data']['dataList']]
+        data_screen = screen_doc(data, places=places, entities=entities, event_categories=event_categories,
+                                 notes=notes)
 
-    # 组装ids，和结构化数据
-    ids = []
-    data_by_doc_id = {}
-    for data in data_screen:
-        if data.get("id", False):
-            ids.append(data["id"])
-        if data.get("doc_type", False):
-            if data_by_doc_id.get(data["doc_type"], False):
-                data_by_doc_id[data["doc_type"]].append(data)
-            else:
-                data_by_doc_id[data["doc_type"]] = []
-    data_forms = [
-        {"name": doc_type, "data": data_by_doc_id[doc_type]}
-        for doc_type in data_by_doc_id
-    ]
-    # 雨辰接口
-    if YC_ROOT_URL:
-        body = {}
-        if ids:
-            body["ids"] = ids
-        if start_date:
-            body["startTime"] = start_date
-        if end_date:
-            body["endTime"] = end_date
-        header = {"Content-Type": "application/json; charset=UTF-8"}
-        url = YC_ROOT_URL + "/event/listByDocIds"
-        search_result = requests.post(url, data=json.dumps(body), headers=header)
-        final_data = {
-            "doc": data_forms,
-            "event_list": search_result.json()['data']
-        }
-    return jsonify(final_data)  # doc:原来格式数据 event_list:事件数据
+        print(type(data_screen).__name__, flush=True)
+        print(list(data_screen[0].keys()), flush=True)
+        # 组装ids，和结构化数据
+        ids = []
+        data_by_doc_id = {}
+        for data in data_screen:
+            if data.get("id", False):
+                ids.append(data["id"])
+            if data.get("doc_type",False):
+                if data_by_doc_id.get(data["doc_type"], False):
+                    data_by_doc_id[data["doc_type"]].append(data)
+                else:
+                    data_by_doc_id[data["doc_type"]] = [data]
+
+        print(data_by_doc_id, flush=True)
+        data_forms = [
+            {"name":doc_type , "data":data_by_doc_id[doc_type]}
+            for doc_type in data_by_doc_id
+        ]
+        print(data_forms, flush=True)
+        # 雨辰接口
+        if YC_ROOT_URL:
+            body = {}
+            if ids:
+                body["ids"] = ids
+            if start_date:
+                body["startTime"] = start_date
+            if end_date:
+                body["endTime"] = end_date
+            header = {"Content-Type": "application/json; charset=UTF-8"}
+            url = YC_ROOT_URL + "/event/listByDocIds"
+            search_result = requests.post(url, data=json.dumps(body), headers=header)
+            res = {
+                "doc": data_forms,
+                "event_list": search_result.json()['data']
+            }
+    except Exception as e:
+        print(str(e),flush=True)
+        res = {"doc": [],
+                "event_list": []}
+    return jsonify(res)  # doc:原来格式数据 event_list:事件数据
 
 
 def screen_doc(data_inppt, dates=[], places=[], entities=[], event_categories=[], notes=[]):

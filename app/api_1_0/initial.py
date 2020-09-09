@@ -1,7 +1,7 @@
 from flask import jsonify, request
 import json
 from . import api_initial as blue_print
-from ..models import Customer, EntityCategory
+from ..models import Customer, EntityCategory, Document, Catalog
 from .. import db
 from ..conf import ADMIN_NAME, ADMIN_PWD, ASSIS_NAME, ASSIS_PWD, TAG_TABS, PLACE_BASE_NAME, ES_SERVER_IP, ES_SERVER_PORT
 from .utils import success_res, fail_res
@@ -127,6 +127,40 @@ def delete_index():
     return jsonify(res)
 
 
+@blue_print.route('/update_es_doc', methods=['GET'])
+def update_es_doc():
+    try:
+        docs = Document.query.all()
+        url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+        header = {"Content-Type": "application/json; charset=UTF-8"}
+        for doc in docs:
+            doc_id = doc.id
+            an_catalog = Catalog.get_ancestorn_catalog(doc.catalog_id)
+            doc_type = an_catalog.id if an_catalog else 0
+
+            # 获得es对应doc
+            search_json = {
+                "id": {"type": "id", "value": doc_id}
+            }
+
+            es_id_para = {"search_index": "document", "search_json": search_json}
+
+            search_result = requests.post(url + '/searchId', data=json.dumps(es_id_para), headers=header)
+            try:
+                es_id = search_result.json()['data']['dataList'][0]
+            except:
+                es_id = ''
+            # 替换name 修改es已有do
+            key_value_json = {'doc_type': doc_type}
+            inesert_para = {"update_index": 'document',
+                            "data_update_json": [{es_id: key_value_json}]}
+            requests.post(url + '/updatebyId', data=json.dumps(inesert_para), headers=header)
+            res = success_res()
+    except Exception as e:
+        print(str(e))
+        res = fail_res()
+    return res
+
 @blue_print.route('/pg_insert_es_test', methods=['GET'])
 def pg_insert_test():
     pg_table = request.args.get('pg_table', '')  # 同步数据为entity或者document
@@ -156,7 +190,7 @@ def pg_insert_test():
             "dates": "ik",
             "places": "ik",
             "entities": "ik",
-            "event_categories": "ik", # 存储示例 [{"event_class":3,"event_category_id":1}]
+            "event_categories": "ik",  # 存储示例 [{"event_class":3,"event_category_id":1}]
             "doc_type": "id",
             "notes": "ik"
         }
