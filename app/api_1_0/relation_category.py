@@ -22,7 +22,7 @@ def add_relation_category():
             if name:
                 relation = RelationCategory.query.filter_by(source_entity_category_id=source_entity_category_id,
                                                             target_entity_category_id=target_entity_category_id,
-                                                            relation_name=name,valid=1).first()
+                                                            relation_name=name, valid=1).first()
                 if relation:
                     res = fail_res(msg="关联信息已存在")
                 else:
@@ -42,7 +42,6 @@ def add_relation_category():
         res = fail_res()
 
     return jsonify(res)
-
 
 
 # delete
@@ -179,26 +178,28 @@ def get_relation_category_paginate():
                                                    RelationCategory.valid == 1).order_by(
             RelationCategory.id.desc()).paginate(current_page, page_size, False)
 
-        print(len(pagination.items), flush=True)
-        data = []
-        for item in pagination.items:
-            data.append({
-                "id": item.id,
-                "source_entity_category_id": item.source_entity_category_id,
-                "source_entity_category": item.source_entity_category(),
-                "target_entity_category_id": item.target_entity_category_id,
-                "target_entity_category": item.target_entity_category(),
-                "name": item.relation_name
-            })
-            res = {
-                "total_count": pagination.total,
-                "page_count": pagination.pages,
-                "data": data,
-                "cur_page": pagination.page
-            }
+        data = [{
+            "id": item.id,
+            "source_entity_category_id": item.source_entity_category_id,
+            "source_entity_category": item.source_entity_category(),
+            "target_entity_category_id": item.target_entity_category_id,
+            "target_entity_category": item.target_entity_category(),
+            "name": item.relation_name
+        } for item in pagination.items]
+        res = {
+            "total_count": pagination.total,
+            "page_count": pagination.pages,
+            "data": data,
+            "cur_page": pagination.page
+        }
     except Exception as e:
         print(str(e))
-        res = []
+        res = {
+            "total_count": 0,
+            "page_count": 0,
+            "data": [],
+            "cur_page": 0
+        }
     return jsonify(res)
 
 
