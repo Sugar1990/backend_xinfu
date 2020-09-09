@@ -67,13 +67,14 @@ def upload_doc():
                         if doc:
                             res = fail_res(msg="{0}文档已存在\n".format(path[-1]))
                         else:
+                            datetime_now = datetime.datetime.now()
                             doc = Document(name=path[-1],
                                            category=os.path.splitext(filename)[1],
                                            savepath='/static/{0}'.format(save_filename),
                                            catalog_id=catalog_id,
                                            content=content_list,
                                            create_by=uid,
-                                           create_time=datetime.datetime.now(),
+                                           create_time=datetime_now,
                                            permission_id=permission_id,
                                            status=0,
                                            keywords=keywords,
@@ -87,7 +88,7 @@ def upload_doc():
                                 "id": doc.id,
                                 "name": doc.name,
                                 "content": doc.content,
-                                "create_time": doc.create_time.strftime('%Y-%m-%d %H:%M:%S'),
+                                "create_time": datetime_now.timestamp(),
                                 "keywords": doc.keywords
                             }]
 
@@ -589,6 +590,7 @@ def search_advanced():
         }
     return jsonify(final_data)  # doc:原来格式数据 event_list:事件数据
 
+
 # 高级搜索 doc_type
 @blue_print.route('/search_advanced_doc_type', methods=['POST'])
 def search_advanced_doc_type():
@@ -640,13 +642,13 @@ def search_advanced_doc_type():
     for data in data_screen:
         if data.get("id", False):
             ids.append(data["id"])
-        if data.get("doc_type",False):
+        if data.get("doc_type", False):
             if data_by_doc_id.get(data["doc_type"], False):
                 data_by_doc_id[data["doc_type"]].append(data)
             else:
                 data_by_doc_id[data["doc_type"]] = []
     data_forms = [
-        {"name":doc_type , "data":data_by_doc_id[doc_type]}
+        {"name": doc_type, "data": data_by_doc_id[doc_type]}
         for doc_type in data_by_doc_id
     ]
     # 雨辰接口
