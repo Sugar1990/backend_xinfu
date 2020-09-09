@@ -26,8 +26,8 @@ def upload_doc():
         catalog_id = request.form.get('catalog_id', 0)
         uid = request.form.get('uid', 0)
         file_list = request.files.getlist('file', None)
+        catalog_id = int(catalog_id)
 
-        msg = ""
         for file_obj in file_list:
             path_filename = file_obj.filename
             path = path_filename.split("/")
@@ -37,79 +37,82 @@ def upload_doc():
                     with lock:
                         catalog_id = find_leaf_catalog_id(catalog_id, path_catalog_name_list, uid)
 
-                filename = secure_filename(''.join(lazy_pinyin(path[-1])))
-                save_filename = "{0}{1}{2}".format(os.path.splitext(filename)[0],
-                                                   datetime.datetime.now().strftime('%Y%m%d%H%M%S'),
-                                                   os.path.splitext(filename)[1]).lower()
-                file_savepath = os.path.join(os.getcwd(), 'static', save_filename)
-                file_obj.save(file_savepath)
+                if catalog_id:
+                    filename = secure_filename(''.join(lazy_pinyin(path[-1])))
+                    save_filename = "{0}{1}{2}".format(os.path.splitext(filename)[0],
+                                                       datetime.datetime.now().strftime('%Y%m%d%H%M%S'),
+                                                       os.path.splitext(filename)[1]).lower()
+                    file_savepath = os.path.join(os.getcwd(), 'static', save_filename)
+                    file_obj.save(file_savepath)
 
-                doc_extension = os.path.splitext(filename)[1]
-                content_list, keywords = [], []
-                if doc_extension in ['.docx', '.doc']:
-                    content_list = extract_word_content(file_savepath)
-                    keywords = get_keywords(content_list)
+                    doc_extension = os.path.splitext(filename)[1]
+                    content_list, keywords = [], []
+                    if doc_extension in ['.docx', '.doc']:
+                        content_list = extract_word_content(file_savepath)
+                        keywords = get_keywords(content_list)
 
-                permission_id = 0
-                customer = Customer.query.filter_by(id=uid).first()
-                if customer:
-                    permission = Permission.query.filter_by(id=customer.permission_id).first()
-                    if permission:
-                        permission_id = permission.id
+                    permission_id = 0
+                    customer = Customer.query.filter_by(id=uid).first()
+                    if customer:
+                        permission = Permission.query.filter_by(id=customer.permission_id).first()
+                        if permission:
+                            permission_id = permission.id
 
-                with open(file_savepath, 'rb') as f:
-                    md5_hash = hashlib.md5(f.read())
-                    file_md5 = md5_hash.hexdigest()
+                    with open(file_savepath, 'rb') as f:
+                        md5_hash = hashlib.md5(f.read())
+                        file_md5 = md5_hash.hexdigest()
 
-                if file_md5:
-                    doc = Document.query.filter_by(md5=file_md5, catalog_id=catalog_id).first()
-                    if doc:
-                        res = fail_res(msg="{0}文档已存在\n".format(path[-1]))
-                    else:
-                        doc = Document(name=path[-1],
-                                       category=os.path.splitext(filename)[1],
-                                       savepath='/static/{0}'.format(save_filename),
-                                       catalog_id=catalog_id,
-                                       content=content_list,
-                                       create_by=uid,
-                                       create_time=datetime.datetime.now(),
-                                       permission_id=permission_id,
-                                       status=0,
-                                       keywords=keywords,
-                                       md5=file_md5)
+                    if file_md5:
+                        doc = Document.query.filter_by(md5=file_md5, catalog_id=catalog_id).first()
+                        if doc:
+                            res = fail_res(msg="{0}文档已存在\n".format(path[-1]))
+                        else:
+                            doc = Document(name=path[-1],
+                                           category=os.path.splitext(filename)[1],
+                                           savepath='/static/{0}'.format(save_filename),
+                                           catalog_id=catalog_id,
+                                           content=content_list,
+                                           create_by=uid,
+                                           create_time=datetime.datetime.now(),
+                                           permission_id=permission_id,
+                                           status=0,
+                                           keywords=keywords,
+                                           md5=file_md5)
 
-                        db.session.add(doc)
-                        db.session.commit()
-
-                        # 抽取id、name、content插入es数据库中
-                        data_insert_json = [{
-                            "id": doc.id,
-                            "name": doc.name,
-                            "content": doc.content,
-                            "create_time": doc.create_time.strftime('%Y-%m-%d %H:%M:%S'),
-                            "keywords": doc.keywords
-                        }]
-
-                        url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
-                        header = {"Content-Type": "application/json; charset=UTF-8"}
-                        para = {"data_insert_index": "document",
-                                "data_insert_json": data_insert_json}
-
-                        insert_result = requests.post(url + '/dataInsert', data=json.dumps(para),
-                                                      headers=header)
-                        print(insert_result.text)
-
-                        if YC_ROOT_URL:
-                            header = {"Content-Type": "application/x-form-urlencode; charset=UTF-8"}
-                            url = YC_ROOT_URL + '/doc/preprocess?docId={0}'.format(doc.id)
-                            yc_res = requests.post(url=url, headers=header)
-                            print("doc_preprocess", yc_res)
-                            doc.status = 1
+                            db.session.add(doc)
                             db.session.commit()
 
-                        res = success_res()
+                            # 抽取id、name、content插入es数据库中
+                            data_insert_json = [{
+                                "id": doc.id,
+                                "name": doc.name,
+                                "content": doc.content,
+                                "create_time": doc.create_time.strftime('%Y-%m-%d %H:%M:%S'),
+                                "keywords": doc.keywords
+                            }]
+
+                            url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+                            header = {"Content-Type": "application/json; charset=UTF-8"}
+                            para = {"data_insert_index": "document",
+                                    "data_insert_json": data_insert_json}
+
+                            insert_result = requests.post(url + '/dataInsert', data=json.dumps(para),
+                                                          headers=header)
+                            print(insert_result.text)
+
+                            if YC_ROOT_URL:
+                                header = {"Content-Type": "application/x-form-urlencode; charset=UTF-8"}
+                                url = YC_ROOT_URL + '/doc/preprocess?docId={0}'.format(doc.id)
+                                yc_res = requests.post(url=url, headers=header)
+                                print("doc_preprocess", yc_res)
+                                doc.status = 1
+                                db.session.commit()
+
+                            res = success_res()
+                    else:
+                        res = fail_res(msg="计算文件md5异常，上传失败")
                 else:
-                    res = fail_res(msg="计算文件md5异常，上传失败")
+                    res = fail_res(msg="文档不能上传至根目录")
             else:
                 res = fail_res(msg="upload path is empty")
 
