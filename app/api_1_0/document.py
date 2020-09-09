@@ -815,11 +815,13 @@ def get_latest_upload_file_tagging_url():
         customer_id = request.args.get("uid", 0, type=int)
         doc = Document.query.filter_by(create_by=customer_id).first()
         if doc and customer_id:
-            return YC_TAGGING_PAGE_URL + "?doc_id={0}&uid={1}".format(doc.id, customer_id)
+            url = YC_TAGGING_PAGE_URL + "?doc_id={0}&uid={1}".format(doc.id, customer_id)
+            res = success_res(data=url)
         else:
-            return "/#"
+            res = fail_res(data="/#")
     except:
-        return "/#"
+        res = fail_res(data="/#")
+    return res
 
 
 # ——————————————————————— 提取关键词 —————————————————————————————
