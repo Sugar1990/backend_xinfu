@@ -93,10 +93,9 @@ def delete_event_class():
             event_category = EventCategory.query.filter_by(event_class_id=event_class.id, valid=1).first()
             if event_category:
                 res = fail_res(msg="该类型下有事件类型，不能删除！")
-                return jsonify(res)
-            event_class.valid = 0
-            db.session.commit()
-        res = success_res()
+            else:
+                event_class.valid = 0
+                res = success_res()
     except:
         db.session.rollback()
         res = fail_res(msg="删除失败！")
@@ -108,16 +107,22 @@ def delete_event_class():
 def delete_event_class_by_ids():
     try:
         event_ids = request.json.get("ids", [])
+        res_flag = True
         for event_id in event_ids:
             event_class = EventClass.query.filter_by(id=event_id, valid=1).first()
             if event_class:
                 event_category = EventCategory.query.filter_by(event_class_id=event_class.id, valid=1).first()
                 if event_category:
-                    res = fail_res(msg="某些类型下有事件类型，不能全部删除！")
-                    return jsonify(res)
-                event_class.valid = 0
-                db.session.commit()
-        res = success_res()
+                    flag = False
+                    res_flag = res_flag & flag
+                else:
+                    event_class.valid = 0
+                    flag = True
+                    res_flag = res_flag & flag
+            if res_flag:
+                res = success_res()
+            else:
+                res = fail_res(msg="部分数据无法删除")
     except:
         db.session.rollback()
         res = fail_res(msg="删除失败！")
