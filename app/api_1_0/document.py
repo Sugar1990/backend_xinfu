@@ -228,28 +228,43 @@ def del_doc():
     doc_ids = request.json.get('doc_ids', [])
     customer_id = request.json.get('customer_id', 1)
     permission_flag = False
+    status_flag = False
     try:
         customer = Customer.query.filter_by(id=customer_id).first()
         if customer:
-            if doc_ids:
-                Document.query.filter(Document.id.in_(doc_ids)).delete(synchronize_session=False)
-                db.session.commit()
-            power_ids = []
+            del_doc_ids = []
             for doc_id in doc_ids:
                 doc = Document.query.filter_by(id=doc_id).first()
                 if doc:
                     if doc.get_power() > customer.get_power():
                         permission_flag = True
                     else:
-                        power_ids.append(doc.id)
-                        db.session.delete(doc)
+                        if doc.status < 2:
+                            del_doc_ids.append(doc.id)
+                            db.session.delete(doc)
+                        else:
+                            status_flag = True
             db.session.commit()
+            if del_doc_ids:
+                success_msg = ['操作成功']  # 删除消息
+            else:
+                success_msg = []
+            if (permission_flag or status_flag):
+                if del_doc_ids:
+                    success_msg.append("。其中部分文档")
+                flag_msg = []  # 删除原因
+                if permission_flag:
+                    flag_msg.append('权限不够')
+                if status_flag:
+                    flag_msg.append('已标注文档')
+                success_msg.append("、".join(flag_msg))
+                success_msg.append("，无法删除")
 
-            success_msg = "操作成功，其中部分文档权限不够，无法删除" if permission_flag else ''
+            msg = ''.join(success_msg)
 
             es_id_list = []  # 删除doc 对应esdoc的列表
             url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
-            for doc_id in power_ids:
+            for doc_id in del_doc_ids:
 
                 header = {"Content-Type": "application/json; charset=UTF-8"}
                 search_json = {
@@ -270,12 +285,12 @@ def del_doc():
                 if es_id_list:
                     delete_para = {"delete_index": "document", "id_json": es_id_list}
                     search_result = requests.post(url + '/deletebyId', data=json.dumps(delete_para), headers=header)
-                    res = success_res(msg=success_msg)
+                    res = success_res()
                 else:
                     print('No_delete')
             except:
                 pass
-            res = success_res()
+            res = success_res(msg=msg)
         else:
             res = fail_res(msg='无效用户，操作失败')
     except Exception as e:
