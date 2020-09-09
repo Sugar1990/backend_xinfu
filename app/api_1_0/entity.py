@@ -681,6 +681,7 @@ def import_entity_excel():
                         entity.synonyms = ex_synonyms
                         entity.summary = ex_summary
                         entity.category_id = category_id
+                        entity.valid = 1
 
                         # es 插入操作
                         data_insert_json = [{
@@ -689,7 +690,7 @@ def import_entity_excel():
                             'summary': ex_summary,
                             'props': ex_props,
                             'synonyms': ex_synonyms,
-                            'id': entity.id
+                            'id': entity.id,
                         }]
                         url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
 
@@ -713,7 +714,7 @@ def import_entity_excel():
                             yc_res = requests.post(url=url, data=data, headers=header)
 
                     else:
-                        entity = Entity(name=ex_name, props=ex_props, synonyms=ex_synonyms, category_id=category_id)
+                        entity = Entity(name=ex_name, props=ex_props, synonyms=ex_synonyms, category_id=category_id, valid=1)
                         db.session.add(entity)
                         # db.session.commit()
 
