@@ -8,6 +8,7 @@ from ..models import Catalog, Document, Customer, Permission
 from .. import db
 from .utils import success_res, fail_res
 from ..conf import TAG_TABS
+from .document import delete_doc_in_pg_es
 
 
 @blue_print.route('/insert_catalog', methods=['POST'])
@@ -93,6 +94,29 @@ def del_catalog():
         if res == 0:
             res = fail_res(msg="没有删除权限")
             return res
+
+        # 递归检测下级目录有没有已标文档
+        def get_descendants_docs(catalog_id):
+            if not catalog_id:
+                return False
+            else:
+                docs = Document.query.filter_by(catalog_id=catalog_id).all()
+                for i in docs:
+                    if i.status > 1:
+                        return False
+
+                catalog_children = Catalog.query.filter_by(parent_id=catalog_id).all()
+                for catalog_child in catalog_children:
+                    if not get_descendants_docs(catalog_child.id):
+                        return False
+
+                return True
+
+        res = get_descendants_docs(catalog_res.id)
+        if not res:
+            res = fail_res(msg="目录下存在已标文档，不能删除")
+            return res
+
         db.session.delete(catalog_res)
         db.session.commit()
         res = success_res()
@@ -260,21 +284,60 @@ def move_catalog():
         else:
             catalog = Catalog.query.filter_by(id=catalog_id).first()
             if catalog:
-                catalog_same = Catalog.query.filter_by(name=catalog.name, parent_id=parent_id).all()
-
-                catalog.parent_id = parent_id
-
-                if len(catalog_same):
-                    catalog.name = catalog.name + '-（{0}）'.format(len(catalog_same))
-
-                db.session.commit()
+                catalog_same = Catalog.query.filter_by(name=catalog.name, parent_id=parent_id).first()
+                if catalog_same:
+                    move_catalog_recursive(catalog_id, catalog_same.id)
+                else:
+                    catalog.parent_id = parent_id
+                    db.session.commit()
                 res = success_res()
             else:
                 res = fail_res(msg="操作对象不存在")
-    except:
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = fail_res()
     return jsonify(res)
+
+
+# 处理重名目录下文件和子目录
+def move_catalog_recursive(source_catalog_id, target_catalog_id):
+    source_docs = Document.query.filter_by(catalog_id=source_catalog_id).all()
+    target_docs = Document.query.filter_by(catalog_id=target_catalog_id).all()
+
+    # 处理重名文件
+    del_doc_id = []
+    save_target_docs_dict = {i.md5: i for i in target_docs if i.md5 and i.id}
+    for source_doc_item in source_docs:
+        if source_doc_item.md5 in save_target_docs_dict:
+            target_doc_item = save_target_docs_dict[source_doc_item.md5]
+            if target_doc_item.status < 2 and source_doc_item.status > 1:
+                # 目标文件未标注，移动文件已标注，删除目标文件
+                del_doc_id.append(target_doc_item.id)
+                source_doc_item.catalog_id = target_catalog_id
+                db.session.commit()
+            else:
+                # 目标文件已标注，删除移动文件
+                del_doc_id.append(source_doc_item.id)
+        else:
+            source_doc_item.catalog_id = target_catalog_id
+            db.session.commit()
+    delete_doc_in_pg_es(del_doc_id)
+
+    # 处理重名目录
+    source_catalog_children = Catalog.query.filter_by(parent_id=source_catalog_id).all()
+    target_catalog_children = Catalog.query.filter_by(parent_id=target_catalog_id).all()
+
+    target_catalog_children_names = {i.name: i for i in target_catalog_children}
+
+    for source_catalog_child in source_catalog_children:
+        if source_catalog_child.name in target_catalog_children_names:
+            target_catalog_child = target_catalog_children_names[source_catalog_child.name]
+            move_catalog_recursive(source_catalog_child.id, target_catalog_child.id)
+
+    source_catalog = Catalog.query.filter_by(id=source_catalog_id).first()
+    db.session.delete(source_catalog)
+    db.session.commit()
 
 
 @blue_print.route('/get_tagging_tabs', methods=['GET'])
@@ -290,7 +353,7 @@ def get_tagging_tabs():
 @blue_print.route('/get_1stfloor_catalog', methods=['GET'])
 def get_1stfloor_catalog():
     try:
-        cataloges = Catalog.query.filter_by(parent_id=0).all()
+        cataloges = Catalog.query.filter_by(parent_id=0).order_by().all()
         if not cataloges:
             res = []
         else:
