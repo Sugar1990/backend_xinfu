@@ -6,7 +6,7 @@ import json
 from . import api_catalog as blue_print
 from ..models import Catalog, Document, Customer, Permission
 from .. import db
-from .utils import success_res, fail_res, get_status_name
+from .utils import success_res, fail_res
 from ..conf import TAG_TABS
 
 
@@ -161,7 +161,7 @@ def get_catalog_files():
                         "create_time": i.create_time,
                         "create_username": Customer.get_username_by_id(i.create_by),
                         "extension": i.category.replace('\n\"', ""),
-                        "status": get_status_name(i.status),
+                        "status": i.get_status_name(),
                         "permission": 1 if Permission.judge_power(customer_id, i.id) else 0
                     } for i in docs],
                     # } for i in docs if i.get_power() <= customer.get_power()],

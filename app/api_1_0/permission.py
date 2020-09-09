@@ -60,7 +60,7 @@ def del_permission():
 @blue_print.route('/batch_del_permission', methods=['POST'])
 def batch_del_permission():
     ids = request.json.get('ids', [])
-
+    res_flag = True
     try:
         permissions = db.session.query(Permission).filter(not_(Permission.name.in_([ADMIN_ROLE_NAME, ASSIS_ROLE_NAME])),
                                                          and_(Permission.id.in_(ids), Permission.valid == 1)).all()
@@ -69,9 +69,15 @@ def batch_del_permission():
                 customers = Customer.query.filter_by(permission_id=permission_item.id, valid=1).all()
                 if not customers:
                     permission_item.valid = 0
-                    res = success_res()
+                    flag = True
+                    res_flag = res_flag & flag
                 else:
-                    res = fail_res(msg="权限下存在用户，部分数据无法删除")
+                    flag = False
+                    res_flag = res_flag & flag
+            if res_flag:
+                res = success_res()
+            else:
+                res = fail_res(msg="权限下存在用户，部分数据无法删除")
         else:
             res = fail_res(msg="权限不存在")
 

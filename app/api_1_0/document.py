@@ -11,7 +11,7 @@ from sqlalchemy import or_
 from werkzeug.utils import secure_filename
 
 from . import api_document as blue_print
-from .utils import success_res, fail_res, get_status_name
+from .utils import success_res, fail_res
 from .. import db, lock
 from ..conf import LEXICON_IP, LEXICON_PORT, SUMMARY_IP, SUMMARY_PORT, YC_ROOT_URL, ES_SERVER_IP, ES_SERVER_PORT, \
     YC_TAGGING_PAGE_URL
@@ -426,6 +426,8 @@ def get_entity_in_list_pagination():
                             i['name'] = doc.name
                             i['create_username'] = Customer.get_username_by_id(doc.create_by)
                             i['path'] = doc.get_full_path() if doc.get_full_path() else '已失效'
+                            i['extension'] = doc.category,
+                            i['status'] = doc.get_status_name()
                     res = {"data": data,
                            "page_count": int(count / page_size) + 1,
                            "total_count": count}
@@ -481,18 +483,20 @@ def get_search_panigation():
 
         for doc in search_result.json()['data']['dataList']:
             doc_pg = Document.query.filter_by(id=doc['_source']['id']).first()
-            path = doc_pg.get_full_path() if doc_pg else '已失效'
-            create_username = Customer.get_username_by_id(doc_pg.create_by) if doc_pg else '无效用户'
-            data_item = {
-                'id': doc['_source']['id'],
-                'name': doc['_source']['name'],
-                'create_username': create_username,
-                'path': path,
-                'create_time': doc['_source']['create_time'],
-                "status": get_status_name(doc_pg.status),
-                "permission": 1 if Permission.judge_power(customer_id, doc_pg.id) else 0
-            }
-            data.append(data_item)
+            if doc_pg:
+                path = doc_pg.get_full_path() if doc_pg else '已失效'
+                create_username = Customer.get_username_by_id(doc_pg.create_by) if doc_pg else '无效用户'
+                data_item = {
+                    'id': doc['_source']['id'],
+                    'name': doc['_source']['name'],
+                    'create_username': create_username,
+                    'path': path,
+                    'create_time': doc['_source']['create_time'],
+                    "status": doc_pg.get_status_name(),
+                    'extension': doc_pg.category,
+                    "permission": 1 if Permission.judge_power(customer_id, doc_pg.id) else 0
+                }
+                data.append(data_item)
 
         total_count = len(data)
 

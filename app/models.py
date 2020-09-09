@@ -51,6 +51,9 @@ class Document(db.Model):
     def get_full_path(self):
         return Catalog.get_full_path(self.catalog_id)
 
+    def get_status_name(self):
+        return "上传处理中" if self.status == 0 else "未标注" if self.status == 1 else "已标注" if self.status == 2 else ""
+
     def __repr__(self):
         return '<Document %r>' % self.name
 
