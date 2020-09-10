@@ -375,7 +375,9 @@ def get_info():
             if doc.catalog_id:
                 catalog = Catalog.query.filter_by(id=doc.catalog_id).first()
                 if catalog:
+                    print("catalog", catalog)
                     an_catalog = Catalog.get_ancestorn_catalog(catalog.id)
+                    print("an_catalog", an_catalog)
                     if an_catalog:
                         flag, ancestorn_catalog_tagging_tabs = True, an_catalog.tagging_tabs
 
@@ -420,11 +422,13 @@ def get_entity_in_list_pagination():
             if entitiy:
                 if YC_ROOT_URL:
                     url = YC_ROOT_URL + "/doc/get_entity_in_list_pagination"
+                    print(url, flush=True)
                     resp = requests.get(url=url, params={"cusotmer_id": customer_id,
                                                          "entity_id": entitiy.id,
                                                          "cur_page": cur_page,
                                                          "page_size": page_size})
 
+                    print(resp.text, flush=True)
 
                     data = json.loads(resp.text).get("rows", [])
                     count = json.loads(resp.text).get("total", 0)
@@ -647,26 +651,27 @@ def search_advanced_doc_type():
         data_screen = screen_doc(data, places=places, entities=entities, event_categories=event_categories,
                                  notes=notes)
 
-        print(type(data_screen).__name__, flush=True)
-        print(list(data_screen[0].keys()), flush=True)
         # 组装ids，和结构化数据
         ids = []
         data_by_doc_id = {}
         for data in data_screen:
-            if data.get("id", False):
-                ids.append(data["id"])
-            if data.get("doc_type",False):
-                if data_by_doc_id.get(data["doc_type"], False):
-                    data_by_doc_id[data["doc_type"]].append(data)
-                else:
-                    data_by_doc_id[data["doc_type"]] = [data]
+            if not data["name"]:
+                doc = Document.query.filter_by(id=data['id']).first()
+                if doc:
+                    data["name"] = doc.name if doc else ""
+            if data["name"]:
+                if data.get("id", False):
+                    ids.append(data["id"])
+                if data.get("doc_type", False):
+                    if data_by_doc_id.get(data["doc_type"], False):
+                        data_by_doc_id[data["doc_type"]].append(data)
+                    else:
+                        data_by_doc_id[data["doc_type"]] = [data]
 
-        # print(data_by_doc_id, flush=True)
         data_forms = [
-            {"name": Catalog.get_name_by_id(doc_type) , "data":data_by_doc_id[doc_type]}
+            {"name": doc_type, "data": data_by_doc_id[doc_type]}
             for doc_type in data_by_doc_id
         ]
-        # print(data_forms, flush=True)
         # 雨辰接口
         if YC_ROOT_URL:
             body = {}
@@ -678,15 +683,17 @@ def search_advanced_doc_type():
                 body["endTime"] = end_date
             header = {"Content-Type": "application/json; charset=UTF-8"}
             url = YC_ROOT_URL + "/event/listByDocIds"
+            print(url, body, flush=True)
             search_result = requests.post(url, data=json.dumps(body), headers=header)
+            print(search_result.text, flush=True)
             res = {
                 "doc": data_forms,
                 "event_list": search_result.json()['data']
             }
     except Exception as e:
-        print(str(e),flush=True)
+        print(str(e), flush=True)
         res = {"doc": [],
-                "event_list": []}
+               "event_list": []}
     return jsonify(res)  # doc:原来格式数据 event_list:事件数据
 
 
@@ -895,7 +902,7 @@ def search_advanced_Pagination():
         if type(places).__name__ == 'str':
             places = places.split(' ')
 
-        # search_json["places"] = {"type": "text", "value": ''.join(places), "boost": 1}
+            # search_json["places"] = {"type": "text", "value": ''.join(places), "boost": 1}
     if doc_type:
         search_json["doc_type"] = {"type": "id", "value": doc_type}
     if search_json:
@@ -910,6 +917,12 @@ def search_advanced_Pagination():
     data = [doc['_source'] for doc in search_result.json()['data']['dataList']]
     data_screen = screen_doc(data, places=places, entities=entities, event_categories=event_categories,
                              notes=notes)  # dates=dates,
+
+    for data in data_screen:
+        if not data["name"]:
+            doc = Document.query.filter_by(id=data['id']).first()
+            if doc:
+                data["name"] = doc.name if doc else ""
 
     total_count = len(data_screen)
     if total_count > page_size * cur_page:
