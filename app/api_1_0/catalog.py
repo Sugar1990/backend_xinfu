@@ -42,6 +42,29 @@ def del_catalog():
         catalog_id = request.json.get("catalog_id", 0)
         customer_id = request.json.get("customer_id", 0)
 
+        flag, msg = judge_del_catalog_permission(customer_id, catalog_id)
+        print(flag, msg)
+
+        if flag:
+            catalog_res = Catalog.query.filter_by(id=catalog_id).first()
+            del_catalog_recursive(catalog_id)
+
+            db.session.delete(catalog_res)
+            db.session.commit()
+            res = success_res()
+        else:
+            res = fail_res(msg=msg)
+    except Exception as e:
+        print(str(e))
+        db.session.rollback()
+        res = fail_res()
+
+    return jsonify(res)
+
+
+# 判断用户是否有删除权限
+def judge_del_catalog_permission(customer_id, catalog_id):
+    try:
         catalog_res = Catalog.query.filter_by(id=catalog_id).first()
         customer = Customer.query.filter_by(id=customer_id).first()
 
@@ -49,17 +72,14 @@ def del_catalog():
         document = Document.query.filter_by(catalog_id=catalog_id).all()
 
         if not customer:
-            res = fail_res(msg="当前无效用户，没有删除权限")
-            return res
+            return False, "当前无效用户，没有删除权限"
 
         # 测试第一级目录下面有没有删除权限
         for i in document:
             if i.get_power() > customer.get_power():
-                res = fail_res(msg="没有删除权限")
-                return res
+                return False, "没有删除权限"
         if not catalog_res:
-            res = fail_res(msg="没有该目录")
-            return res
+            return False, "没有该目录"
 
         catalog_dictory = {}
         # 构建目录字典
@@ -92,8 +112,7 @@ def del_catalog():
         res = get_subdir(catalog_res.id, catalog_dictory)
 
         if res == 0:
-            res = fail_res(msg="没有删除权限")
-            return res
+            return False, "没有删除权限"
 
         # 递归检测下级目录有没有已标文档
         def get_descendants_docs(catalog_id):
@@ -114,18 +133,30 @@ def del_catalog():
 
         res = get_descendants_docs(catalog_res.id)
         if not res:
-            res = fail_res(msg="目录下存在已标文档，不能删除")
-            return res
-
-        db.session.delete(catalog_res)
-        db.session.commit()
-        res = success_res()
+            return False, "目录下存在已标文档，不能删除"
+        else:
+            return True, ""
     except Exception as e:
         print(str(e))
-        db.session.rollback()
-        res = fail_res()
 
-    return jsonify(res)
+
+# 彻底删除目录下子目录和所有文件
+def del_catalog_recursive(catalog_id):
+    try:
+        docs = Document.query.filter_by(catalog_id=catalog_id).all()
+        del_doc_ids = [i.id for i in docs]
+        delete_doc_in_pg_es(del_doc_ids)
+
+        catalog = Catalog.query.filter_by(id=catalog_id).first()
+        db.session.delete(catalog)
+        db.session.commit()
+
+        catalog_children = Catalog.query.filter_by(parent_id=catalog_id).all()
+        for catalog_child in catalog_children:
+            del_catalog_recursive(catalog_child.id)
+    except Exception as e:
+        print(str(e))
+        pass
 
 
 @blue_print.route('/get_all', methods=['GET'])
