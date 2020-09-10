@@ -242,15 +242,16 @@ def del_doc():
                     else:
                         if doc.status < 2:
                             del_doc_ids.append(doc.id)
-                            db.session.delete(doc)
                         else:
                             status_flag = True
-            db.session.commit()
+
+            delete_doc_in_pg_es(del_doc_ids)
+
             if del_doc_ids:
                 success_msg = ['操作成功']  # 删除消息
             else:
                 success_msg = []
-            if (permission_flag or status_flag):
+            if permission_flag or status_flag:
                 if del_doc_ids:
                     success_msg.append("。其中部分文档")
                 flag_msg = []  # 删除原因
@@ -263,34 +264,6 @@ def del_doc():
 
             msg = ''.join(success_msg)
 
-            es_id_list = []  # 删除doc 对应esdoc的列表
-            url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
-            for doc_id in del_doc_ids:
-
-                header = {"Content-Type": "application/json; charset=UTF-8"}
-                search_json = {
-                    'id': {'type': 'id', 'value': doc_id}
-                }
-                es_id_para = {"search_index": "document", "search_json": search_json}
-
-                search_result = requests.post(url + '/searchId', data=json.dumps(es_id_para), headers=header)
-
-                try:
-                    list_out = search_result.json()['data']['dataList']
-
-                    if list_out:
-                        es_id_list.append(list_out[0])
-                except:
-                    print('eval_error', flush=True)
-            try:
-                if es_id_list:
-                    delete_para = {"delete_index": "document", "id_json": es_id_list}
-                    search_result = requests.post(url + '/deletebyId', data=json.dumps(delete_para), headers=header)
-                    res = success_res()
-                else:
-                    print('No_delete')
-            except:
-                pass
             res = success_res(msg=msg)
         else:
             res = fail_res(msg='无效用户，操作失败')
@@ -299,6 +272,40 @@ def del_doc():
         db.session.rollback()
         res = fail_res()
     return jsonify(res)
+
+
+# 真实删除doc操作
+def delete_doc_in_pg_es(doc_ids):
+    try:
+        for doc_id in doc_ids:
+            doc = Document.query.filter_by(id=doc_id).first()
+            if doc:
+                db.session.delete(doc)
+                db.session.commit()
+
+        es_id_list = []  # 删除doc 对应esdoc的列表
+        url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+        for doc_id in doc_ids:
+            header = {"Content-Type": "application/json; charset=UTF-8"}
+            search_json = {
+                'id': {'type': 'id', 'value': doc_id}
+            }
+            es_id_para = {"search_index": "document", "search_json": search_json}
+
+            search_result = requests.post(url + '/searchId', data=json.dumps(es_id_para), headers=header)
+
+            list_out = search_result.json()['data']['dataList']
+
+            if list_out:
+                es_id_list.append(list_out[0])
+
+        if es_id_list:
+            delete_para = {"delete_index": "document", "id_json": es_id_list}
+            search_result = requests.post(url + '/deletebyId', data=json.dumps(delete_para), headers=header)
+        else:
+            print('No_delete')
+    except:
+        pass
 
 
 # 获取上传历史
@@ -401,7 +408,7 @@ def get_info():
 def get_entity_in_list_pagination():
     try:
         search = request.args.get("search", "")
-        cusotmer_id = request.args.get("cusotmer_id", 0, type=int)
+        customer_id = request.args.get("customer_id", 0, type=int)
         cur_page = request.args.get("cur_page", 1, type=int)
         page_size = request.args.get("page_size", 10, type=int)
 
@@ -413,10 +420,11 @@ def get_entity_in_list_pagination():
             if entitiy:
                 if YC_ROOT_URL:
                     url = YC_ROOT_URL + "/doc/get_entity_in_list_pagination"
-                    resp = requests.get(url=url, params={"cusotmer_id": cusotmer_id,
+                    resp = requests.get(url=url, params={"cusotmer_id": customer_id,
                                                          "entity_id": entitiy.id,
                                                          "cur_page": cur_page,
                                                          "page_size": page_size})
+
 
                     data = json.loads(resp.text).get("rows", [])
                     count = json.loads(resp.text).get("total", 0)
@@ -429,10 +437,12 @@ def get_entity_in_list_pagination():
                             i['path'] = doc.get_full_path() if doc.get_full_path() else '已失效'
                             i['extension'] = doc.category,
                             i['status'] = doc.get_status_name()
+                            i['permission'] = 1 if Permission.judge_power(customer_id, doc.id) else 0
                     res = {"data": data,
                            "page_count": int(count / page_size) + 1,
                            "total_count": count}
     except Exception as e:
+        print(str(e))
         res = {"data": [],
                "page_count": 0,
                "total_count": 0}
@@ -921,7 +931,7 @@ def search_advanced_Pagination():
 def get_latest_upload_file_tagging_url():
     try:
         customer_id = request.args.get("uid", 0, type=int)
-        doc = Document.query.filter_by(create_by=customer_id).first()
+        doc = Document.query.filter_by(create_by=customer_id).order_by(Document.id.desc()).first()
         if doc and customer_id:
             url = YC_TAGGING_PAGE_URL + "?doc_id={0}&uid={1}".format(doc.id, customer_id)
             res = success_res(data=url)
