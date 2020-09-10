@@ -1,7 +1,8 @@
-from . import db
+import os
+
 from sqlalchemy.dialects.postgresql import JSONB
 
-import os
+from . import db
 
 
 class Entity(db.Model):
@@ -107,6 +108,11 @@ class Catalog(db.Model):
     create_by = db.Column(db.Integer)
     create_time = db.Column(db.DateTime)
     tagging_tabs = db.Column(db.JSON)
+
+    @staticmethod
+    def get_name_by_id(catalog_id):
+        catalog = Catalog.query.filter_by(id=catalog_id).first()
+        return catalog.name if catalog else ""
 
     @staticmethod
     def get_full_path(catalog_id):
