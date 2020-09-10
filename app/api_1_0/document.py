@@ -213,11 +213,12 @@ def modify_doc_info():
                 es_id = ''
 
             # 替换name 修改es已有doc
-            key_value_json = {'name': name}
-            inesert_para = {"update_index": 'document',
-                            "data_update_json": [{es_id: key_value_json}]}
+            if name:
+                key_value_json = {'name': name}
+                inesert_para = {"update_index": 'document',
+                                "data_update_json": [{es_id: key_value_json}]}
 
-            requests.post(url + '/updatebyId', data=json.dumps(inesert_para), headers=header)
+                requests.post(url + '/updatebyId', data=json.dumps(inesert_para), headers=header)
 
             res = success_res()
     except Exception as e:
@@ -434,10 +435,9 @@ def get_entity_in_list_pagination():
 
                     print(resp.text, flush=True)
 
-                    data = json.loads(resp.text).get("rows", [])
-                    count = json.loads(resp.text).get("total", 0)
-                    for i in data:
-                        i['create_username'] = '无效用户'
+                    rows = json.loads(resp.text).get("rows", [])
+                    data = []
+                    for i in rows:
                         doc = Document.query.filter_by(id=i["id"]).first()
                         if doc:
                             i['name'] = doc.name
@@ -446,9 +446,10 @@ def get_entity_in_list_pagination():
                             i['extension'] = doc.category,
                             i['status'] = doc.get_status_name()
                             i['permission'] = 1 if Permission.judge_power(customer_id, doc.id) else 0
+                            data.append(i)
                     res = {"data": data,
-                           "page_count": int(count / page_size) + 1,
-                           "total_count": count}
+                           "page_count": int(len(data) / page_size) + 1,
+                           "total_count": len(data)}
     except Exception as e:
         print(str(e))
         res = {"data": [],
@@ -878,8 +879,9 @@ def save_tagging_result():
 
 # 高级搜索分页展示
 @blue_print.route('/search_advanced_pagination', methods=['POST'])
-def search_advanced_Pagination():
+def search_advanced_pagination():
     # doc_id = request.json.get('doc_id', 0)
+    customer_id = request.json.get('customer_id', 0)
     page_size = request.json.get('page_size', 10)
     cur_page = request.json.get('cur_page', 1)
     dates = request.json.get('dates', [])
@@ -922,18 +924,26 @@ def search_advanced_Pagination():
     data_screen = screen_doc(data, places=places, entities=entities, event_categories=event_categories,
                              notes=notes)  # dates=dates,
 
+    data_screen_res = []
     for data in data_screen:
-        if not data["name"]:
-            doc = Document.query.filter_by(id=data['id']).first()
-            if doc:
+        doc = Document.query.filter_by(id=data['id']).first()
+        if doc:
+            if not data["name"]:
                 data["name"] = doc.name if doc else ""
+            data['create_username'] = Customer.get_username_by_id(doc.create_by)
+            data['path'] = doc.get_full_path() if doc.get_full_path() else '已失效'
+            data['extension'] = doc.category,
+            data['status'] = doc.get_status_name()
+            data['permission'] = 1 if Permission.judge_power(customer_id, doc.id) else 0
+            data_screen_res.append(data)
 
-    total_count = len(data_screen)
+
+    total_count = len(data_screen_res)
     if total_count > page_size * cur_page:
-        list_return = data_screen[page_size * (cur_page - 1):page_size * cur_page]
+        list_return = data_screen_res[page_size * (cur_page - 1):page_size * cur_page]
 
     elif total_count < page_size * cur_page and total_count > page_size * (cur_page - 1):
-        list_return = data_screen[page_size * (cur_page - 1):]
+        list_return = data_screen_res[page_size * (cur_page - 1):]
     else:
         list_return = []
 
