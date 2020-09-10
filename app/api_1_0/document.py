@@ -91,6 +91,10 @@ def upload_doc():
                                 "create_time": datetime_now.timestamp(),
                                 "keywords": doc.keywords
                             }]
+                            an_catalog = Catalog.get_ancestorn_catalog(catalog_id)
+                            doc_type_id = an_catalog.id if an_catalog else 0
+                            if doc_type_id:
+                                data_insert_json[0]["doc_type"] = doc_type_id
 
                             url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
                             header = {"Content-Type": "application/json; charset=UTF-8"}
@@ -873,7 +877,7 @@ def save_tagging_result():
 
 
 # 高级搜索分页展示
-@blue_print.route('/search_advanced_Pagination', methods=['POST'])
+@blue_print.route('/search_advanced_pagination', methods=['POST'])
 def search_advanced_Pagination():
     # doc_id = request.json.get('doc_id', 0)
     page_size = request.json.get('page_size', 10)
