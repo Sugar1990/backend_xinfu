@@ -669,7 +669,7 @@ def search_advanced_doc_type():
                         data_by_doc_id[data["doc_type"]] = [data]
 
         data_forms = [
-            {"name": doc_type, "data": data_by_doc_id[doc_type]}
+            {"name": Catalog.get_name_by_id(doc_type), "data": data_by_doc_id[doc_type]}
             for doc_type in data_by_doc_id
         ]
         # 雨辰接口
