@@ -960,7 +960,7 @@ def get_latest_upload_file_tagging_url():
         customer_id = request.args.get("uid", 0, type=int)
         doc = Document.query.filter_by(create_by=customer_id).order_by(Document.id.desc()).first()
         if doc and customer_id:
-            url = YC_TAGGING_PAGE_URL + "?doc_id={0}&uid={1}".format(doc.id, customer_id)
+            url = YC_TAGGING_PAGE_URL + "?doc_id={0}&uid={1}&edit=1".format(doc.id, customer_id)
             res = success_res(data=url)
         else:
             res = fail_res(data="/#")
