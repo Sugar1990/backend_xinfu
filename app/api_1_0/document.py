@@ -821,8 +821,15 @@ def save_tagging_result():
     try:
 
         doc_id = request.json.get('doc_id', 0)
-        dates = request.json.get('dates', [])
-        places = request.json.get('places', [])
+        date = request.json.get('date', [])
+        time_range = request.json.get('time_range', [])
+        time_period = request.json.get('time_period', [])
+        place = request.json.get('place', [])
+        place_direction_distance = request.json.get('place_direction_distance', [])
+        location = request.json.get('location', [])
+        degrees = request.json.get('degrees', [])
+        length = request.json.get('length', [])
+        route = request.json.get('route', [])
         entities = request.json.get('entities', [])
         event_categories = request.json.get('event_categories', [])
         notes = request.json.get('notes', [])
@@ -833,10 +840,25 @@ def save_tagging_result():
         else:
             # 替换相应属性,修改es已有doc,如果传递参数做修改，没有传的参数不做修改
             key_value_json = {}
-            if dates:
-                key_value_json["dates"] = dates
-            if places:
-                key_value_json["places"] = places
+
+            if date:
+                key_value_json["date"] = date
+            if time_range:
+                key_value_json["time_range"] = time_range
+            if time_period:
+                key_value_json["time_period"] = time_period
+            if place:
+                key_value_json["place"] = place
+            if place_direction_distance:
+                key_value_json["place_direction_distance"] = place_direction_distance
+            if location:
+                key_value_json["location"] = location
+            if degrees:
+                key_value_json["degrees"] = degrees
+            if length:
+                key_value_json["length"] = length
+            if route:
+                key_value_json["route"] = route
             if entities:
                 key_value_json["entities"] = entities
             if event_categories:
@@ -849,7 +871,7 @@ def save_tagging_result():
                 key_value_json["keywords"] = keywords
 
             # 获得es对应doc
-            url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+            url = f"http://{ES_SERVER_IP}:{ES_SERVER_PORT}"
             header = {"Content-Type": "application/json; charset=UTF-8"}
             search_json = {
                 "id": {"type": "id", "value": doc_id}
@@ -862,10 +884,8 @@ def save_tagging_result():
             except:
                 es_id = ''
             if es_id:
-                # print(key_value_json, flush=True)
                 inesert_para = {"update_index": 'document',
                                 "data_update_json": [{es_id: key_value_json}]}
-                # print(inesert_para, flush=True)
                 requests.post(url + '/updatebyId', data=json.dumps(inesert_para), headers=header)
                 res = success_res()
             else:
