@@ -2,6 +2,7 @@
 from flask import jsonify, request
 import datetime
 import json
+from sqlalchemy import and_
 
 from . import api_catalog as blue_print
 from ..models import Catalog, Document, Customer, Permission
@@ -235,14 +236,24 @@ def get_catalog_files():
 @blue_print.route('/batch_del_catalog', methods=['POST'])
 def batch_del_catalog():
     del_catalog_list = request.json.get('ids', [])
+    customer_id = request.json.get('customer_id', 0)
 
     try:
+        msg = ""
         for catalog_id in del_catalog_list:
-            catalog = Catalog.query.filter_by(id=catalog_id).first()
-            if catalog:
-                db.session.delete(catalog)
+
+            flag, msg = judge_del_catalog_permission(customer_id, catalog_id)
+            if not flag:
+                msg = msg
+
+            if flag:
+                catalog_res = Catalog.query.filter_by(id=catalog_id).first()
+                del_catalog_recursive(catalog_id)
+
+                db.session.delete(catalog_res)
                 db.session.commit()
-        res = success_res()
+
+        res = success_res(msg=msg)
     except:
         db.session.rollback()
         res = fail_res()
@@ -283,8 +294,9 @@ def modify_catalog():
     try:
         catalog = Catalog.query.filter_by(id=catalog_id).first()
         if catalog:
-            catalog1 = Catalog.query.filter_by(name=name, parent_id=parent_id).first()
-            if catalog1:
+            catalog_same = Catalog.query.filter(
+                and_(Catalog.name == name, Catalog.parent_id == parent_id, Catalog.id != catalog_id)).first()
+            if catalog_same:
                 res = fail_res(msg="相同目录已存在")
             else:
                 if name:

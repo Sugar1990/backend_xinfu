@@ -79,8 +79,8 @@ def get_place_from_base_server(page_size=10, cur_page=1, search=''):
                 "name": i.get('DMMC', ''),
                 "props": {"坐标": get_location(i.get('WZ', ''))[0]},
                 "synonyms": [],
-                "category": '地名',
-                "category_id": 8,
+                "category": PLACE_BASE_NAME,
+                "category_id": EntityCategory.get_category_id(PLACE_BASE_NAME),
             } for i in server_data]
 
             url = PLACE_BASE_SERVER_IP + '/query/count'
@@ -97,8 +97,8 @@ def get_place_from_base_server(page_size=10, cur_page=1, search=''):
                 "name": i.get('DMMC', ''),
                 "props": {"坐标": get_location(i.get('WZ', ''))[0]},
                 "synonyms": [],
-                "category": '地名',
-                "category_id": 8,
+                "category": PLACE_BASE_NAME,
+                "category_id": EntityCategory.get_category_id(PLACE_BASE_NAME),
             } for i in server_data]
 
             total_count = page_size * cur_page

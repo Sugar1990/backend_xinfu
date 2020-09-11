@@ -100,6 +100,7 @@ def pg_insert_es():
         esurl = url + "/pg_insert_es"
         para = {"pg_dict": pg_dict, "es_index_name": pg_table, "es_mapping_dict": es_mapping_dict}
         search_result = requests.post(url=esurl, data=json.dumps(para), headers=header)
+        print(search_result, flush=True)
         res = success_res()
     except Exception as e:
         print(str(e))
@@ -160,6 +161,7 @@ def update_es_doc():
         print(str(e))
         res = fail_res()
     return res
+
 
 @blue_print.route('/pg_insert_es_test', methods=['GET'])
 def pg_insert_test():

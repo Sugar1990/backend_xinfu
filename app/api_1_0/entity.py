@@ -36,7 +36,7 @@ def get_all():
     category_id = request.args.get('category_id', 0, type=int)
 
     category = EntityCategory.query.filter_by(id=category_id, name=PLACE_BASE_NAME, valid=1).first()
-    if category:
+    if category and int(USE_PLACE_SERVER):
         data, total_count = get_place_from_base_server(page_size=page_size, cur_page=current_page, search='')
         page_count = int(total_count / page_size) + 1
 
@@ -714,7 +714,8 @@ def import_entity_excel():
                             yc_res = requests.post(url=url, data=data, headers=header)
 
                     else:
-                        entity = Entity(name=ex_name, props=ex_props, synonyms=ex_synonyms, category_id=category_id, valid=1)
+                        entity = Entity(name=ex_name, props=ex_props, synonyms=ex_synonyms, category_id=category_id,
+                                        valid=1)
                         db.session.add(entity)
                         # db.session.commit()
 
