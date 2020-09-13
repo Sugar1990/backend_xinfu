@@ -1146,7 +1146,7 @@ def screen_doc(data_inppt, time_range=[], degrees=[], entities=[], event_categor
             else:
                 entities_dic = doc["entities"]
 
-            entities_names = [ent["entity"] for ent in doc["entities"]]
+            entities_names = [ent["name"] for ent in doc["entities"]]
 
             entities_values = [ent["category_id"] for ent in doc["entities"]]
 
@@ -1154,7 +1154,7 @@ def screen_doc(data_inppt, time_range=[], degrees=[], entities=[], event_categor
 
             for entity in screen_dict["entities"]["entities"]:
                 key = list(entity.keys())[0]
-                screen_entity_list.append({"entity": key, "category_id": entity[key]})
+                screen_entity_list.append({"name": key, "category_id": entity[key]})
 
             for entity in screen_entity_list:
                 if entity not in entities_dic:
