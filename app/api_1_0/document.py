@@ -806,7 +806,7 @@ def search_advanced_pagination():
     # 其他搜索参数
     entities = request.json.get('entities', [])
     keywords = request.json.get('keywords', [])
-    event_categories = request.json.get('event_categories', {})
+    event_categories = request.json.get('event_categories', [])
     notes = request.json.get('notes', [])
     doc_type = request.json.get('doc_type', 0)
     content = request.json.get('content', "")
@@ -1044,7 +1044,7 @@ def get_es_doc(url, customer_id=0, date=[], time_range=[], time_period=[], place
         search_json["name"] = {"type": "like", "value": content}
         search_json["content"] = {"type": "like", "value": content}
     if date:
-        search_json["date"] = {"type": "multi_term", "value": date}
+        search_json["date"] = {"type": "id", "value": date}
     if time_period:
         search_json["time_period"] = {"type": "multi_term",
                                       "value": time_period}  # {"type": "like", "value": time_period}
@@ -1172,6 +1172,9 @@ def screen_doc(data_inppt, time_range=[], degrees=[], entities=[], event_categor
                         break
             sum_bool += entites_bool
 
+        # screen_dict["event_categories"] 为前端请求[{1:''}]
+        # event_categories_dic[0] 为Es内存储事件类型
+
         if event_categories and doc.get("event_categories", False):
             print(doc.get("event_categories", False))
             if type(doc["event_categories"]).__name__ == "str":
@@ -1179,13 +1182,21 @@ def screen_doc(data_inppt, time_range=[], degrees=[], entities=[], event_categor
             else:
                 event_categories_dic = doc["event_categories"]
 
+                print('screen_dict["event_categories"]', screen_dict["event_categories"])
+
                 event_value = list(screen_dict["event_categories"][0].values())[0]
 
                 event_key = list(screen_dict["event_categories"][0].keys())[0]
 
-            if event_categories_dic[0].get(str(event_key), False):
+            print("event_categories_dic[0]", event_categories_dic[0])
+            print("event_key", event_key)
+
+            es_event_category_ids = [i.get("event_category_id", 0)for i in event_categories_dic]
+            es_event_class_ids = [i.get("event_class_id", 0) for i in event_categories_dic]
+
+            if event_key in es_event_class_ids:
                 if event_value:
-                    if event_value in event_categories_dic[str(event_key)]:
+                    if event_value in es_event_category_ids:
                         event_bool = True
                     else:
                         event_bool = False
