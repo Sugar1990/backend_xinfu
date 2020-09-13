@@ -63,8 +63,8 @@ def pg_insert_es():
             es_mapping_dict = {
                 "id": "id",
                 "name": "ik_keyword",
-                "synonyms": "ik",
-                "props": "ik",
+                # "synonyms": "ik",
+                # "props": "ik",
                 "summary": "ik",
                 "category_id": "id"
             }
