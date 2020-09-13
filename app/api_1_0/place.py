@@ -38,7 +38,6 @@ def get_search_pagination():
             header = {"Content-Type": "application/json"}
             esurl = url + "/searchCustomPagination"
             search_result = requests.post(url=esurl, data=json.dumps(para), headers=header)
-            null = 'None'
             total_count = search_result.json()['data']['totalCount']
             data = [{'id': entity['_source']['id'],
                      'name': entity['_source']['name'],
@@ -47,10 +46,6 @@ def get_search_pagination():
                      'summary': entity['_source']['summary'],
                      'category': EntityCategory.get_category_name(entity['_source']['category_id'])
                      } for entity in search_result.json()['data']['dataList']]
-            for entity in data:
-                entity['props'] = {} if entity['props'] == "None" else eval(
-                    entity['props'])  # json.dumps(entity['props'].replace("\"",""),ensure_ascii= False)
-                entity['synonyms'] = [] if entity['synonyms'] == "None" else eval(entity['synonyms'])
 
         else:
             data, total_count = get_place_from_base_server(page_size=page_size, cur_page=cur_page, search=search)

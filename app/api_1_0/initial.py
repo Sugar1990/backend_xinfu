@@ -78,15 +78,15 @@ def pg_insert_es():
             es_mapping_dict = {
                 "id": "id",
                 "name": "ik_keyword",
-                "content": "ik",
-                "keywords": "ik",
+                # "content": "ik",
+                # "keywords": "ik",
                 "create_time": "time",
-                "dates": "ik",  # 多个时间，
-                "places": "ik",  # 多个地点
-                "entities": "ik",  # [{name: category_id}, …]  # 多个实体，含名称和类型id
-                "event_categories": "ik",  # [{event_class: event_category}, …]
+                # "dates": "ik",  # 多个时间，
+                # "places": "ik",  # 多个地点
+                # "entities": "ik",  # [{name: category_id}, …]  # 多个实体，含名称和类型id
+                # "event_categories": "ik",  # [{event_class: event_category}, …]
                 "doc_type": "id",
-                "notes": "ik"
+                # "notes": "ik"
             }
             pg_dict = {"id": {"col_type": "align", "document": "id"},
                        "name": {"col_type": "", "document": "name"},
@@ -171,8 +171,8 @@ def pg_insert_test():
         es_mapping_dict = {
             "id": "id",
             "name": "ik_keyword",
-            "synonyms": "ik",
-            "props": "ik",
+            #"synonyms": "ik",
+            #"props": "ik",
             "summary": "ik",
             "category_id": "id"
         }
@@ -182,38 +182,37 @@ def pg_insert_test():
                    "props": {"col_type": "", "entity": "props"},
                    "category_id": {"col_type": "", "entity": "category_id"},
                    "summary": {"col_type": "", "entity": "summary"}}
-    elif pg_table == 'document1':
+    elif pg_table != 'entity':
         es_mapping_dict = {
             "id": "id",
             "name": "ik_keyword",
-            "content": "ik",
-            "keywords": "ik",
             "create_time": "time",
-            "dates": "ik",
-            "places": "ik",
-            "entities": "ik",
-            "event_categories": "ik",  # 存储示例 [{"event_class":3,"event_category_id":1}]
-            "doc_type": "id",
-            "notes": "ik"
-        }
-        pg_dict = {"id": {"col_type": "align", "document1": "id"},
-                   "name": {"col_type": "", "document1": "name"},
-                   "content": {"col_type": "", "document1": "content"},
-                   "keywords": {"col_type": "", "document1": "keywords"},
-                   "create_time": {"col_type": "", "document1": "create_time"},
-                   "dates": {"col_type": "", "document1": "dates"},
-                   "places": {"col_type": "", "document1": "places"},
-                   "entities": {"col_type": "", "document1": "entities"},
-                   "event_categories": {"col_type": "", "document1": "event_categories"},
-                   "doc_type": {"col_type": "", "document1": "doc_type"},
-                   "notes": {"col_type": "", "document1": "notes"}
 
+        }
+        pg_dict = {"id": {"col_type": "align", pg_table: "id"},
+                   "name": {"col_type": "", pg_table: "name"},
+                   "content": {"col_type": "", pg_table: "content"},
+                   "keywords": {"col_type": "", pg_table: "keywords"},
+                   "create_time": {"col_type": "", pg_table: "create_time"},
+                   "entities": {"col_type": "", pg_table: "entities"},
+                   "event_categories": {"col_type": "", pg_table: "event_categories"},
+                   "doc_type": {"col_type": "", pg_table: "doc_type"},
+                   "place": {"col_type": "", pg_table: "place"},
+                   "place_direction_distance": {"col_type": "", pg_table: "place_direction_distance"},
+                   "location": {"col_type": "", pg_table: "location"},
+                   "degrees": {"col_type": "", pg_table: "degrees"},
+                   "length": {"col_type": "", pg_table: "length"},
+                   "route": {"col_type": "", pg_table: "route"},
+                   "notes": {"col_type": "", pg_table: "notes"},
+                   "date": {"col_type": "", pg_table: "date"},
+                   "time_range": {"col_type": "", pg_table: "time_range"},
+                   "time_period": {"col_type": "", pg_table: "time_period"},
                    }
 
     url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
     header = {"Content-Type": "application/json"}
     esurl = url + "/pg_insert_es"
-    para = {"pg_dict": pg_dict, "es_index_name": pg_table, "es_mapping_dict": es_mapping_dict}
+    para = {"pg_dict": pg_dict, "es_index_name": "document1", "es_mapping_dict": es_mapping_dict}
     print(para, flush=True)
     search_result = requests.post(url=esurl, data=json.dumps(para), headers=header)
     print(search_result, flush=True)

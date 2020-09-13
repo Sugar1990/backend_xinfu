@@ -542,47 +542,64 @@ def get_search_panigation():
 # 高级搜索
 @blue_print.route('/search_advanced', methods=['POST'])
 def search_advanced():
-    # doc_id = request.json.get('doc_id', 0)
-    dates = request.json.get('dates', [])
-    places = request.json.get('places', [])
+    start_date = request.json.get('start_date', "")
+    end_date = request.json.get('end_date', "")
+    # 时间参数
+    date = request.json.get('date', [])
+    time_range = request.json.get('time_range', [])
+    time_period = request.json.get('time_period', [])
+    # 地点参数
+    place = request.json.get('place', [])
+    place_direction_distance = request.json.get('place_direction_distance', [])
+    location = request.json.get('location', [])
+    degrees = request.json.get('degrees', [])
+    length = request.json.get('length', [])
+    route = request.json.get('route', [])
+
+    dates = request.json.get('dates', {})
+
+    if dates.get("date_type", False):
+        date_type = dates["date_type"]
+        date_value = dates["value"]
+        if date_type == 'date':
+            date = date_value
+        elif date_type == 'time_range':
+            time_range = date_value
+        elif date_type == 'time_period':
+            time_period = date_value
+
+    places = request.json.get('places', {})
+    if places.get("place_type", False):
+        place_type = places["place_type"]
+        place_value = places["value"]
+        if place_type == 'place':
+            place = place_value
+        elif place_type == 'place_direction_distance':
+            place_direction_distance = place_value
+        elif place_type == 'location':
+            location = place_value
+        elif place_type == 'degrees':
+            degrees = place_value
+        elif place_type == 'length':
+            length = place_value
+        elif place_type == 'route':
+            route = place_value
+    # 搜索内容无关参数
+    customer_id = request.json.get('customer_id', 0)
+
+    # 其他搜索参数
     entities = request.json.get('entities', [])
     keywords = request.json.get('keywords', [])
     event_categories = request.json.get('event_categories', {})
     notes = request.json.get('notes', [])
-    doc_type = request.json.get('doc_type', "")
+    doc_type = request.json.get('doc_type', 0)
     content = request.json.get('content', "")
-    start_date = request.json.get('start_date', "")
-    end_date = request.json.get('end_date', "")
     url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
-
-    search_json = {}
-    if content:
-        search_json["name"] = {"type": "text", "value": content, "boost": 3}
-        search_json["content"] = {"type": "text", "value": content, "boost": 1}
-    if dates:
-        if type(dates).__name__ == 'str':
-            dates = dates.split(' - ')
-        search_json["dates"] = {"type": "text", "value": ''.join(dates), "boost": 1}
-    if keywords:
-        search_json["keywords'"] = {"type": "text", "value": ''.join(keywords), "boost": 1}
-    if places:
-        if type(places).__name__ == 'str':
-            places = places.split(' ')
-
-            # search_json["places"] = {"type": "text", "value": ''.join(places), "boost": 1}
-    if doc_type:
-        search_json["doc_type"] = {"type": "id", "value": doc_type}
-    if search_json:
-        search_json["sort"] = {"type": "normal", "sort": "create_time", "asc_desc": "desc"}
-
-    # 直接es查询
-    para = {"search_index": 'document', "search_json": search_json}
-    header = {"Content-Type": "application/json"}
-    esurl = url + "/searchCustom"
-    search_result = requests.post(url=esurl, data=json.dumps(para), headers=header)
-    data = [doc['_source'] for doc in search_result.json()['data']['dataList']]
-    data_screen = screen_doc(data, places=places, entities=entities, event_categories=event_categories,
-                             notes=notes)
+    data_screen = get_es_doc(url, customer_id=customer_id, date=date, time_range=time_range, time_period=time_period,
+                             place=place, place_direction_distance=place_direction_distance, location=location,
+                             degrees=degrees, length=length, route=route, entities=entities, keywords=keywords,
+                             event_categories=event_categories,
+                             notes=notes, doc_type=doc_type, content=content)
 
     # 组装ids，和结构化数据
     ids = []
@@ -602,7 +619,6 @@ def search_advanced():
         header = {"Content-Type": "application/json; charset=UTF-8"}
         url = YC_ROOT_URL + "/event/listByDocIds"
         search_result = requests.post(url, data=json.dumps(body), headers=header)
-        # print("/event/listByDocIds", search_result.text)
         final_data = {
             "doc": data_screen,
             "event_list": search_result.json()['data']
@@ -614,47 +630,69 @@ def search_advanced():
 @blue_print.route('/search_advanced_doc_type', methods=['POST'])
 def search_advanced_doc_type():
     try:
-        # doc_id = request.json.get('doc_id', 0)
-        dates = request.json.get('dates', [])
-        places = request.json.get('places', [])
+
+        start_date = request.json.get('start_date', "")
+        end_date = request.json.get('end_date', "")
+        #时间参数
+        date = request.json.get('date', [])
+        time_range = request.json.get('time_range', [])
+        time_period = request.json.get('time_period', [])
+        # 地点参数
+        place = request.json.get('place', [])
+        place_direction_distance = request.json.get('place_direction_distance', [])
+        location = request.json.get('location', [])
+        degrees = request.json.get('degrees', [])
+        length = request.json.get('length', [])
+        route = request.json.get('route', [])
+
+        dates = request.json.get('dates', {})
+
+        if dates.get("date_type", False):
+            date_type = dates["date_type"]
+            date_value = dates["value"]
+            if date_type == 'date':
+                date = date_value
+            elif date_type == 'time_range':
+                time_range = date_value
+            elif date_type == 'time_period':
+                time_period = date_value
+
+        places = request.json.get('places', {})
+        if places.get("place_type", False):
+            place_type = places["place_type"]
+            place_value = places["value"]
+            if place_type == 'place':
+                place = place_value
+            elif place_type == 'place_direction_distance':
+                place_direction_distance = place_value
+            elif place_type == 'location':
+                location = place_value
+            elif place_type == 'degrees':
+                degrees = place_value
+            elif place_type == 'length':
+                length = place_value
+            elif place_type == 'route':
+                route = place_value
+
+        # 搜索内容无关参数
+        customer_id = request.json.get('customer_id', 0)
+        page_size = request.json.get('page_size',0)
+        cur_page = request.json.get('cur_page',0)
+
+        # 其他搜索参数
         entities = request.json.get('entities', [])
         keywords = request.json.get('keywords', [])
         event_categories = request.json.get('event_categories', {})
         notes = request.json.get('notes', [])
-        doc_type = request.json.get('doc_type', "")
+        doc_type = request.json.get('doc_type', 0)
         content = request.json.get('content', "")
-        start_date = request.json.get('start_date', "")
-        end_date = request.json.get('end_date', "")
         url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
-
-        search_json = {}
-        if content:
-            search_json["name"] = {"type": "text", "value": content, "boost": 3}
-            search_json["content"] = {"type": "text", "value": content, "boost": 1}
-        if dates:
-            if type(dates).__name__ == 'str':
-                dates = dates.split(' - ')
-            search_json["dates"] = {"type": "text", "value": ''.join(dates), "boost": 1}
-        if keywords:
-            search_json["keywords'"] = {"type": "text", "value": ''.join(keywords), "boost": 1}
-        if places:
-            if type(places).__name__ == 'str':
-                places = places.split(' ')
-
-                # search_json["places"] = {"type": "text", "value": ''.join(places), "boost": 1}
-        if doc_type:
-            search_json["doc_type"] = {"type": "id", "value": doc_type}
-        if search_json:
-            search_json["sort"] = {"type": "normal", "sort": "create_time", "asc_desc": "desc"}
-
-        # 直接es查询
-        para = {"search_index": 'document', "search_json": search_json}
-        header = {"Content-Type": "application/json"}
-        esurl = url + "/searchCustom"
-        search_result = requests.post(url=esurl, data=json.dumps(para), headers=header)
-        data = [doc['_source'] for doc in search_result.json()['data']['dataList']]
-        data_screen = screen_doc(data, places=places, entities=entities, event_categories=event_categories,
-                                 notes=notes)
+        data_screen = get_es_doc(url, customer_id=customer_id, date=date, time_range=time_range,
+                                 time_period=time_period,
+                                 place=place, place_direction_distance=place_direction_distance, location=location,
+                                 degrees=degrees, length=length, route=route, entities=entities, keywords=keywords,
+                                 event_categories=event_categories,
+                                 notes=notes, doc_type=doc_type, content=content)
 
         # 组装ids，和结构化数据
         ids = []
@@ -686,6 +724,10 @@ def search_advanced_doc_type():
                 body["startTime"] = start_date
             if end_date:
                 body["endTime"] = end_date
+            if cur_page:
+                body["page"] = cur_page
+            if page_size:
+                body["size"] = page_size
             header = {"Content-Type": "application/json; charset=UTF-8"}
             url = YC_ROOT_URL + "/event/listByDocIds"
             print(url, body, flush=True)
@@ -702,117 +744,185 @@ def search_advanced_doc_type():
     return jsonify(res)  # doc:原来格式数据 event_list:事件数据
 
 
-def screen_doc(data_inppt, dates=[], places=[], entities=[], event_categories=[], notes=[]):
-    data_output = []
-    screen_dict = {}
-    if dates:
-        screen_dict["dates"] = dates
-    if places:
-        screen_dict["places"] = places
-    if entities:
-        screen_dict["entities"] = {}
-        screen_dict["entities"]["entities"] = []
-        screen_dict["entities"]["name"] = []
-        screen_dict["entities"]["value"] = []
-        for ent in entities:
-            if ent["entity"] and ent["category_id"]:
-                screen_dict["entities"]["entities"].append({ent["entity"]: ent["category_id"]})
-            elif ent["entity"] and not ent["category_id"]:
-                screen_dict["entities"]["name"].append(ent["entity"])
-            elif not ent["entity"] and ent["category_id"]:
-                screen_dict["entities"]["value"].append(ent["category_id"])
 
-    if event_categories:
-        screen_dict["event_categories"] = []
-        for eve in event_categories:
-            screen_dict["event_categories"].append({eve["event_class"]: eve["event_category_id"]})
-    if notes:
-        screen_dict["notes"] = notes
-    true_value = len(screen_dict)
-    for doc in data_inppt:
-        sum_bool = 0
-        if dates and doc.get("dates", False):
-            if type(doc["dates"]).__name__ == "str":
-                dates_dic = eval(doc["dates"])
-            else:
-                dates_dic = doc["dates"]
-            date_bool = bool([date for date in dates_dic if date in screen_dict["dates"]])
-            sum_bool += date_bool
-        else:
-            date_bool = False
-        if places and doc.get("places", False):
-            if type(doc["places"]).__name__ == "str":
-                places_dic = eval(doc["places"])
-            else:
-                places_dic = doc["places"]
-            place_bool = bool([place for place in places_dic if place in screen_dict["places"]])
-            sum_bool += place_bool
-        else:
-            place_bool = False
-        if notes and doc.get("notes", False):
-            if type(doc["notes"]).__name__ == "str":
-                notes_dic = eval(doc["notes"])
-            else:
-                notes_dic = doc["notes"]
-            note_bool = bool([note for note in notes_dic if note in screen_dict["notes"]])
-            sum_bool += note_bool
-        else:
-            note_bool = False
+# 高级搜索分页展示
+@blue_print.route('/search_advanced_pagination', methods=['POST'])
+def search_advanced_pagination():
+    # 时间参数
+    date = request.json.get('date', [])
+    time_range = request.json.get('time_range', [])
+    time_period = request.json.get('time_period', [])
+    # 地点参数
+    place = request.json.get('place', [])
+    place_direction_distance = request.json.get('place_direction_distance', [])
+    location = request.json.get('location', [])
+    degrees = request.json.get('degrees', [])
+    length = request.json.get('length', [])
+    route = request.json.get('route', [])
 
-        if entities and doc.get("entities", False):
-            entites_bool = True
-            if type(doc["entities"]).__name__ == "str":
-                entities_dic = [{ent: eval(doc["entities"])[ent]}
-                                for ent in eval(doc["entities"])]
-            else:
-                entities_dic = [{ent: doc["entities"][ent]}
-                                for ent in doc["entities"]]
+    dates = request.json.get('dates', {})
 
-            entities_names = [ent for ent in eval(doc["entities"])]
+    if dates.get("date_type", False):
+        date_type = dates["date_type"]
+        date_value = dates["value"]
+        if date_type == 'date':
+            date = date_value
+        elif date_type == 'time_range':
+            time_range = date_value
+        elif date_type == 'time_period':
+            time_period = date_value
 
-            entities_values = list(eval(doc["entities"]).values())
+    places = request.json.get('places', {})
+    if places.get("place_type", False):
+        place_type = places["place_type"]
+        place_value = places["value"]
+        if place_type == 'place':
+            place = place_value
+        elif place_type == 'place_direction_distance':
+            place_direction_distance = place_value
+        elif place_type == 'location':
+            location = place_value
+        elif place_type == 'degrees':
+            degrees = place_value
+        elif place_type == 'length':
+            length = place_value
+        elif place_type == 'route':
+            route = place_value
+    # 搜索内容无关参数
+    customer_id = request.json.get('customer_id', 0)
+    page_size = request.json.get('page_size', 10)
+    cur_page = request.json.get('cur_page', 1)
 
-            for entity in screen_dict["entities"]["entities"]:
-                if entity not in entities_dic:
-                    entites_bool = False
-                    break
-            if entites_bool and screen_dict["entities"]["name"]:
-                for entity_name in screen_dict["entities"]["name"]:
-                    if entity_name not in entities_names:
-                        entites_bool = False
-                        break
-            if entites_bool and screen_dict["entities"]["value"]:
-                for entity_value in screen_dict["entities"]["value"]:
-                    if entity_value not in entities_values:
-                        entites_bool = False
-                        break
+    # 其他搜索参数
+    entities = request.json.get('entities', [])
+    keywords = request.json.get('keywords', [])
+    event_categories = request.json.get('event_categories', {})
+    notes = request.json.get('notes', [])
+    doc_type = request.json.get('doc_type', 0)
+    content = request.json.get('content', "")
+    url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+    data_screen = get_es_doc(url, customer_id=customer_id, date=date, time_range=time_range, time_period=time_period,
+                             place=place, place_direction_distance=place_direction_distance, location=location,
+                             degrees=degrees, length=length, route=route, entities=entities, keywords=keywords,
+                             event_categories=event_categories,
+                             notes=notes, doc_type=doc_type, content=content)
 
-            sum_bool += entites_bool
+    data_screen_res = []
+    for data in data_screen:
+        doc = Document.query.filter_by(id=data['id']).first()
+        if doc:
+            if not data["name"]:
+                data["name"] = doc.name if doc else ""
+            data['create_username'] = Customer.get_username_by_id(doc.create_by)
+            data['path'] = doc.get_full_path() if doc.get_full_path() else '已失效'
+            data['extension'] = doc.category,
+            data['status'] = doc.get_status_name()
+            data['permission'] = 1 if Permission.judge_power(customer_id, doc.id) else 0
+            data_screen_res.append(data)
+    total_count = len(data_screen_res)
+    if total_count > page_size * cur_page:
+        list_return = data_screen_res[page_size * (cur_page - 1):page_size * cur_page]
 
-        if event_categories and doc.get("event_categories", False):
-            if type(doc["event_categories"]).__name__ == "str":
-                event_categories_dic = eval(doc["event_categories"])
-            else:
-                event_categories_dic = doc["event_categories"]
+    elif total_count < page_size * cur_page and total_count > page_size * (cur_page - 1):
+        list_return = data_screen_res[page_size * (cur_page - 1):]
+    else:
+        list_return = []
 
-            event_value = list(screen_dict["event_categories"][0].values())[0]
+    res = {'data': list_return,
+           'page_count': int(total_count / page_size) + 1,
+           'total_count': total_count}
+    return jsonify(res)
 
-            event_key = list(screen_dict["event_categories"][0].keys())[0]
 
-            if event_categories_dic.get(event_key, False):
-                if event_value:
-                    if event_value in event_categories_dic[str(event_key)]:
-                        event_bool = True
-                    else:
-                        event_bool = False
-                else:
-                    event_bool = True
-            else:
-                event_bool = False
-            sum_bool += event_bool
-        if sum_bool == true_value:
-            data_output.append(doc)
-    return data_output
+# 高级搜索分页ceshi
+@blue_print.route('/search_advanced_test', methods=['POST'])
+def search_advanced_test():
+
+    # 时间参数
+    date = request.json.get('date', [])
+    time_range = request.json.get('time_range', [])
+    time_period = request.json.get('time_period', [])
+    # 地点参数
+    place = request.json.get('place', [])
+    place_direction_distance = request.json.get('place_direction_distance', [])
+    location = request.json.get('location', [])
+    degrees = request.json.get('degrees', [])
+    length = request.json.get('length', [])
+    route = request.json.get('route', [])
+
+    dates = request.json.get('dates', {})
+
+    if dates.get("date_type",False):
+        date_type = dates["date_type"]
+        date_value = dates["value"]
+        if date_type =='date':
+            date = date_value
+        elif date_type == 'time_range':
+            time_range = date_value
+        elif date_type == 'time_period':
+            time_period = date_value
+
+    places = request.json.get('places', {})
+    if places.get("place_type",False):
+        place_type = places["place_type"]
+        place_value = places["value"]
+        if place_type =='place':
+            place = place_value
+        elif place_type =='place_direction_distance':
+            place_direction_distance = place_value
+        elif place_type =='location':
+            location = place_value
+        elif place_type =='degrees':
+            degrees = place_value
+        elif place_type =='length':
+            length = place_value
+        elif place_type =='route':
+            route = place_value
+    #搜索内容无关参数
+    customer_id = request.json.get('customer_id', 0)
+    page_size = request.json.get('page_size', 10)
+    cur_page = request.json.get('cur_page', 1)
+
+    #其他搜索参数
+    entities = request.json.get('entities', [])
+    keywords = request.json.get('keywords', [])
+    event_categories = request.json.get('event_categories', {})
+    notes = request.json.get('notes', [])
+    doc_type = request.json.get('doc_type', 0)
+    content = request.json.get('content', "")
+    url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+    data_screen = get_es_doc(url, customer_id=customer_id, date=date, time_range=time_range, time_period=time_period,
+                              place=place, place_direction_distance=place_direction_distance, location=location,
+                              degrees=degrees, length=length, route=route, entities=entities, keywords=keywords, event_categories=event_categories,
+                              notes=notes, doc_type=doc_type, content=content)
+
+    data_screen_res = []
+    for data in data_screen:
+        doc = Document.query.filter_by(id=data['id']).first()
+        if doc:
+            if not data["name"]:
+                data["name"] = doc.name if doc else ""
+            data['create_username'] = Customer.get_username_by_id(doc.create_by)
+            data['path'] = doc.get_full_path() if doc.get_full_path() else '已失效'
+            data['extension'] = doc.category,
+            data['status'] = doc.get_status_name()
+            data['permission'] = 1 if Permission.judge_power(customer_id, doc.id) else 0
+            data_screen_res.append(data)
+
+    data_screen_res = data_screen
+    total_count = len(data_screen_res)
+    if total_count > page_size * cur_page:
+        list_return = data_screen_res[page_size * (cur_page - 1):page_size * cur_page]
+
+    elif total_count < page_size * cur_page and total_count > page_size * (cur_page - 1):
+        list_return = data_screen_res[page_size * (cur_page - 1):]
+    else:
+        list_return = []
+
+    res = {'data': list_return,
+           'page_count': int(total_count / page_size) + 1,
+           'total_count': total_count}
+    return jsonify(res)
 
 
 # 标记结果储存
@@ -897,82 +1007,6 @@ def save_tagging_result():
     return jsonify(res)
 
 
-# 高级搜索分页展示
-@blue_print.route('/search_advanced_pagination', methods=['POST'])
-def search_advanced_pagination():
-    # doc_id = request.json.get('doc_id', 0)
-    customer_id = request.json.get('customer_id', 0)
-    page_size = request.json.get('page_size', 10)
-    cur_page = request.json.get('cur_page', 1)
-    dates = request.json.get('dates', [])
-    places = request.json.get('places', [])
-    entities = request.json.get('entities', [])
-    keywords = request.json.get('keywords', [])
-    event_categories = request.json.get('event_categories', {})
-    notes = request.json.get('notes', [])
-    doc_type = request.json.get('doc_type', 0)
-    content = request.json.get('content', "")
-    url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
-
-    search_json = {}
-    if content:
-        search_json["name"] = {"type": "text", "value": content, "boost": 3}
-        search_json["content"] = {"type": "text", "value": content, "boost": 1}
-    if dates:
-        if type(dates).__name__ == 'str':
-            dates = dates.split(' - ')
-        search_json["dates"] = {"type": "text", "value": ''.join(dates), "boost": 1}
-    if keywords:
-        search_json["keywords'"] = {"type": "text", "value": ''.join(keywords), "boost": 1}
-    if places:
-        if type(places).__name__ == 'str':
-            places = places.split(' ')
-
-            # search_json["places"] = {"type": "text", "value": ''.join(places), "boost": 1}
-    if doc_type:
-        search_json["doc_type"] = {"type": "id", "value": doc_type}
-    if search_json:
-        search_json["sort"] = {"type": "normal", "sort": "create_time", "asc_desc": "desc"}
-
-    # 直接es查询
-    para = {"search_index": 'document', "search_json": search_json}
-    header = {"Content-Type": "application/json"}
-    esurl = url + "/searchCustom"
-    search_result = requests.post(url=esurl, data=json.dumps(para), headers=header)
-    # print(search_result['data']['dataList'][0]['_source'], flush=True)
-    data = [doc['_source'] for doc in search_result.json()['data']['dataList']]
-    data_screen = screen_doc(data, places=places, entities=entities, event_categories=event_categories,
-                             notes=notes)  # dates=dates,
-
-    data_screen_res = []
-    for data in data_screen:
-        doc = Document.query.filter_by(id=data['id']).first()
-        if doc:
-            if not data["name"]:
-                data["name"] = doc.name if doc else ""
-            data['create_username'] = Customer.get_username_by_id(doc.create_by)
-            data['path'] = doc.get_full_path() if doc.get_full_path() else '已失效'
-            data['extension'] = doc.category,
-            data['status'] = doc.get_status_name()
-            data['permission'] = 1 if Permission.judge_power(customer_id, doc.id) else 0
-            data_screen_res.append(data)
-
-
-    total_count = len(data_screen_res)
-    if total_count > page_size * cur_page:
-        list_return = data_screen_res[page_size * (cur_page - 1):page_size * cur_page]
-
-    elif total_count < page_size * cur_page and total_count > page_size * (cur_page - 1):
-        list_return = data_screen_res[page_size * (cur_page - 1):]
-    else:
-        list_return = []
-
-    res = {'data': list_return,
-           'page_count': int(total_count / page_size) + 1,
-           'total_count': total_count}
-    return jsonify(res)
-
-
 # 获取最新上传文档的标注页面地址
 @blue_print.route('/get_latest_upload_file_tagging_url', methods=['GET'])
 def get_latest_upload_file_tagging_url():
@@ -988,6 +1022,168 @@ def get_latest_upload_file_tagging_url():
         res = fail_res(data="/#")
     return res
 
+
+
+# ——————————————————————— 文档抽取、删选 —————————————————————————————
+
+
+def get_es_doc(url, customer_id=0, date=[], time_range=[], time_period=[], place=[], place_direction_distance=[],
+               location=[], degrees=[], length=[], route=[], entities=[], keywords=[], event_categories={}, notes=[],
+               doc_type=0, content=""):
+    search_json = {}
+    if content:
+        search_json["name"] = {"type": "like", "value": content}
+        search_json["content"] = {"type": "like", "value": content}
+    if date:
+        search_json["date"] = {"type": "multi_term", "value": date}
+    if time_period:
+        search_json["time_period"] = {"type": "multi_term",
+                                      "value": time_period}  # {"type": "like", "value": time_period}
+    if place:
+        search_json["place"] = {"type": "multi_term", "value": place}
+
+    if place_direction_distance:  # need analysis
+        search_json["place_direction_distance.place"] = {"type": "term", "value": place_direction_distance[0]["place"]}
+        search_json["place_direction_distance.direction"] = {"type": "match",
+                                                             "value": place_direction_distance[0]["direction"]}
+        search_json["place_direction_distance.distance"] = {"type": "match",
+                                                            "value": place_direction_distance[0]["distance"]}
+    if location:  # need analysis
+        search_json["location.lat"] = {"type": "match", "value": location[0]["lat"]}
+        search_json["location.lon"] = {"type": "match", "value": location[0]["lon"]}
+    if length:
+        search_json["length"] = {"type": "multi_term", "value": length}
+    if keywords:
+        search_json["keywords"] = {"type": "multi_term", "value": keywords}
+    if route:
+        search_json["route"] = {"type": "multi_term", "value": route}
+    if notes:
+        search_json["notes"] = {"type": "multi_term", "value": notes}
+    if doc_type:
+        search_json["doc_type"] = {"type": "id", "value": doc_type}
+    if search_json:
+        search_json["sort"] = {"type": "normal", "sort": "create_time", "asc_desc": "desc"}
+
+    # 直接es查询
+    para = {"search_index": 'document', "search_json": search_json}
+    header = {"Content-Type": "application/json"}
+    esurl = url + "/searchCustom"
+    search_result = requests.post(url=esurl, data=json.dumps(para), headers=header)
+    data = [doc['_source'] for doc in search_result.json()['data']['dataList']]
+    data_screen = screen_doc(data, time_range=time_range, degrees=degrees, entities=entities,
+                             event_categories=event_categories)
+    return data_screen
+
+def screen_doc(data_inppt, time_range=[], degrees=[], entities=[], event_categories=[]):
+    data_output = []
+    screen_dict = {}
+    if time_range:
+        screen_dict["time_range"] =time_range
+    if degrees:
+        screen_dict["degrees"] = degrees
+    if entities:
+        screen_dict["entities"] = {}
+        screen_dict["entities"]["entities"] = []
+        screen_dict["entities"]["name"] = []
+        screen_dict["entities"]["value"] = []
+        for ent in entities:
+            if ent["entity"] and ent["category_id"]:
+                screen_dict["entities"]["entities"].append({ent["entity"]: ent["category_id"]})
+            elif ent["entity"] and not ent["category_id"]:
+                screen_dict["entities"]["name"].append(ent["entity"])
+            elif not ent["entity"] and ent["category_id"]:
+                screen_dict["entities"]["value"].append(ent["category_id"])
+    if event_categories:
+        screen_dict["event_categories"] = []
+        for eve in event_categories:
+            screen_dict["event_categories"].append({eve["event_class"]: eve["event_category_id"]})
+
+    true_value = len(screen_dict)
+
+    for doc in data_inppt:
+        sum_bool = 0
+        if time_range and doc.get("time_range", False):
+
+            time_range_bool =True
+            try:
+                time_range_list = [eval(doc["time_range"])]
+            except:
+                time_range_list = doc["time_range"]
+
+            for range in time_range_list:
+                print(range,screen_dict["time_range"],flush= True)
+                if range[0]["end_time"] < screen_dict["time_range"][0]["start_time"] or range[0]["start_time"] > screen_dict["time_range"][0]["end_time"]:
+                    time_range_bool =False
+            sum_bool += time_range_bool
+
+        if degrees and doc.get("degrees", False):
+            degrees_list = doc["degrees"]
+            degrees_bool = True
+            # degrees_bool =[degree for degree in screen_dict["degrees"] if degree not in degrees_list]
+            for deg in screen_dict["degrees"]:
+                if deg not in degrees_list:
+                    degrees_bool = False
+                break
+            sum_bool += degrees_bool
+
+        if entities and doc.get("entities", False):
+            entites_bool = True
+            if type(doc["entities"]).__name__ == "str":
+                entities_dic = [{ent: eval(doc["entities"])[ent]}
+                                for ent in eval(doc["entities"])]
+            else:
+                entities_dic = doc["entities"]
+
+            entities_names = [ent for ent in doc["entities"]]
+
+            entities_values = [list(ent.values())[0] for ent in doc["entities"]]
+
+            for entity in screen_dict["entities"]["entities"]:
+                if entity not in entities_dic:
+                    entites_bool = False
+                    break
+            if entites_bool and screen_dict["entities"]["name"]:
+                for entity_name in screen_dict["entities"]["name"]:
+                    if entity_name not in entities_names:
+                        entites_bool = False
+                        break
+            if entites_bool and screen_dict["entities"]["value"]:
+                for entity_value in screen_dict["entities"]["value"]:
+                    if entity_value not in entities_values:
+                        entites_bool = False
+                        break
+            sum_bool += entites_bool
+
+        if event_categories and doc.get("event_categories", False):
+            print(doc.get("event_categories", False))
+            if type(doc["event_categories"]).__name__ == "str":
+                event_categories_dic = eval(doc["event_categories"])
+            else:
+                event_categories_dic = doc["event_categories"]
+
+                event_value = list(screen_dict["event_categories"][0].values())[0]
+
+                event_key = list(screen_dict["event_categories"][0].keys())[0]
+
+            if event_categories_dic.get(str(event_key), False):
+                if event_value:
+                    if event_value in event_categories_dic[str(event_key)]:
+                        event_bool = True
+                    else:
+                        event_bool = False
+                else:
+                    event_bool = True
+            else:
+                event_bool = False
+            sum_bool += event_bool
+
+        if sum_bool == true_value:
+            data_output.append(doc)
+
+    return data_output
+
+
+# ——————————————————————— 文档抽取、删选 —————————————————————————————
 
 # ——————————————————————— 提取关键词 —————————————————————————————
 def get_lexicon(document):
