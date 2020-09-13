@@ -1045,13 +1045,13 @@ def get_es_doc(url, customer_id=0, date=[], time_range=[], time_period=[], place
     if place_direction_distance:  # need analysis
         place_direction_distance = place_direction_distance[0]
         search_json["place_direction_distance.place"] = {"type": "term", "value": place_direction_distance["place"]}
-        search_json["place_direction_distance.direction"] = {"type": "match",
+        search_json["place_direction_distance.direction"] = {"type": "term",
                                                              "value": place_direction_distance["direction"]}
-        search_json["place_direction_distance.distance"] = {"type": "match",
+        search_json["place_direction_distance.distance"] = {"type": "term",
                                                             "value": place_direction_distance["distance"]}
     if location:  # need analysis
-        search_json["location.lat"] = {"type": "match", "value": location[0]["lat"]}
-        search_json["location.lon"] = {"type": "match", "value": location[0]["lon"]}
+        search_json["location.lat"] = {"type": "term", "value": location[0]["lat"]}
+        search_json["location.lon"] = {"type": "term", "value": location[0]["lon"]}
     if length:
         search_json["length"] = {"type": "multi_term", "value": length}
     if keywords:
