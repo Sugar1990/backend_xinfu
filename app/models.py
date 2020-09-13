@@ -134,7 +134,7 @@ class Catalog(db.Model):
                     if not parent_catalog.parent_id:
                         return parent_catalog
                     else:
-                        return Catalog.get_ancestorn_catalog(parent_catalog)
+                        return Catalog.get_ancestorn_catalog(parent_catalog.id)
                 else:
                     return None
 
