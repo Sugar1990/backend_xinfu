@@ -1059,7 +1059,7 @@ def get_es_doc(url, customer_id=0, date=[], time_range=[], time_period=[], place
     if route:
         search_json["route"] = {"type": "multi_term", "value": route}
     if notes:
-        search_json["notes"] = {"type": "multi_term", "value": notes}
+        search_json["notes"] = {"type": "phrase", "value": notes[0]}
     if doc_type:
         search_json["doc_type"] = {"type": "id", "value": doc_type}
     if search_json:
@@ -1137,7 +1137,7 @@ def screen_doc(data_inppt, time_range=[], degrees=[], entities=[], event_categor
             else:
                 entities_dic = doc["entities"]
 
-            entities_names = [ent for ent in doc["entities"]]
+            entities_names = [list(ent.keys())[0] for ent in doc["entities"]]
 
             entities_values = [list(ent.values())[0] for ent in doc["entities"]]
 
@@ -1168,7 +1168,7 @@ def screen_doc(data_inppt, time_range=[], degrees=[], entities=[], event_categor
 
                 event_key = list(screen_dict["event_categories"][0].keys())[0]
 
-            if event_categories_dic.get(str(event_key), False):
+            if event_categories_dic[0].get(str(event_key), False):
                 if event_value:
                     if event_value in event_categories_dic[str(event_key)]:
                         event_bool = True
