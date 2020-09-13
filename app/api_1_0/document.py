@@ -3,7 +3,7 @@ import datetime
 import hashlib
 import json
 import os
-
+import time
 import requests
 from flask import jsonify, request
 from pypinyin import lazy_pinyin
@@ -125,6 +125,7 @@ def upload_doc():
         print(str(e))
         db.session.rollback()
         res = fail_res()
+    time.sleep(5)
     return jsonify(res)
 
 
@@ -633,7 +634,7 @@ def search_advanced_doc_type():
 
         start_date = request.json.get('start_date', "")
         end_date = request.json.get('end_date', "")
-        #时间参数
+        # 时间参数
         date = request.json.get('date', [])
         time_range = request.json.get('time_range', [])
         time_period = request.json.get('time_period', [])
@@ -676,8 +677,8 @@ def search_advanced_doc_type():
 
         # 搜索内容无关参数
         customer_id = request.json.get('customer_id', 0)
-        page_size = request.json.get('page_size',0)
-        cur_page = request.json.get('cur_page',0)
+        page_size = request.json.get('page_size', 0)
+        cur_page = request.json.get('cur_page', 0)
 
         # 其他搜索参数
         entities = request.json.get('entities', [])
@@ -837,7 +838,6 @@ def search_advanced_pagination():
 # 高级搜索分页ceshi
 @blue_print.route('/search_advanced_test', methods=['POST'])
 def search_advanced_test():
-
     # 时间参数
     date = request.json.get('date', [])
     time_range = request.json.get('time_range', [])
@@ -868,22 +868,22 @@ def search_advanced_test():
         place_value = places.get("value", None)
         if place_type =='place':
             place = place_value
-        elif place_type =='place_direction_distance':
+        elif place_type == 'place_direction_distance':
             place_direction_distance = place_value
-        elif place_type =='location':
+        elif place_type == 'location':
             location = place_value
-        elif place_type =='degrees':
+        elif place_type == 'degrees':
             degrees = place_value
-        elif place_type =='length':
+        elif place_type == 'length':
             length = place_value
-        elif place_type =='route':
+        elif place_type == 'route':
             route = place_value
-    #搜索内容无关参数
+    # 搜索内容无关参数
     customer_id = request.json.get('customer_id', 0)
     page_size = request.json.get('page_size', 10)
     cur_page = request.json.get('cur_page', 1)
 
-    #其他搜索参数
+    # 其他搜索参数
     entities = request.json.get('entities', [])
     keywords = request.json.get('keywords', [])
     event_categories = request.json.get('event_categories', {})
@@ -892,9 +892,10 @@ def search_advanced_test():
     content = request.json.get('content', "")
     url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
     data_screen = get_es_doc(url, customer_id=customer_id, date=date, time_range=time_range, time_period=time_period,
-                              place=place, place_direction_distance=place_direction_distance, location=location,
-                              degrees=degrees, length=length, route=route, entities=entities, keywords=keywords, event_categories=event_categories,
-                              notes=notes, doc_type=doc_type, content=content)
+                             place=place, place_direction_distance=place_direction_distance, location=location,
+                             degrees=degrees, length=length, route=route, entities=entities, keywords=keywords,
+                             event_categories=event_categories,
+                             notes=notes, doc_type=doc_type, content=content)
 
     data_screen_res = []
     for data in data_screen:
@@ -1023,7 +1024,6 @@ def get_latest_upload_file_tagging_url():
     return res
 
 
-
 # ——————————————————————— 文档抽取、删选 —————————————————————————————
 
 
@@ -1043,6 +1043,7 @@ def get_es_doc(url, customer_id=0, date=[], time_range=[], time_period=[], place
         search_json["place"] = {"type": "multi_term", "value": place}
 
     if place_direction_distance:  # need analysis
+        place_direction_distance = place_direction_distance[0]
         search_json["place_direction_distance.place"] = {"type": "term", "value": place_direction_distance["place"]}
         search_json["place_direction_distance.direction"] = {"type": "match",
                                                              "value": place_direction_distance["direction"]}
@@ -1074,11 +1075,12 @@ def get_es_doc(url, customer_id=0, date=[], time_range=[], time_period=[], place
                              event_categories=event_categories)
     return data_screen
 
+
 def screen_doc(data_inppt, time_range=[], degrees=[], entities=[], event_categories=[]):
     data_output = []
     screen_dict = {}
     if time_range:
-        screen_dict["time_range"] =time_range
+        screen_dict["time_range"] = time_range
     if degrees:
         screen_dict["degrees"] = degrees
     if entities:
@@ -1104,16 +1106,17 @@ def screen_doc(data_inppt, time_range=[], degrees=[], entities=[], event_categor
         sum_bool = 0
         if time_range and doc.get("time_range", False):
 
-            time_range_bool =True
+            time_range_bool = True
             try:
                 time_range_list = [eval(doc["time_range"])]
             except:
                 time_range_list = doc["time_range"]
 
             for range in time_range_list:
-                print(range,screen_dict["time_range"],flush= True)
-                if range[0]["end_time"] < screen_dict["time_range"][0]["start_time"] or range[0]["start_time"] > screen_dict["time_range"][0]["end_time"]:
-                    time_range_bool =False
+                print(range, screen_dict["time_range"], flush=True)
+                if range[0]["end_time"] < screen_dict["time_range"][0]["start_time"] or range[0]["start_time"] > \
+                        screen_dict["time_range"][0]["end_time"]:
+                    time_range_bool = False
             sum_bool += time_range_bool
 
         if degrees and doc.get("degrees", False):
