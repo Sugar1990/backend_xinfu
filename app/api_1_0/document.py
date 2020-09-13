@@ -1141,7 +1141,14 @@ def screen_doc(data_inppt, time_range=[], degrees=[], entities=[], event_categor
 
             entities_values = [ent["category_id"] for ent in doc["entities"]]
 
+            screen_entity_list = []
+
             for entity in screen_dict["entities"]["entities"]:
+                key = list(entity.keys())[0]
+                screen_entity_list.append({"entity": key, "category_id": entity[key]})
+
+
+            for entity in screen_entity_list:
                 if entity not in entities_dic:
                     entites_bool = False
                     break
