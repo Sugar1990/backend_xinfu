@@ -1123,8 +1123,8 @@ def screen_doc(data_inppt, time_range=[], degrees=[], entities=[], event_categor
 
             for range in time_range_list:
                 print(range, screen_dict["time_range"], flush=True)
-                if range[0]["end_time"] < screen_dict["time_range"][0]["start_time"] or range[0]["start_time"] > \
-                        screen_dict["time_range"][0]["end_time"]:
+                if range["end_time"] < screen_dict["time_range"]["start_time"] or range["start_time"] > \
+                        screen_dict["time_range"]["end_time"]:
                     time_range_bool = False
             sum_bool += time_range_bool
 
