@@ -543,86 +543,96 @@ def get_search_panigation():
 # 高级搜索
 @blue_print.route('/search_advanced', methods=['POST'])
 def search_advanced():
-    start_date = request.json.get('start_date', "")
-    end_date = request.json.get('end_date', "")
-    # 时间参数
-    date = request.json.get('date', [])
-    time_range = request.json.get('time_range', [])
-    time_period = request.json.get('time_period', [])
-    # 地点参数
-    place = request.json.get('place', [])
-    place_direction_distance = request.json.get('place_direction_distance', [])
-    location = request.json.get('location', [])
-    degrees = request.json.get('degrees', [])
-    length = request.json.get('length', [])
-    route = request.json.get('route', [])
+    try:
+        start_date = request.json.get('start_date', "")
+        end_date = request.json.get('end_date', "")
+        # 时间参数
+        date = request.json.get('date', [])
+        time_range = request.json.get('time_range', [])
+        time_period = request.json.get('time_period', [])
+        # 地点参数
+        place = request.json.get('place', [])
+        place_direction_distance = request.json.get('place_direction_distance', [])
+        location = request.json.get('location', [])
+        degrees = request.json.get('degrees', [])
+        length = request.json.get('length', [])
+        route = request.json.get('route', [])
 
-    dates = request.json.get('dates', {})
+        dates = request.json.get('dates', {})
 
-    if dates.get("date_type", False):
-        date_type = dates.get("date_type", "")
-        date_value = dates.get("value", None)
-        if date_type == 'date':
-            date = date_value
-        elif date_type == 'time_range':
-            time_range = date_value
-        elif date_type == 'time_period':
-            time_period = date_value
+        if dates.get("date_type", False):
+            date_type = dates.get("date_type", "")
+            date_value = dates.get("value", None)
+            if date_type == 'date':
+                date = date_value
+            elif date_type == 'time_range':
+                time_range = date_value
+            elif date_type == 'time_period':
+                time_period = date_value
 
-    places = request.json.get('places', {})
-    if places.get("place_type", False):
-        place_type = places.get("place_type", "")
-        place_value = places.get("value", None)
-        if place_type == 'place':
-            place = place_value
-        elif place_type == 'place_direction_distance':
-            place_direction_distance = place_value
-        elif place_type == 'location':
-            location = place_value
-        elif place_type == 'degrees':
-            degrees = place_value
-        elif place_type == 'length':
-            length = place_value
-        elif place_type == 'route':
-            route = place_value
-    # 搜索内容无关参数
-    customer_id = request.json.get('customer_id', 0)
+        places = request.json.get('places', {})
+        if places.get("place_type", False):
+            place_type = places.get("place_type", "")
+            place_value = places.get("value", None)
+            if place_type == 'place':
+                place = place_value
+            elif place_type == 'place_direction_distance':
+                place_direction_distance = place_value
+            elif place_type == 'location':
+                location = place_value
+            elif place_type == 'degrees':
+                degrees = place_value
+            elif place_type == 'length':
+                length = place_value
+            elif place_type == 'route':
+                route = place_value
+        # 搜索内容无关参数
+        customer_id = request.json.get('customer_id', 0)
 
-    # 其他搜索参数
-    entities = request.json.get('entities', [])
-    keywords = request.json.get('keywords', [])
-    event_categories = request.json.get('event_categories', {})
-    notes = request.json.get('notes', [])
-    doc_type = request.json.get('doc_type', 0)
-    content = request.json.get('content', "")
-    url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
-    data_screen = get_es_doc(url, customer_id=customer_id, date=date, time_range=time_range, time_period=time_period,
-                             place=place, place_direction_distance=place_direction_distance, location=location,
-                             degrees=degrees, length=length, route=route, entities=entities, keywords=keywords,
-                             event_categories=event_categories,
-                             notes=notes, doc_type=doc_type, content=content)
+        # 其他搜索参数
+        entities = request.json.get('entities', [])
+        keywords = request.json.get('keywords', [])
+        event_categories = request.json.get('event_categories', {})
+        notes = request.json.get('notes', [])
+        doc_type = request.json.get('doc_type', 0)
+        content = request.json.get('content', "")
+        url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+        data_screen = get_es_doc(url, customer_id=customer_id, date=date, time_range=time_range,
+                                 time_period=time_period,
+                                 place=place, place_direction_distance=place_direction_distance, location=location,
+                                 degrees=degrees, length=length, route=route, entities=entities, keywords=keywords,
+                                 event_categories=event_categories,
+                                 notes=notes, doc_type=doc_type, content=content)
 
-    # 组装ids，和结构化数据
-    ids = []
-    for data in data_screen:
-        if data.get("id", False):
-            ids.append(data["id"])
+        # 组装ids，和结构化数据
+        ids = []
+        for data in data_screen:
+            if data.get("id", False):
+                ids.append(data["id"])
 
-    # 雨辰接口
-    if YC_ROOT_URL:
-        body = {}
-        if ids:
-            body["ids"] = ids
-        if start_date:
-            body["startTime"] = start_date
-        if end_date:
-            body["endTime"] = end_date
-        header = {"Content-Type": "application/json; charset=UTF-8"}
-        url = YC_ROOT_URL + "/event/listByDocIds"
-        search_result = requests.post(url, data=json.dumps(body), headers=header)
+        event_list = []
+        # 雨辰接口
+        if YC_ROOT_URL:
+            body = {}
+            if ids:
+                body["ids"] = ids
+            if start_date:
+                body["startTime"] = start_date
+            if end_date:
+                body["endTime"] = end_date
+            header = {"Content-Type": "application/json; charset=UTF-8"}
+            url = YC_ROOT_URL + "/event/listByDocIds"
+            search_result = requests.post(url, data=json.dumps(body), headers=header)
+            event_list = search_result.json()['data']
         final_data = {
             "doc": data_screen,
-            "event_list": search_result.json()['data']
+            "event_list": event_list
+        }
+    except Exception as e:
+        print(str(e))
+        final_data = {
+            "doc": [],
+            "event_list": []
         }
     return jsonify(final_data)  # doc:原来格式数据 event_list:事件数据
 
@@ -745,7 +755,6 @@ def search_advanced_doc_type():
     return jsonify(res)  # doc:原来格式数据 event_list:事件数据
 
 
-
 # 高级搜索分页展示
 @blue_print.route('/search_advanced_pagination', methods=['POST'])
 def search_advanced_pagination():
@@ -852,10 +861,10 @@ def search_advanced_test():
 
     dates = request.json.get('dates', {})
 
-    if dates.get("date_type",False):
+    if dates.get("date_type", False):
         date_type = dates.get("date_type")
         date_value = dates.get("value")
-        if date_type =='date':
+        if date_type == 'date':
             date = date_value
         elif date_type == 'time_range':
             time_range = date_value
@@ -863,10 +872,10 @@ def search_advanced_test():
             time_period = date_value
 
     places = request.json.get('places', {})
-    if places.get("place_type",False):
+    if places.get("place_type", False):
         place_type = places.get("place_type", '')
         place_value = places.get("value", None)
-        if place_type =='place':
+        if place_type == 'place':
             place = place_value
         elif place_type == 'place_direction_distance':
             place_direction_distance = place_value
@@ -1146,7 +1155,6 @@ def screen_doc(data_inppt, time_range=[], degrees=[], entities=[], event_categor
             for entity in screen_dict["entities"]["entities"]:
                 key = list(entity.keys())[0]
                 screen_entity_list.append({"entity": key, "category_id": entity[key]})
-
 
             for entity in screen_entity_list:
                 if entity not in entities_dic:
