@@ -559,8 +559,8 @@ def search_advanced():
     dates = request.json.get('dates', {})
 
     if dates.get("date_type", False):
-        date_type = dates["date_type"]
-        date_value = dates["value"]
+        date_type = dates.get("date_type", "")
+        date_value = dates.get("value", None)
         if date_type == 'date':
             date = date_value
         elif date_type == 'time_range':
@@ -570,8 +570,8 @@ def search_advanced():
 
     places = request.json.get('places', {})
     if places.get("place_type", False):
-        place_type = places["place_type"]
-        place_value = places["value"]
+        place_type = places.get("place_type", "")
+        place_value = places.get("value", None)
         if place_type == 'place':
             place = place_value
         elif place_type == 'place_direction_distance':
@@ -648,8 +648,8 @@ def search_advanced_doc_type():
         dates = request.json.get('dates', {})
 
         if dates.get("date_type", False):
-            date_type = dates["date_type"]
-            date_value = dates["value"]
+            date_type = dates.get("date_type", "")
+            date_value = dates.get("value", None)
             if date_type == 'date':
                 date = date_value
             elif date_type == 'time_range':
@@ -659,8 +659,8 @@ def search_advanced_doc_type():
 
         places = request.json.get('places', {})
         if places.get("place_type", False):
-            place_type = places["place_type"]
-            place_value = places["value"]
+            place_type = places.get("place_type", "")
+            place_value = places.get("value", None)
             if place_type == 'place':
                 place = place_value
             elif place_type == 'place_direction_distance':
@@ -763,8 +763,8 @@ def search_advanced_pagination():
     dates = request.json.get('dates', {})
 
     if dates.get("date_type", False):
-        date_type = dates["date_type"]
-        date_value = dates["value"]
+        date_type = dates.get("date_type", "")
+        date_value = dates.get("value", None)
         if date_type == 'date':
             date = date_value
         elif date_type == 'time_range':
@@ -774,8 +774,8 @@ def search_advanced_pagination():
 
     places = request.json.get('places', {})
     if places.get("place_type", False):
-        place_type = places["place_type"]
-        place_value = places["value"]
+        place_type = places.get("place_type", "")
+        place_value = places.get("value", None)
         if place_type == 'place':
             place = place_value
         elif place_type == 'place_direction_distance':
@@ -853,8 +853,8 @@ def search_advanced_test():
     dates = request.json.get('dates', {})
 
     if dates.get("date_type",False):
-        date_type = dates["date_type"]
-        date_value = dates["value"]
+        date_type = dates.get("date_type")
+        date_value = dates.get("value")
         if date_type =='date':
             date = date_value
         elif date_type == 'time_range':
@@ -864,8 +864,8 @@ def search_advanced_test():
 
     places = request.json.get('places', {})
     if places.get("place_type",False):
-        place_type = places["place_type"]
-        place_value = places["value"]
+        place_type = places.get("place_type", '')
+        place_value = places.get("value", None)
         if place_type =='place':
             place = place_value
         elif place_type =='place_direction_distance':
@@ -1043,11 +1043,11 @@ def get_es_doc(url, customer_id=0, date=[], time_range=[], time_period=[], place
         search_json["place"] = {"type": "multi_term", "value": place}
 
     if place_direction_distance:  # need analysis
-        search_json["place_direction_distance.place"] = {"type": "term", "value": place_direction_distance[0]["place"]}
+        search_json["place_direction_distance.place"] = {"type": "term", "value": place_direction_distance["place"]}
         search_json["place_direction_distance.direction"] = {"type": "match",
-                                                             "value": place_direction_distance[0]["direction"]}
+                                                             "value": place_direction_distance["direction"]}
         search_json["place_direction_distance.distance"] = {"type": "match",
-                                                            "value": place_direction_distance[0]["distance"]}
+                                                            "value": place_direction_distance["distance"]}
     if location:  # need analysis
         search_json["location.lat"] = {"type": "match", "value": location[0]["lat"]}
         search_json["location.lon"] = {"type": "match", "value": location[0]["lon"]}
