@@ -353,18 +353,6 @@ def get_info():
         customer = Customer.query.filter_by(id=doc.create_by, valid=1).first()
         permission = Permission.query.filter_by(id=customer.permission_id, valid=1).first()
         permission_list = Permission.query.filter_by(valid=1).all()
-        lower_permission_id_list = []
-
-        for item in permission_list:
-            if permission.power >= item.power:
-                lower_permission_id_list.append(item.id)
-
-        documentPrevious = Document.query.filter(Document.permission_id.in_(lower_permission_id_list),
-                                                 Document.create_time < doc.create_time).order_by(
-            Document.create_time.desc()).first()
-        documentNext = Document.query.filter(Document.permission_id.in_(lower_permission_id_list),
-                                             Document.create_time > doc.create_time).order_by(
-            Document.create_time).first()
 
         if not doc:
             doc_info = {
@@ -377,15 +365,33 @@ def get_info():
                 "next_doc_id": 0
             }
         else:
+
+            # ----------------------- 获取上下篇文章 --------------------------
+            lower_permission_id_list = []
+
+            for item in permission_list:
+                if permission.power >= item.power:
+                    lower_permission_id_list.append(item.id)
+
+            documentPrevious = Document.query.filter(Document.permission_id.in_(lower_permission_id_list),
+                                                     Document.catalog_id == doc.catalog_id,
+                                                     Document.create_time < doc.create_time).order_by(
+                Document.create_time.desc()).first()
+            documentNext = Document.query.filter(Document.permission_id.in_(lower_permission_id_list),
+                                                 Document.catalog_id == doc.catalog_id,
+                                                 Document.create_time > doc.create_time).order_by(
+                Document.create_time).first()
+            # ----------------------- 获取上下篇文章 END --------------------------
+
+            # ----------------------- 根据目录id，获取根目录tab权限 -----------------------
             flag, ancestorn_catalog_tagging_tabs = True, []
             if doc.catalog_id:
                 catalog = Catalog.query.filter_by(id=doc.catalog_id).first()
                 if catalog:
-                    print("catalog", catalog)
                     an_catalog = Catalog.get_ancestorn_catalog(catalog.id)
-                    print("an_catalog", an_catalog)
                     if an_catalog:
                         flag, ancestorn_catalog_tagging_tabs = True, an_catalog.tagging_tabs
+            # ----------------------- 根据目录id，获取根目录tab权限 END -----------------------
 
             doc_info = {
                 "id": doc.id,
@@ -1191,7 +1197,7 @@ def screen_doc(data_inppt, time_range=[], degrees=[], entities=[], event_categor
             print("event_categories_dic[0]", event_categories_dic[0])
             print("event_key", event_key)
 
-            es_event_category_ids = [i.get("event_category_id", 0)for i in event_categories_dic]
+            es_event_category_ids = [i.get("event_category_id", 0) for i in event_categories_dic]
             es_event_class_ids = [i.get("event_class_id", 0) for i in event_categories_dic]
 
             if event_key in es_event_class_ids:
