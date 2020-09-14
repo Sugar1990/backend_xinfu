@@ -88,7 +88,7 @@ def upload_doc():
                                 "id": doc.id,
                                 "name": doc.name,
                                 "content": doc.content,
-                                "create_time": datetime_now.timestamp(),
+                                "create_time": datetime_now.isoformat(),
                                 "keywords": doc.keywords
                             }]
                             an_catalog = Catalog.get_ancestorn_catalog(catalog_id)
@@ -498,7 +498,7 @@ def get_search_panigation():
         if not document_name:
             search_json = {}
         else:
-            search_json = {"name": {"type": "text", "value": document_name, "boost": 1},
+            search_json = {"name": {"type": "phrase", "value": document_name, "boost": 1},
                            "sort": {"type": "normal", "sort": "create_time", "asc_desc": "desc"}}
         para = {"search_index": 'document', "search_json": search_json}
         header = {"Content-Type": "application/json"}
@@ -1083,7 +1083,7 @@ def get_es_doc(url, customer_id=0, date=[], time_range=[], time_period=[], place
     # 直接es查询
     para = {"search_index": 'document', "search_json": search_json}
     header = {"Content-Type": "application/json"}
-    esurl = url + "/searchCustom"
+    esurl = url + "/    "
     search_result = requests.post(url=esurl, data=json.dumps(para), headers=header)
     data = [doc['_source'] for doc in search_result.json()['data']['dataList']]
     data_screen = screen_doc(data, time_range=time_range, degrees=degrees, entities=entities,
