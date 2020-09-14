@@ -80,7 +80,7 @@ def pg_insert_es():
                 "name": "ik_keyword",
                 # "content": "ik",
                 # "keywords": "ik",
-                "create_time": "time",
+                # "create_time": "time",
                 # "dates": "ik",  # 多个时间，
                 # "places": "ik",  # 多个地点
                 # "entities": "ik",  # [{name: category_id}, …]  # 多个实体，含名称和类型id
