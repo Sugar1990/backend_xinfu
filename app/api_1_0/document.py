@@ -353,6 +353,7 @@ def get_info():
         customer = Customer.query.filter_by(id=doc.create_by, valid=1).first()
         permission = Permission.query.filter_by(id=customer.permission_id, valid=1).first()
         permission_list = Permission.query.filter_by(valid=1).all()
+        lower_permission_id_list = []
 
         if not doc:
             doc_info = {
@@ -495,47 +496,47 @@ def get_search_panigation():
         search_type = request.args.get('search_type', "")
         page_size = request.args.get('page_size', 10, type=int)
         cur_page = request.args.get('cur_page', 1, type=int)
+        url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+        if search and search_type:
+            search_json = {search_type: {"type": "phrase", "value": search},
+                           "sort": {"type": "normal", "sort": "create_time", "asc_desc": "desc"}}
+        else:
+            search_json = {}
+        para = {"search_index": 'document', "search_json": search_json}
+        header = {"Content-Type": "application/json"}
+        esurl = url + "/searchCustom"
 
-        list_return, total_count = [], 0
-        if search_type in ['name', 'content']:
-            url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
-            if not search:
-                search_json = {}
-            else:
-                search_json = {search_type: {"type": "phrase", "value": search, "boost": 1},
-                               "sort": {"type": "normal", "sort": "create_time", "asc_desc": "desc"}}
-            para = {"search_index": 'document', "search_json": search_json}
-            header = {"Content-Type": "application/json"}
-            esurl = url + "/searchCustom"
+        search_result = requests.post(url=esurl, data=json.dumps(para), headers=header)
+        # print(search_result, flush=True)
+        data = []
 
-            search_result = requests.post(url=esurl, data=json.dumps(para), headers=header)
-            data = []
+        for doc in search_result.json()['data']['dataList']:
+            doc_pg = Document.query.filter_by(id=doc['_source']['id']).first()
+            if doc_pg:
+                path = doc_pg.get_full_path() if doc_pg else '已失效'
+                create_username = Customer.get_username_by_id(doc_pg.create_by) if doc_pg else '无效用户'
+                data_item = {
+                    'id': doc['_source']['id'],
+                    'name': doc['_source']['name'],
+                    'create_username': create_username,
+                    'path': path,
+                    'create_time': doc['_source']['create_time'],
+                    "status": doc_pg.get_status_name(),
+                    'extension': doc_pg.category,
+                    "permission": 1 if Permission.judge_power(customer_id, doc_pg.id) else 0
+                }
+                data.append(data_item)
 
-            for doc in search_result.json()['data']['dataList']:
-                doc_pg = Document.query.filter_by(id=doc['_source']['id']).first()
-                if doc_pg:
-                    path = doc_pg.get_full_path() if doc_pg else '已失效'
-                    create_username = Customer.get_username_by_id(doc_pg.create_by) if doc_pg else '无效用户'
-                    data_item = {
-                        'id': doc['_source']['id'],
-                        'name': doc['_source']['name'],
-                        'create_username': create_username,
-                        'path': path,
-                        'create_time': doc['_source']['create_time'],
-                        "status": doc_pg.get_status_name(),
-                        'extension': doc_pg.category,
-                        "permission": 1 if Permission.judge_power(customer_id, doc_pg.id) else 0
-                    }
-                    data.append(data_item)
+        total_count = len(data)
 
-            total_count = len(data)
+        if total_count > page_size * cur_page:
+            list_return = data[page_size * (cur_page - 1):page_size * cur_page]
 
-            if total_count > page_size * cur_page:
-                list_return = data[page_size * (cur_page - 1):page_size * cur_page]
-
-            elif total_count < page_size * cur_page and total_count > page_size * (cur_page - 1):
-                list_return = data[page_size * (cur_page - 1):]
-
+        elif total_count < page_size * cur_page and total_count > page_size * (cur_page - 1):
+            list_return = data[page_size * (cur_page - 1):]
+        else:
+            list_return = []
+        # print(esurl, para, flush=True)
         res = {'data': list_return,
                'page_count': int(total_count / page_size) + 1,
                'total_count': total_count}
@@ -1049,7 +1050,7 @@ def get_es_doc(url, customer_id=0, date=[], time_range=[], time_period=[], place
     search_json = {}
     if content:
         search_json["name"] = {"type": "like", "value": content}
-        search_json["content"] = {"type": "like", "value": content}
+        search_json["content"] = {"type": "phrase", "value": content}
     if date:
         search_json["date"] = {"type": "id", "value": date}
     if time_period:
