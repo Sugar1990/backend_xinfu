@@ -695,7 +695,7 @@ def search_advanced_doc_type():
 
         # 搜索内容无关参数
         customer_id = request.json.get('customer_id', 0)
-        page_size = request.json.get('page_size', 0)
+        page_size = request.json.get('page_size', 100)
         cur_page = request.json.get('cur_page', 0)
 
         # 其他搜索参数

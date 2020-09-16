@@ -100,22 +100,27 @@ def insert_entity():
             db.session.commit()
 
             # es 插入操作
-            data_insert_json = [{
-                'name': name,
-                'category_id': category_id,
-                'summary': summary,
-                'props': props,
-                'synonyms': synonyms,
-                'id': entity.id
-            }]
+            es_insert_item = {'id': entity.id}
+            if name:
+                es_insert_item["name"] = name
+            if category_id:
+                es_insert_item["category_id"] = category_id
+            if summary:
+                es_insert_item["summary"] = summary
+
+            es_insert_item["props"] = props if props else {}
+            if synonyms:
+                es_insert_item["synonyms"] = synonyms
+
+            data_insert_json = [es_insert_item]
             url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
 
             header = {"Content-Type": "application/json; charset=UTF-8"}
 
-            # print(entity)
+            # print(data_insert_json)
             para = {"data_insert_index": "entity", "data_insert_json": data_insert_json}
             search_result = requests.post(url + '/dataInsert', data=json.dumps(para), headers=header)
-            # print(search_result.text, flush=True)
+            print(search_result.text, flush=True)
 
             # 雨辰同步
             if YC_ROOT_URL:
@@ -434,7 +439,7 @@ def get_entity_list_es():
         category_id = request.args.get('category_id', 0, type=int)
         url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
         search_json = {"name": {"type": "text", "value": entity_name, "boost": 5},
-                       'synonyms': {"type": "text", "value": entity_name, "boost": 1}}
+                       'synonyms': {"type": "text", "value": entity_name, "boost": 5}}
         if category_id != 0:
             search_json['category_id'] = {"type": "id", "value": category_id}
         null = 'None'
@@ -486,7 +491,7 @@ def get_search_panigation_es(search='', page_size=10, cur_page=1, category_id=0)
                 search_json = {}
             else:
                 search_json = {"name": {"type": "text", "value": search, "boost": 5},
-                               "synonyms": {"type": "text", "value": search, "boost": 1}}
+                               "synonyms": {"type": "text", "value": search, "boost": 5}}
 
             if category_id != 0:
                 search_json['category_id'] = {"type": "id", "value": category_id}
@@ -689,16 +694,15 @@ def import_entity_excel():
                             'category_id': category_id,
                             'summary': ex_summary,
                             'props': ex_props,
-                            'synonyms': ex_synonyms,
-                            'id': entity.id
+                            'synonyms': ex_synonyms
                         }]
                         url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
 
                         header = {"Content-Type": "application/json; charset=UTF-8"}
 
                         # print(entity)
-                        para = {"data_insert_index": "entity", "data_insert_json": data_insert_json}
-                        search_result = requests.post(url + '/dataInsert', data=json.dumps(para), headers=header)
+                        inesert_para = {"update_index": 'entity', "data_update_json": [{entity.id: data_insert_json}]}
+                        search_result = requests.post(url + '/updatebyId', params=json.dumps(inesert_para), headers=header)
                         # print(search_result.text, flush=True)
 
                         # 雨辰同步
