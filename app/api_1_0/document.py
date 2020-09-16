@@ -1049,7 +1049,7 @@ def get_es_doc(url, customer_id=0, date=[], time_range=[], time_period=[], place
                doc_type=0, content=""):
     search_json = {}
     if content:
-        search_json["name"] = {"type": "like", "value": content}
+        # search_json["name"] = {"type": "like", "value": content}
         search_json["content"] = {"type": "phrase", "value": content}
     if date:
         search_json["date"] = {"type": "id", "value": date}
