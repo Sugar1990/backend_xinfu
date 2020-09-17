@@ -246,6 +246,7 @@ def get_doc_events():
     docId = request.args.get('docId', "")
     res = []
     try:
+        docId = int(docId.replace('"', ''))
         if YC_ROOT_URL:
             # 雨辰同步
             # header = {"Content-Type": "application/x-form-urlencode; charset=UTF-8"}
