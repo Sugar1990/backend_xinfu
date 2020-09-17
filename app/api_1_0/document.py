@@ -652,7 +652,6 @@ def search_advanced():
 @blue_print.route('/search_advanced_doc_type', methods=['POST'])
 def search_advanced_doc_type():
     try:
-
         start_date = request.json.get('start_date', "")
         end_date = request.json.get('end_date', "")
         # 时间参数
@@ -753,10 +752,37 @@ def search_advanced_doc_type():
             header = {"Content-Type": "application/json; charset=UTF-8"}
             url = YC_ROOT_URL + "/event/listByDocIds"
             search_result = requests.post(url, data=json.dumps(body), headers=header)
-            res = {
-                "doc": data_forms,
-                "event_list": search_result.json()['data']
-            }
+
+        res = {
+            "doc": data_forms,
+            "event_list": search_result.json()['data'] if search_result else []
+        }
+
+        '''
+        # 临时测试
+        with open(os.path.join(os.getcwd(), 'static', 'search_advanced_doc_type.json'), 'r', encoding='utf-8') as f:
+            print("read search_advanced_doc_type.json")
+            res = json.loads(f.read())
+        '''
+        '''
+        # yc接口格式
+        {
+            "event_list": [{
+                "datetime": ["2020-07-08 00:00:00"],
+                "subject": null,
+                "place": [{
+                    "placeLat": "34.4648398080001",
+                    "placeId": 41447,
+                    "type": 1,
+                    "word": "中国",
+                    "placeIon": "107.525810728"
+                }],
+                "title": "中国军事专家宋忠平7月8日在接受《环球时报》采访",
+                "object": ["环球时报"]
+            }]
+        }
+        '''
+
     except Exception as e:
         print(str(e), flush=True)
         res = {"doc": [],

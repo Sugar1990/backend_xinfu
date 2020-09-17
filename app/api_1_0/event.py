@@ -243,22 +243,66 @@ def if_match(content, event_object, event, start_date, end_date, place):
 
 @blue_print.route('/get_doc_events', methods=['GET'])
 def get_doc_events():
-    docId = request.args.get('docId', 0, type=int)
-    if YC_ROOT_URL:
-        # 雨辰同步
-        # header = {"Content-Type": "application/x-form-urlencode; charset=UTF-8"}
-        url = YC_ROOT_URL + "/event/listByDocId?docId={0}".format(docId)
-        res_result = requests.get(url=url, headers={})
-        #print("/event/listByDocId", res_result.text)
-        res = []
-        for result in (res_result.json()['data']):
-            res.append({
-                "title": result['title'],  # 事件标题
-                "subject": result['eventSubjcet'],  # 事件主语
-                "object": result['eventObject'],  # 事件宾语
-                "datetime": result['eventTime'],  # 发生时间
-                "place": result['eventAddress'],  # 发生地点
-            })
+    docId = request.args.get('docId', "")
+    res = []
+    try:
+        if YC_ROOT_URL:
+            # 雨辰同步
+            # header = {"Content-Type": "application/x-form-urlencode; charset=UTF-8"}
+            url = YC_ROOT_URL + "/event/listByDocId?docId={0}".format(docId)
+            res_result = requests.get(url=url, headers={})
+            # print("/event/listByDocId", res_result.text)
+            for result in (res_result.json()['data']):
+                res.append({
+                    "title": result['title'],  # 事件标题
+                    "subject": result['eventSubjcet'],  # 事件主语
+                    "object": result['eventObject'],  # 事件宾语
+                    "datetime": result['eventTime'],  # 发生时间
+                    "place": result['eventAddress'],  # 发生地点
+                })
+
+        '''
+        # 临时测试
+        with open(os.path.join(os.getcwd(), 'static', 'get_doc_events.json'), 'r', encoding='utf-8') as f:
+            print("read get_doc_events.json")
+            res = json.loads(f.read())
+        '''
+        '''
+        # yc接口格式
+        [{
+            "title": "青岛至连云港以东海域，2020年8月22日1200时至8月26日1200时，在以下5点连线海域内组织重大军事活动",
+            "subject": [
+                "海事局"
+            ],
+            "object": null,
+            "datetime": [
+                "2020-08-22 00:00:00"
+            ],
+            "place": [
+                {
+                    "type": 1,
+                    "word": "青岛",
+                    "placeId": 52245,
+                    "placeIon": "120.3778692",
+                    "placeLat": "36.06596613"
+                },
+                {
+                    "type": 1,
+                    "word": "连云港",
+                    "placeId": 52194,
+                    "placeIon": "119.21740848",
+                    "placeLat": "34.5977166600001"
+                }
+            ]
+        }]
+        '''
+        for event_item in res:
+            if event_item.get("place", []):
+                place_items = event_item.get("place", [])
+                event_item['place'] = [i.get("word") for i in place_items]
+
+    except Exception as e:
+        print(str(e))
 
     return jsonify(res)
 
@@ -274,7 +318,7 @@ def get_during_events():
         url = YC_ROOT_URL + "/event/search"
         body = {"startTime": start_date, "endTime": end_date}
         search_result = requests.post(url, data=json.dumps(body), headers=header)
-        #print("/event/listByDocId", search_result.text)
+        # print("/event/listByDocId", search_result.text)
         data = search_result.json()['data']
     res = []
     for item in data:
