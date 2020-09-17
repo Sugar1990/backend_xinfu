@@ -451,13 +451,15 @@ def get_entity_in_list_pagination():
                             i['name'] = doc.name
                             i['create_username'] = Customer.get_username_by_id(doc.create_by)
                             i['path'] = doc.get_full_path() if doc.get_full_path() else '已失效'
-                            i['extension'] = doc.category,
+                            i['extension'] = doc.category
+                            i['tag_flag'] = 1 if doc.status == 1 else 0
                             i['status'] = doc.get_status_name()
                             i['permission'] = 1 if Permission.judge_power(customer_id, doc.id) else 0
                             data.append(i)
                     res = {"data": data,
                            "page_count": int(len(data) / page_size) + 1,
                            "total_count": len(data)}
+
     except Exception as e:
         print(str(e))
         res = {"data": [],
@@ -521,6 +523,7 @@ def get_search_panigation():
                     'create_username': create_username,
                     'path': path,
                     'create_time': doc['_source']['create_time'],
+                    'tag_flag': 1 if doc_pg.status == 1 else 0,
                     "status": doc_pg.get_status_name(),
                     'extension': doc_pg.category,
                     "permission": 1 if Permission.judge_power(customer_id, doc_pg.id) else 0
@@ -749,9 +752,7 @@ def search_advanced_doc_type():
                 body["size"] = page_size
             header = {"Content-Type": "application/json; charset=UTF-8"}
             url = YC_ROOT_URL + "/event/listByDocIds"
-            print(url, body, flush=True)
             search_result = requests.post(url, data=json.dumps(body), headers=header)
-            print(search_result.text, flush=True)
             res = {
                 "doc": data_forms,
                 "event_list": search_result.json()['data']
@@ -833,7 +834,8 @@ def search_advanced_pagination():
                 data["name"] = doc.name if doc else ""
             data['create_username'] = Customer.get_username_by_id(doc.create_by)
             data['path'] = doc.get_full_path() if doc.get_full_path() else '已失效'
-            data['extension'] = doc.category,
+            data['extension'] = doc.category
+            data['tag_flag'] = 1 if doc.status == 1 else 0
             data['status'] = doc.get_status_name()
             data['permission'] = 1 if Permission.judge_power(customer_id, doc.id) else 0
             data_screen_res.append(data)
@@ -922,7 +924,8 @@ def search_advanced_test():
                 data["name"] = doc.name if doc else ""
             data['create_username'] = Customer.get_username_by_id(doc.create_by)
             data['path'] = doc.get_full_path() if doc.get_full_path() else '已失效'
-            data['extension'] = doc.category,
+            data['extension'] = doc.category
+            data['tag_flag'] = 1 if doc.status == 1 else 0
             data['status'] = doc.get_status_name()
             data['permission'] = 1 if Permission.judge_power(customer_id, doc.id) else 0
             data_screen_res.append(data)
@@ -1184,20 +1187,14 @@ def screen_doc(data_inppt, time_range=[], degrees=[], entities=[], event_categor
         # event_categories_dic[0] 为Es内存储事件类型
 
         if event_categories and doc.get("event_categories", False):
-            print(doc.get("event_categories", False))
             if type(doc["event_categories"]).__name__ == "str":
                 event_categories_dic = eval(doc["event_categories"])
             else:
                 event_categories_dic = doc["event_categories"]
 
-                print('screen_dict["event_categories"]', screen_dict["event_categories"])
-
                 event_value = list(screen_dict["event_categories"][0].values())[0]
 
                 event_key = list(screen_dict["event_categories"][0].keys())[0]
-
-            print("event_categories_dic[0]", event_categories_dic[0])
-            print("event_key", event_key)
 
             es_event_category_ids = [i.get("event_category_id", 0) for i in event_categories_dic]
             es_event_class_ids = [i.get("event_class_id", 0) for i in event_categories_dic]
