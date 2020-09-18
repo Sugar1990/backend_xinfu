@@ -98,12 +98,12 @@ def modify_relation_category():
         if not relation_category:
             res = fail_res(msg="关系记录不存在!")
         else:
-            relation_category = RelationCategory.query.filter_by(relation_name=name,
+            relation_category_same = RelationCategory.query.filter_by(relation_name=name,
                                                                  source_entity_category_id=source_entity_category_id,
                                                                  target_entity_category_id=target_entity_category_id,
                                                                  valid=1).first()
 
-            if relation_category:
+            if relation_category_same:
                 res = fail_res(msg="已存在相同关系记录!")
             else:
                 entity_category_id_list = []
@@ -114,15 +114,16 @@ def modify_relation_category():
                     if not name:
                         res = fail_res(msg="关联名称不能为空!")
                     else:
-                        RelationCategory.relation_name = name
-                        RelationCategory.source_entity_category_id = source_entity_category_id
-                        RelationCategory.target_entity_category_id = target_entity_category_id
+                        relation_category.relation_name = name
+                        relation_category.source_entity_category_id = source_entity_category_id
+                        relation_category.target_entity_category_id = target_entity_category_id
                         db.session.commit()
                         res = success_res()
                 else:
                     res = fail_res(msg="实体类型不存在!")
 
-    except:
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = fail_res(msg="修改失败!")
 
