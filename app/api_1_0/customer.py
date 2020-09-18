@@ -38,7 +38,7 @@ def login():
 
 # 修改时，如果找不到是报错
 @blue_print.route('/logout', methods=['POST'])
-def login():
+def logout():
     uid = request.json.get('uid', '')
     try:
         if not uid:

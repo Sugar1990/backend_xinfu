@@ -1141,6 +1141,10 @@ def screen_doc(data_inppt, time_range=[], degrees=[], entities=[], event_categor
     if time_range:
         screen_dict["time_range"] = time_range
     if degrees:
+        for key in degrees['lon']:
+            degrees['lon'][key] = int(degrees['lon'][key])
+        for key in degrees['lat']:
+            degrees['lat'][key] = int(degrees['lat'][key])
         screen_dict["degrees"] = degrees
     if entities:
         screen_dict["entities"] = {}
