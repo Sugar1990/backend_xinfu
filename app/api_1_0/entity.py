@@ -84,9 +84,10 @@ def insert_entity():
         if not category:
             res = fail_res(msg="实体类型不存在，添加失败！")
             return jsonify(res)
-        if category.name == PLACE_BASE_NAME:
-            res = fail_res(msg="地名库由专业团队维护,不能添加！")
-            return jsonify(res)
+
+        # if category.name == PLACE_BASE_NAME:
+        #     res = fail_res(msg="地名库由专业团队维护,不能添加！")
+        #     return jsonify(res)
 
         entity = Entity.query.filter(and_(or_(Entity.name == name, Entity.synonyms.has_key(name))),
                                      Entity.valid == 1).first()
@@ -154,15 +155,15 @@ def update_entity():
         synonyms = request.json.get('synonyms', [])
         summary = request.json.get('summary', '')
 
-        if category_id == EntityCategory.get_category_id(PLACE_BASE_NAME):
-            res = fail_res(msg="地名库由专业团队维护,不能修改！")
-            return jsonify(res)
+        # if category_id == EntityCategory.get_category_id(PLACE_BASE_NAME):
+        #     res = fail_res(msg="地名库由专业团队维护,不能修改！")
+        #     return jsonify(res)
 
-        entityPlace = Entity.query.filter_by(id=id, valid=1).first()
-        category_place = EntityCategory.query.filter_by(id=entityPlace.category_id, valid=1).first()
-        if category_place.name == PLACE_BASE_NAME:
-            res = fail_res(msg="地名库由专业团队维护,不能修改！")
-            return jsonify(res)
+        # entityPlace = Entity.query.filter_by(id=id, valid=1).first()
+        # category_place = EntityCategory.query.filter_by(id=entityPlace.category_id, valid=1).first()
+        # if category_place.name == PLACE_BASE_NAME:
+        #     res = fail_res(msg="地名库由专业团队维护,不能修改！")
+        #     return jsonify(res)
 
         entity = Entity.query.filter_by(id=id, valid=1).first()
 
@@ -230,10 +231,10 @@ def delete_entity():
 
         entity = Entity.query.filter_by(id=id, valid=1).first()
         if entity:
-            category_place = EntityCategory.query.filter_by(id=entity.category_id, valid=1).first()
-            if category_place.name == PLACE_BASE_NAME:
-                res = fail_res(msg="地名库由专业团队维护,不能删除！")
-                return jsonify(res)
+            # category_place = EntityCategory.query.filter_by(id=entity.category_id, valid=1).first()
+            # if category_place.name == PLACE_BASE_NAME:
+            #     res = fail_res(msg="地名库由专业团队维护,不能删除！")
+            #     return jsonify(res)
 
             try:
                 entity.valid = 0
@@ -277,16 +278,17 @@ def delete_entity_by_ids():
         ids = request.json.get('ids')
         entity = db.session.query(Entity).filter(Entity.id.in_(ids), Entity.valid == 1).all()
         valid_ids = []
-        feedback = set()
+        # feedback = set()
         for uni_entity in entity:
             try:
-                category_place = EntityCategory.query.filter_by(id=uni_entity.category_id, valid=1).first()
-                if category_place.name == PLACE_BASE_NAME:
-                    feedback.add(PLACE_BASE_NAME)
-                else:
-                    valid_ids.append(uni_entity.id)
-                    uni_entity.valid = 0
-                    feedback.add(category_place.name)
+                # category_place = EntityCategory.query.filter_by(id=uni_entity.category_id, valid=1).first()
+                # if category_place.name == PLACE_BASE_NAME:
+                #     feedback.add(PLACE_BASE_NAME)
+                # else:
+                valid_ids.append(uni_entity.id)
+                uni_entity.valid = 0
+                #feedback.add(category_place.name)
+                res = success_res("全部成功删除！")
             except:
                 pass
         db.session.commit()
@@ -314,12 +316,12 @@ def delete_entity_by_ids():
             # es_ids.append(es_id)
             delete_para = {"delete_index": "entity", "id_json": es_id}
             delete_result = requests.post(url + '/deletebyId', data=json.dumps(delete_para), headers=header_es)
-        if len(feedback) == 1 and PLACE_BASE_NAME in feedback:
-            res = success_res("删除项均在地名库中，由专业团队维护,不能删除！")
-        elif PLACE_BASE_NAME in feedback:
-            res = success_res("非地名已成功删除，地名由于地名库由专业团队维护,不能删除！")
-        else:
-            res = success_res("全部成功删除！")
+        # if len(feedback) == 1 and PLACE_BASE_NAME in feedback:
+        #     res = success_res("删除项均在地名库中，由专业团队维护,不能删除！")
+        # elif PLACE_BASE_NAME in feedback:
+        #     res = success_res("非地名已成功删除，地名由于地名库由专业团队维护,不能删除！")
+        # else:
+        #     res = success_res("全部成功删除！")
     except Exception as e:
         print(str(e))
         db.session.rollback()
