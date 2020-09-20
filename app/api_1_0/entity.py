@@ -168,6 +168,11 @@ def update_entity():
         entity = Entity.query.filter_by(id=id, valid=1).first()
 
         if entity:
+            entity_same = Entity.query.filter_by(name=name, valid=1).first()
+            if entity_same:
+                res = fail_res(msg="相同实体名称已存在")
+                return jsonify(res)
+
             key_value_json = {}
             if name:
                 entity.name = name
