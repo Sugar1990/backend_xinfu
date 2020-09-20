@@ -182,10 +182,10 @@ def update_entity():
             if category_id:
                 entity.category_id = category_id
                 key_value_json['category_id'] = category_id
-            if props:
+            if isinstance(props, dict):
                 entity.props = props
                 key_value_json['props'] = props
-            if synonyms:
+            if isinstance(synonyms, list):
                 entity.synonyms = synonyms
                 key_value_json['synonyms'] = synonyms
             if summary:
