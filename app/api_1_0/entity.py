@@ -79,6 +79,7 @@ def insert_entity():
         props = request.json.get('props', {})
         synonyms = request.json.get('synonyms', [])
         summary = request.json.get('summary', '')
+        sync = request.json.get('sync', 1)
 
         category = EntityCategory.query.filter_by(id=category_id, valid=1).first()
         if not category:
@@ -124,7 +125,7 @@ def insert_entity():
             print(search_result.text, flush=True)
 
             # 雨辰同步
-            if YC_ROOT_URL:
+            if sync and YC_ROOT_URL:
                 header = {"Content-Type": "application/json; charset=UTF-8"}
                 url = YC_ROOT_URL + "/entitysync/add"
                 data = json.dumps({"id": entity.id,
@@ -154,6 +155,7 @@ def update_entity():
         props = request.json.get('props', {})
         synonyms = request.json.get('synonyms', [])
         summary = request.json.get('summary', '')
+        sync = request.json.get('sync', 1)
 
         # if category_id == EntityCategory.get_category_id(PLACE_BASE_NAME):
         #     res = fail_res(msg="地名库由专业团队维护,不能修改！")
@@ -168,7 +170,7 @@ def update_entity():
         entity = Entity.query.filter_by(id=id, valid=1).first()
 
         if entity:
-            entity_same = Entity.query.filter_by(name=name, valid=1).first()
+            entity_same = Entity.query.filter(Entity.name == name, Entity.valid == 1, Entity.id != id).first()
             if entity_same:
                 res = fail_res(msg="相同实体名称已存在")
                 return jsonify(res)
@@ -208,7 +210,7 @@ def update_entity():
             search_result = requests.post(url + '/updatebyId', data=json.dumps(inesert_para), headers=header)
 
             # 雨辰同步
-            if YC_ROOT_URL:
+            if sync and YC_ROOT_URL:
                 header = {"Content-Type": "application/json; charset=UTF-8"}
                 url = YC_ROOT_URL + "/entitysync/update"
                 data = json.dumps({"id": entity.id,
@@ -292,7 +294,7 @@ def delete_entity_by_ids():
                 # else:
                 valid_ids.append(uni_entity.id)
                 uni_entity.valid = 0
-                #feedback.add(category_place.name)
+                # feedback.add(category_place.name)
                 res = success_res("全部成功删除！")
             except:
                 pass
@@ -339,6 +341,8 @@ def add_synonyms():
     try:
         id = request.json.get('id', 0)
         synonyms = request.json.get('synonyms', [])
+        sync = request.json.get('sync', 1)
+
         entity = Entity.query.filter_by(id=id, valid=1).first()
         if entity.synonyms:
             synonyms.extend(entity.synonyms)
@@ -365,7 +369,7 @@ def add_synonyms():
         search_result = requests.post(url + '/updatebyId', params=json.dumps(inesert_para), headers=header)
 
         # 雨辰同步
-        if YC_ROOT_URL:
+        if sync and YC_ROOT_URL:
             header = {"Content-Type": "application/json; charset=UTF-8"}
             url = YC_ROOT_URL + "/entitysync/update"
             data = json.dumps({"id": entity.id,
@@ -383,6 +387,8 @@ def delete_synonyms():
     try:
         id = request.json.get('id', 0)
         synonyms = request.json.get('synonyms', [])
+        sync = request.json.get('sync', 1)
+
         entity = Entity.query.filter_by(id=id, valid=1).first()
         original_list = [item for item in entity.synonyms if item not in synonyms]
         entity.synonyms = original_list
@@ -403,7 +409,7 @@ def delete_synonyms():
         search_result = requests.post(url + '/updatebyId', params=json.dumps(inesert_para), headers=header)
 
         # 雨辰同步
-        if YC_ROOT_URL:
+        if sync and YC_ROOT_URL:
             header = {"Content-Type": "application/json; charset=UTF-8"}
             url = YC_ROOT_URL + "/entitysync/update"
             data = json.dumps({"id": entity.id,
@@ -709,7 +715,8 @@ def import_entity_excel():
 
                         # print(entity)
                         inesert_para = {"update_index": 'entity', "data_update_json": [{entity.id: data_insert_json}]}
-                        search_result = requests.post(url + '/updatebyId', params=json.dumps(inesert_para), headers=header)
+                        search_result = requests.post(url + '/updatebyId', params=json.dumps(inesert_para),
+                                                      headers=header)
                         # print(search_result.text, flush=True)
 
                         # 雨辰同步
