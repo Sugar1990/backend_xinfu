@@ -153,7 +153,7 @@ def update_entity():
         name = request.json.get('name', '')
         category_id = request.json.get('category_id', 0)
         props = request.json.get('props', {})
-        synonyms = request.json.get('synonyms', [])
+        synonyms = request.json.get('synonyms', ['null'])
         summary = request.json.get('summary', '')
         sync = request.json.get('sync', 1)
 
@@ -185,12 +185,12 @@ def update_entity():
             if isinstance(props, dict):
                 entity.props = props
                 key_value_json['props'] = props
-            if isinstance(synonyms, list):
-                entity.synonyms = synonyms
-                key_value_json['synonyms'] = synonyms
             if summary:
                 entity.synonyms = summary
                 key_value_json['summary'] = summary
+            if isinstance(synonyms, list):
+                entity.synonyms = synonyms
+                key_value_json['synonyms'] = synonyms
             db.session.commit()
 
             # 获得es对应实体
@@ -215,7 +215,7 @@ def update_entity():
                 url = YC_ROOT_URL + "/entitysync/update"
                 data = json.dumps({"id": entity.id,
                                    "name": name,
-                                   "categoryId": category_id,
+                                   "categoryId": entity.category_id,
                                    "props": props,
                                    "synonyms": synonyms
                                    })
