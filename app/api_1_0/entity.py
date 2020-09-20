@@ -153,7 +153,7 @@ def update_entity():
         name = request.json.get('name', '')
         category_id = request.json.get('category_id', 0)
         props = request.json.get('props', {})
-        synonyms = request.json.get('synonyms', ['null'])
+        synonyms = request.json.get('synonyms', [])
         summary = request.json.get('summary', '')
         sync = request.json.get('sync', 1)
 
