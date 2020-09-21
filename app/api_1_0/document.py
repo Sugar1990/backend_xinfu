@@ -747,7 +747,7 @@ def search_advanced_doc_type():
 
         data_forms = [
             {"name": Catalog.get_name_by_id(doc_type), "data": data_by_doc_id[doc_type]}
-            for doc_type in data_by_doc_id
+            for doc_type in data_by_doc_id if Catalog.get_name_by_id(doc_type)
         ]
         # 雨辰接口
         if YC_ROOT_URL:
