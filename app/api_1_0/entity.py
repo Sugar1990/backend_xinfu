@@ -777,3 +777,59 @@ def import_entity_excel():
 
     res = success_res()
     return jsonify(res)
+
+
+# 不做实体与数据库对齐和去重等操作，直接插入，excel批量导入实体
+@blue_print.route('import_entity_excel_straightly', methods=['POST'])
+def import_entity_excel_straightly():
+    file_obj = request.files.get('file', None)
+    try:
+        filename = secure_filename(''.join(lazy_pinyin(file_obj.filename)))
+        save_filename = "{0}{1}{2}".format(os.path.splitext(filename)[0],
+                                           datetime.datetime.now().strftime('%Y%m%d%H%M%S'),
+                                           os.path.splitext(filename)[1])
+        file_savepath = os.path.join(os.getcwd(), 'static', save_filename)
+        file_obj.save(file_savepath)
+
+        data = xlrd.open_workbook(file_savepath)
+        table = data.sheet_by_index(0)
+
+        entity_list = []
+        # 实体名称	实体类型    实体简介    实体别名    实体属性
+        for row_index in range(1, table.nrows):
+            try:
+                row_value = table.row_values(row_index)
+                ex_name = row_value[0].strip()
+                category_id = EntityCategory.get_category_id(row_value[1].strip())
+
+                ex_summary = row_value[2].strip()
+                # 解析别名
+                ex_synonyms = []
+                for synonym_str in row_value[3].strip().split('\n'):
+                    if synonym_str:
+                        ex_synonyms.append(synonym_str)
+                # 解析属性
+                ex_props = {}
+                for prop_str in row_value[4].strip().split(','):
+                    if re.match('(.*):(.*)', prop_str):
+                        key, value = re.match('(.+?):(.*)', prop_str).groups()
+                        ex_props[key] = value
+
+                entity = {"name": ex_name, "props": ex_props, "synonyms": ex_synonyms, "category_id": category_id,
+                          "summary": ex_summary, "valid": 1}
+
+                entity_list.append(entity)
+
+            except Exception as e:
+                print("excel error: ", str(e))
+                continue
+
+        w_dic = {"RECORDS": entity_list}
+        with open("entity_xf.json", 'w', encoding="utf-8") as f:
+            f.write(json.dumps(w_dic))
+
+    except Exception as e:
+        print(str(e))
+
+    res = success_res()
+    return jsonify(res)
