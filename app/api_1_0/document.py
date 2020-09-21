@@ -772,13 +772,13 @@ def search_advanced_doc_type():
                     place = []
                     for event_place in event.get("eventAddress", []):
                         if event_place.get("placeIon", "") and event_place.get("placeLat", ""):
-                            place = event_place
+                            place = [event_place]
                             break
-                    event_list.append([{"datetime": event.get("eventTime", ""),
+                    event_list.append({"datetime": event.get("eventTime", ""),
                                         "subject": event.get("eventSubject", ""),
                                         "place": place,
                                         "title": event.get("title", ""),
-                                        "object": event.get("eventObject", "")}])
+                                        "object": event.get("eventObject", "")})
         res = {
             "doc": data_forms,
             "event_list": event_list
