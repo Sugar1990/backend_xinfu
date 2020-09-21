@@ -749,6 +749,7 @@ def search_advanced_doc_type():
             {"name": Catalog.get_name_by_id(doc_type), "data": data_by_doc_id[doc_type]}
             for doc_type in data_by_doc_id if Catalog.get_name_by_id(doc_type)
         ]
+        event_list = []
         # 雨辰接口
         if YC_ROOT_URL:
             body = {}
@@ -765,10 +766,22 @@ def search_advanced_doc_type():
             header = {"Content-Type": "application/json; charset=UTF-8"}
             url = YC_ROOT_URL + "/event/listByDocIds"
             search_result = requests.post(url, data=json.dumps(body), headers=header)
-
+            if search_result.status_code == 200:
+                yc_events = search_result.json()['data']
+                for event in yc_events:
+                    place = []
+                    for event_place in event.get("eventAddress", []):
+                        if event_place.get("placeIon", "") and event_place.get("placeLat", ""):
+                            place = event_place
+                            break
+                    event_list.append([{"datetime": event.get("eventTime", ""),
+                                        "subject": event.get("eventSubject", ""),
+                                        "place": place,
+                                        "title": event.get("title", ""),
+                                        "object": event.get("eventObject", "")}])
         res = {
             "doc": data_forms,
-            "event_list": search_result.json()['data'] if search_result else []
+            "event_list": event_list
         }
 
         '''
