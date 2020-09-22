@@ -3,13 +3,13 @@ import datetime
 import hashlib
 import json
 import os
-import time
 import requests
+from flasgger import swag_from
 from flask import jsonify, request
 from pypinyin import lazy_pinyin
 from sqlalchemy import or_
 from werkzeug.utils import secure_filename
-
+from app.swagger.document_dict import *
 from . import api_document as blue_print
 from .utils import success_res, fail_res
 from .. import db, lock
@@ -21,6 +21,7 @@ from ..serve.word_parse import extract_word_content
 
 # 上传文档
 @blue_print.route("/upload_doc", methods=['POST'])
+@swag_from(upload_doc_dict)
 def upload_doc():
     try:
         catalog_id = request.form.get('catalog_id', 0)
@@ -169,6 +170,7 @@ def find_leaf_catalog_id(parent_catalog_id, path_catalog_name_list, uid):
 
 # 获得文档路径
 @blue_print.route("/get_doc_realpath", methods=['GET'])
+@swag_from(get_doc_realpath_dict)
 def get_doc_realpath():
     try:
         doc_id = request.args.get('doc_id', 0, type=int)
@@ -183,6 +185,7 @@ def get_doc_realpath():
 
 # 获取文档内容
 @blue_print.route('/get_content', methods=['GET'])
+@swag_from(get_content_dict)
 def get_content():
     try:
         doc_id = request.args.get('doc_id')
@@ -195,6 +198,7 @@ def get_content():
 
 # 更新文档信息
 @blue_print.route('/modify_doc_info', methods=['PUT'])
+@swag_from(modify_doc_info_dict)
 def modify_doc_info():
     try:
         doc_id = request.json.get('doc_id', 0)
@@ -244,6 +248,7 @@ def modify_doc_info():
 
 # 删除文档
 @blue_print.route('/del_doc', methods=['POST'])
+@swag_from(del_doc_dict)
 def del_doc():
     doc_ids = request.json.get('doc_ids', [])
     customer_id = request.json.get('customer_id', 0)
@@ -329,6 +334,7 @@ def delete_doc_in_pg_es(doc_ids):
 
 # 获取上传历史
 @blue_print.route('/get_upload_history', methods=['GET'])
+@swag_from(get_upload_history_dict)
 def get_upload_history():
     try:
         current_page = request.args.get('cur_page', 1, type=int)
@@ -359,6 +365,7 @@ def get_upload_history():
 
 # 获取文档信息
 @blue_print.route('/get_info', methods=['GET'])
+@swag_from(get_info_dict)
 def get_info():
     try:
         doc_id = request.args.get('doc_id', 0, type=int)
@@ -433,6 +440,7 @@ def get_info():
 
 # 获取实体分页展示
 @blue_print.route('/get_entity_in_list_pagination', methods=['GET'])
+@swag_from(get_entity_in_list_pagination_dict)
 def get_entity_in_list_pagination():
     try:
         search = request.args.get("search", "")
@@ -484,6 +492,7 @@ def get_entity_in_list_pagination():
 
 # 判断文档权限
 @blue_print.route('/judge_doc_permission', methods=['GET'])
+@swag_from(judge_doc_permission_dict)
 def judge_doc_permission():
     customer_id = request.args.get("customer_id", 0, type=int)
     doc_id = request.args.get("doc_id", 0, type=int)
@@ -504,6 +513,7 @@ def judge_doc_permission():
 
 # 模糊文档搜索分页展示
 @blue_print.route('/get_search_doc_panigation', methods=['GET'])
+@swag_from(get_search_panigation_dict)
 def get_search_panigation():
     try:
         customer_id = request.args.get("customer_id", 0, type=int)
@@ -570,6 +580,7 @@ def get_search_panigation():
 
 # 高级搜索
 @blue_print.route('/search_advanced', methods=['POST'])
+@swag_from('..swagger/search_advanced.yml')
 def search_advanced():
     try:
         start_date = request.json.get('start_date', "")
@@ -672,6 +683,7 @@ def search_advanced():
 
 # 高级搜索 doc_type
 @blue_print.route('/search_advanced_doc_type', methods=['POST'])
+@swag_from('..swagger/search_advanced_doc_type.yml')
 def search_advanced_doc_type():
     try:
         start_date = request.json.get('start_date', "")
@@ -832,6 +844,7 @@ def search_advanced_doc_type():
 
 # 高级搜索分页展示
 @blue_print.route('/search_advanced_pagination', methods=['POST'])
+@swag_from('..swagger/search_advanced_pagination.yml')
 def search_advanced_pagination():
     # 时间参数
     date = request.json.get('date', [])
@@ -928,6 +941,7 @@ def search_advanced_pagination():
 
 # 标记结果储存
 @blue_print.route('/save_tagging_result', methods=['POST'])
+@swag_from('..swagger/save_tagging_result.yml')
 def save_tagging_result():
     try:
 
@@ -1016,6 +1030,7 @@ def save_tagging_result():
 
 # 获取最新上传文档的标注页面地址
 @blue_print.route('/get_latest_upload_file_tagging_url', methods=['GET'])
+@swag_from(get_latest_upload_file_tagging_url)
 def get_latest_upload_file_tagging_url():
     try:
         customer_id = request.args.get("uid", 0, type=int)

@@ -1,0 +1,100 @@
+search_advanced_pagination
+search_advanced_pagination
+---
+tags:
+  - document
+parameters:
+  - name: body
+    in: body
+    required: true,
+    schema:
+      required: dates, places, customer_id, page_size, cur_page, entities, keywords, event_categories, notes, doc_type, content
+      properties:
+        dates:
+          $ref: "#/definitions/dates"
+        places:
+          $ref: "#/definitions/places"
+        customer_id:
+          type: integer
+        page_size:
+          type: integer
+        cur_page:
+          type: integer
+        entities:
+          type: array
+          items:
+            $ref: "#/definitions/entities"
+        keywords:
+          type: array
+          items:
+            type: string
+        event_categories:
+          type: array
+          items:
+            $ref: "#/definitions/event_categories"
+        notes:
+          type: array
+          items:
+            type: string
+        doc_type:
+          type: integer
+        content:
+          type: string
+responses:
+  500:
+    description: Error !
+  200:
+    description: Access !
+
+
+definitions:
+  event_categories:
+    type: object
+    properties:
+      event_class:
+        type: integer
+      event_category_id:
+        type: integer
+    xml:
+      name: event_categories
+
+  places:
+    type: object
+    properties:
+      place_type:
+        type: string
+        enum: place, place_direction_distance, location, degrees, length, route
+      value:
+        type: array
+        items:
+          type: string
+    xml:
+      name: places
+
+  dates:
+    type: object
+    properties:
+      date_type:
+        type: string
+        enum: date, time_range, time_period, frequency
+      value:
+        type: array
+        items:
+          type: string
+          # enum: 20200921, {start_time:123456789, end_time：456123789}, 2年
+    xml:
+      name: dates
+
+  entities:
+    type: object
+    properties:
+      name:
+        type: string
+      category_id:
+        type: integer
+    xml:
+      name: entities
+
+
+
+

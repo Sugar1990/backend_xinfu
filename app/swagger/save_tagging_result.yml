@@ -1,0 +1,159 @@
+save_tagging_result
+save_tagging_result
+---
+tags:
+  - document
+parameters:
+  - name: body
+    in: body
+    required: true,
+    schema:
+      required: doc_id, date,time_range,time_period,place,place_direction_distance,location,degrees,length,route,entities,event_categories,notes,keywords,doc_type,frequency,notes_content
+      properties:
+        doc_id:
+          type: integer
+        date:
+          type: array
+          items:
+            type: string
+        time_range:
+          type: array
+          items:
+            $ref: "#/definitions/time_range"
+        time_period:
+          type: array
+          items:
+            type: string
+        place:
+          type: array
+          items:
+            type: string
+        place_direction_distance:
+          type: array
+          items:
+            $ref: "#/definitions/place_direction_distance"
+        location:
+          type: array
+          items:
+            $ref: "#/definitions/location"
+        degrees:
+          type: array
+          items:
+            $ref: "#/definitions/degrees"
+        length:
+          type: array
+          items:
+            type: string
+        route:
+          type: array
+          items:
+            $ref: "#/definitions/route"
+        entities:
+          type: array
+          items:
+            $ref: "#/definitions/entities"
+        event_categories:
+          $ref: "#/definitions/event_categories"
+        notes:
+          type: array
+          items:
+            type: string
+        keywords:
+          type: array
+          items:
+            type: string
+        doc_type:
+          type: integer
+        frequency:
+          type: array
+          items:
+            type: string
+        notes_content:
+          type: array
+          items:
+            type: string
+
+responses:
+  500:
+    description: Error !
+  200:
+    description: save_tagging_result
+
+definitions:
+  time_range:
+    type: object
+    properties:
+      start_time:
+        type: string
+      end_time:
+        type: string
+    xml:
+      name: time_range
+  place_direction_distance:
+    type: object
+    properties:
+      place:
+        type: string
+      distance:
+        type: string
+      direction:
+        type: string
+    xml:
+      name: place_direction_distance
+  location:
+    type: object
+    properties:
+      lat:
+        type: number
+        format: double
+      lon:
+        type: number
+        format: double
+      xml:
+        name: location
+  degrees:
+    type: object
+    properties:
+      lat:
+        type: object
+        properties:
+          degree: integer
+          minute: integer
+          second: integer
+      lon:
+        type: object
+        properties:
+          degree: integer
+          minute: integer
+          second: integer
+      xml:
+        name: degrees
+
+  event_categories:
+    type: object
+    properties:
+      event_class:
+        type: integer
+      event_category_id:
+        type: integer
+    xml:
+      name: event_categories
+  route:
+    type: array
+    items:
+      type: string
+    xml:
+      name: route
+  entities:
+    type: object
+    properties:
+      name:
+        type: string
+      category_id:
+        type: integer
+    xml:
+      name: entities
+
+
+
+

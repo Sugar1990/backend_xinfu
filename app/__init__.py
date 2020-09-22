@@ -1,3 +1,4 @@
+from flasgger import Swagger
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from config import config
@@ -15,7 +16,7 @@ cache_config = {'CACHE_TYPE': 'filesystem', 'CACHE_DIR': '/data/cache'}
 
 def create_app(config_name):
     app = Flask(__name__, static_folder=os.path.join(os.getcwd(), 'static'), static_url_path='/static')
-
+    Swagger(app)
     app.config.from_object(config[config_name])
     config[config_name].init_app(app)
     CORS(app)

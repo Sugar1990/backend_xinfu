@@ -1,3 +1,4 @@
+from flasgger import swag_from
 from flask import jsonify, request
 import json
 from . import api_initial as blue_print
@@ -6,7 +7,7 @@ from .. import db
 from ..conf import ADMIN_NAME, ADMIN_PWD, ASSIS_NAME, ASSIS_PWD, TAG_TABS, PLACE_BASE_NAME, ES_SERVER_IP, ES_SERVER_PORT
 from .utils import success_res, fail_res
 import requests
-
+from ..swagger.initial_dict import *
 
 @blue_print.route("/init", methods=['GET'])
 def init():
@@ -56,6 +57,7 @@ def init():
 
 
 @blue_print.route('/pg_insert_es', methods=['GET'])
+@swag_from(pg_insert_es_dict)
 def pg_insert_es():
     pg_table = request.args.get('pg_table', '')  # 同步数据为entity或者document
     try:
@@ -110,6 +112,7 @@ def pg_insert_es():
 
 
 @blue_print.route('/delete_index', methods=['GET'])
+@swag_from(delete_index_dict)
 def delete_index():
     es_index = request.args.get('es_index', '')  # 删除数据为entity或者document
     try:
@@ -129,6 +132,7 @@ def delete_index():
 
 
 @blue_print.route('/update_es_doc', methods=['GET'])
+@swag_from(update_es_doc_dict)
 def update_es_doc():
     try:
         docs = Document.query.all()
