@@ -131,7 +131,7 @@ def insert_entity():
                 data = json.dumps({"id": entity.id,
                                    "name": name,
                                    "categoryId": entity.category_id,
-                                   "props": props,#["props"] if props.get("props",False) else props,
+                                   "props": props,  # ["props"] if props.get("props",False) else props,
                                    "synonyms": synonyms
                                    })
                 yc_res = requests.post(url=url, data=data, headers=header)
@@ -514,14 +514,15 @@ def get_search_panigation_es(search='', page_size=10, cur_page=1, category_id=0)
             header = {"Content-Type": "application/json"}
             esurl = url + "/searchCustomPagination"
             search_result = requests.post(url=esurl, data=json.dumps(para), headers=header)
+            print(search_result.text)
             null = 'None'
             total_count = search_result.json()['data']['totalCount']
-            data = [{'id': entity['_source']['id'],
-                     'name': entity['_source']['name'],
-                     'props': entity['_source']['props'],
-                     'synonyms': entity['_source']['synonyms'],
-                     'summary': entity['_source']['summary'],
-                     'category': EntityCategory.get_category_name(entity['_source']['category_id'])
+            data = [{'id': entity['_source'].get('id', 0),
+                     'name': entity['_source'].get('name', ""),
+                     'props': entity['_source'].get('props', {}),
+                     'synonyms': entity['_source'].get('synonyms', []),
+                     'summary': entity['_source'].get('summary', ""),
+                     'category': EntityCategory.get_category_name(entity['_source'].get('category_id', 0))
                      } for entity in search_result.json()['data']['dataList']]
             # for entity in data:
             #     entity['props'] = {} if entity['props'] == "None" else eval(
