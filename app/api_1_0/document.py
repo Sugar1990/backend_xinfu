@@ -139,6 +139,7 @@ def upload_doc():
         print(str(e))
         db.session.rollback()
         res = fail_res()
+    time.sleep(5)
     return jsonify(res)
 
 
@@ -1048,12 +1049,8 @@ def get_es_doc(url, customer_id=0, date=[], time_range=[], time_period=[], place
     if time_period:
         search_json["time_period"] = {"type": "multi_term",
                                       "value": time_period}  # {"type": "like", "value": time_period}
-    if frequency:
-        search_json["frequency"] = {"type": "multi_term",
-                                      "value": frequency}
     if place:
         search_json["place"] = {"type": "multi_term", "value": place}
-
 
     if place_direction_distance:  # need analysis
         place_direction_distance = place_direction_distance[0]
@@ -1073,8 +1070,6 @@ def get_es_doc(url, customer_id=0, date=[], time_range=[], time_period=[], place
         search_json["route"] = {"type": "multi_term", "value": route}
     if notes:
         search_json["notes"] = {"type": "phrase", "value": notes[0]}
-    if notes_content:
-        search_json["notes_content"] = {"type": "phrase", "value": notes_content[0]}
     if doc_type:
         search_json["doc_type"] = {"type": "id", "value": doc_type}
     if search_json:
