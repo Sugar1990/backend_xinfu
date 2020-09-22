@@ -91,7 +91,7 @@ def insert_entity():
         #     return jsonify(res)
 
         entity = Entity.query.filter(and_(or_(Entity.name == name, Entity.synonyms.has_key(name))),
-                                     Entity.valid == 1).first()
+                                     Entity.valid == 1, Entity.category_id == category_id).first()
 
         if not entity:
             props = props if props else {}
@@ -407,7 +407,7 @@ def delete_synonyms():
         inesert_para = {"update_index": 'entity',
                         "data_update_json": [{es_id: key_value_json}]}
         search_result = requests.post(url + '/updatebyId', params=json.dumps(inesert_para), headers=header)
-        print(YC_ROOT_URL, flush = True)
+
         # 雨辰同步
         if sync and YC_ROOT_URL:
             header = {"Content-Type": "application/json; charset=UTF-8"}
@@ -800,7 +800,7 @@ def import_entity_excel_straightly():
             try:
                 row_value = table.row_values(row_index)
                 ex_name = row_value[0].strip()
-                category_id = EntityCategory.get_category_id(row_value[1].strip())
+                category = EntityCategory.get_category_id(row_value[1].strip())
 
                 ex_summary = row_value[2].strip()
                 # 解析别名
@@ -815,7 +815,7 @@ def import_entity_excel_straightly():
                         key, value = re.match('(.+?):(.*)', prop_str).groups()
                         ex_props[key] = value
 
-                entity = {"name": ex_name, "props": ex_props, "synonyms": ex_synonyms, "category_id": category_id,
+                entity = {"name": ex_name, "props": ex_props, "synonyms": ex_synonyms, "category": category,
                           "summary": ex_summary, "valid": 1}
 
                 entity_list.append(entity)

@@ -139,7 +139,6 @@ def upload_doc():
         print(str(e))
         db.session.rollback()
         res = fail_res()
-    time.sleep(5)
     return jsonify(res)
 
 
@@ -787,13 +786,13 @@ def search_advanced_doc_type():
                     place = []
                     for event_place in event.get("eventAddress", []):
                         if event_place.get("placeIon", "") and event_place.get("placeLat", ""):
-                            place = event_place
+                            place = [event_place]
                             break
-                    event_list.append([{"datetime": event.get("eventTime", ""),
+                    event_list.append({"datetime": event.get("eventTime", ""),
                                         "subject": event.get("eventSubject", ""),
                                         "place": place,
                                         "title": event.get("title", ""),
-                                        "object": event.get("eventObject", "")}])
+                                        "object": event.get("eventObject", "")})
         res = {
             "doc": data_forms,
             "event_list": event_list
@@ -877,7 +876,6 @@ def search_advanced_pagination():
             length = place_value
         elif place_type == 'route':
             route = place_value
-
     # 搜索内容无关参数
     customer_id = request.json.get('customer_id', 0)
     page_size = request.json.get('page_size', 10)
@@ -912,8 +910,6 @@ def search_advanced_pagination():
             data['status'] = doc.get_status_name()
             data['permission'] = 1 if Permission.judge_power(customer_id, doc.id) else 0
             data_screen_res.append(data)
-
-    data_screen_res = data_screen
     total_count = len(data_screen_res)
     if total_count > page_size * cur_page:
         list_return = data_screen_res[page_size * (cur_page - 1):page_size * cur_page]
@@ -1049,8 +1045,12 @@ def get_es_doc(url, customer_id=0, date=[], time_range=[], time_period=[], place
     if time_period:
         search_json["time_period"] = {"type": "multi_term",
                                       "value": time_period}  # {"type": "like", "value": time_period}
+    if frequency:
+        search_json["frequency"] = {"type": "multi_term",
+                                      "value": frequency}
     if place:
         search_json["place"] = {"type": "multi_term", "value": place}
+
 
     if place_direction_distance:  # need analysis
         place_direction_distance = place_direction_distance[0]
@@ -1070,6 +1070,8 @@ def get_es_doc(url, customer_id=0, date=[], time_range=[], time_period=[], place
         search_json["route"] = {"type": "multi_term", "value": route}
     if notes:
         search_json["notes"] = {"type": "phrase", "value": notes[0]}
+    if notes_content:
+        search_json["notes_content"] = {"type": "phrase", "value": notes_content[0]}
     if doc_type:
         search_json["doc_type"] = {"type": "id", "value": doc_type}
     if search_json:
