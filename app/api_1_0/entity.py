@@ -514,7 +514,7 @@ def get_search_panigation_es(search='', page_size=10, cur_page=1, category_id=0)
             header = {"Content-Type": "application/json"}
             esurl = url + "/searchCustomPagination"
             search_result = requests.post(url=esurl, data=json.dumps(para), headers=header)
-            print(search_result.text)
+            # print(search_result.text)
             null = 'None'
             total_count = search_result.json()['data']['totalCount']
             data = [{'id': entity['_source'].get('id', 0),
