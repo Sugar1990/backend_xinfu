@@ -297,10 +297,6 @@ def get_doc_events():
             ]
         }]
         '''
-        for event_item in res:
-            if event_item.get("place", []):
-                place_items = event_item.get("place", [])
-                event_item['place'] = [i.get("word") for i in place_items]
 
     except Exception as e:
         print(str(e))
