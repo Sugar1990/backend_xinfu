@@ -91,7 +91,7 @@ def insert_entity():
         #     return jsonify(res)
 
         entity = Entity.query.filter(and_(or_(Entity.name == name, Entity.synonyms.has_key(name))),
-                                     Entity.valid == 1).first()
+                                     Entity.valid == 1, Entity.category_id == category_id).first()
 
         if not entity:
             props = props if props else {}
@@ -131,14 +131,14 @@ def insert_entity():
                 data = json.dumps({"id": entity.id,
                                    "name": name,
                                    "categoryId": entity.category_id,
-                                   "props": props,#["props"] if props.get("props",False) else props,
+                                   "props": props,  # ["props"] if props.get("props",False) else props,
                                    "synonyms": synonyms
                                    })
                 yc_res = requests.post(url=url, data=data, headers=header)
 
             res = success_res()
         else:
-            res = fail_res(msg="该实体名称已存在")
+            res = fail_res(msg="该实体已存在")
     except Exception as e:
         print(str(e))
         db.session.rollback()
@@ -407,7 +407,7 @@ def delete_synonyms():
         inesert_para = {"update_index": 'entity',
                         "data_update_json": [{es_id: key_value_json}]}
         search_result = requests.post(url + '/updatebyId', params=json.dumps(inesert_para), headers=header)
-        print(YC_ROOT_URL, flush = True)
+        print(YC_ROOT_URL, flush=True)
         # 雨辰同步
         if sync and YC_ROOT_URL:
             header = {"Content-Type": "application/json; charset=UTF-8"}
