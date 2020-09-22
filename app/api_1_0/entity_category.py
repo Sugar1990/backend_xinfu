@@ -52,17 +52,17 @@ def get_one_entity_category():
 def add_entity_category():
     try:
         name = request.json.get('name', '')
-        if name == PLACE_BASE_NAME:
-            res = fail_res(msg="地名库由专业团队维护，不能添加！")
+        # if name == PLACE_BASE_NAME:
+        #     res = fail_res(msg="地名库由专业团队维护，不能添加！")
+        # else:
+        entity_category = EntityCategory.query.filter_by(name=name, valid=1).all()
+        if entity_category:
+            res = fail_res(msg="同名实体类型已存在")
         else:
-            entity_category = EntityCategory.query.filter_by(name=name, valid=1).all()
-            if entity_category:
-                res = fail_res(msg="同名实体类型已存在")
-            else:
-                entity = EntityCategory(name=name, valid=1)
-                db.session.add(entity)
-                db.session.commit()
-                res = success_res()
+            entity = EntityCategory(name=name, valid=1)
+            db.session.add(entity)
+            db.session.commit()
+            res = success_res()
     except:
         db.session.rollback()
         res = fail_res()
@@ -76,18 +76,18 @@ def modify_entity_category():
         id = request.json.get('id', 0)
         name = request.json.get('name', '')
         if name:
-            entity_category = EntityCategory.query.filter_by(name=name, valid=1).first()
-            if entity_category:
+            entity_category_same = EntityCategory.query.filter_by(name=name, valid=1).first()
+            if entity_category_same:
                 res = fail_res(msg="同名实体类型已存在")
             else:
                 entity_category = EntityCategory.query.filter_by(id=id, valid=1).first()
                 if entity_category:
-                    if entity_category.name != PLACE_BASE_NAME:
-                        entity_category.name = name
-                        db.session.commit()
-                        res = success_res()
-                    else:
-                        res = fail_res(msg="地名库由专业团队维护，不能修改")
+                    # if entity_category.name != PLACE_BASE_NAME:
+                    entity_category.name = name
+                    db.session.commit()
+                    res = success_res()
+                    # else:
+                    #     res = fail_res(msg="地名库由专业团队维护，不能修改")
                 else:
                     res = fail_res(msg="实体类型不存在")
         else:
@@ -125,8 +125,8 @@ def del_entity_category(id):
 
         if not entity_category:
             res = False, "实体类型不存在"
-        elif entity_category.name == PLACE_BASE_NAME:
-            res = False, "地名库由专业团队维护，不能修改"
+        # elif entity_category.name == PLACE_BASE_NAME:
+        #     res = False, "地名库由专业团队维护，不能修改"
         elif entity:
             res = False, "该类型存在实体，不能删除"
         elif relation_category:

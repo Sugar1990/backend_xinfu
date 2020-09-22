@@ -36,6 +36,31 @@ def login():
     return jsonify(res)
 
 
+# 修改时，如果找不到是报错
+@blue_print.route('/logout', methods=['POST'])
+def logout():
+    uid = request.json.get('uid', '')
+    try:
+        if not uid:
+            customer = db.session.query(Customer).filter(
+                and_(Customer.username == input_name, Customer.valid == 1)).first()
+            if customer:
+                if input_pwd == customer.pwd:
+                    role = 3
+                    if customer.get_power() == ADMIN_ROLE_POWER:
+                        role = 1
+                    elif customer.get_power() == ASSIS_ROLE_POWER:
+                        role = 2
+                    res = success_res(data={"uid": customer.id, "role": role})
+                else:
+                    res = fail_res(msg="密码不正确")
+            else:
+                res = fail_res(msg="用户不存在")
+    except:
+        res = fail_res(msg='登录失败')
+    return jsonify(res)
+
+
 @blue_print.route('/insert_customer', methods=['POST'])
 def insert_customer():
     username = request.json.get('customer_username', '')
@@ -67,7 +92,8 @@ def update_customer():
         customer = db.session.query(Customer).filter(and_(Customer.id == uid, Customer.valid == 1)).first()
         if customer:
             customer1 = db.session.query(Customer).filter(and_(Customer.username == username, Customer.pwd == pwd,
-                                                               Customer.permission_id == permission_id, Customer.valid == 1)).first()
+                                                               Customer.permission_id == permission_id,
+                                                               Customer.valid == 1)).first()
             if customer1:
                 res = fail_res(msg="相同用户已存在")
             else:

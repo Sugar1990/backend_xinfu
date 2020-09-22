@@ -216,6 +216,7 @@ def get_catalog_files():
                         "create_time": d.create_time,
                         "create_username": Customer.get_username_by_id(d.create_by),
                         "extension": d.category.replace('\n\"', ""),
+                        'tag_flag': 1 if d.status == 1 else 0,
                         "status": d.get_status_name(),
                         "permission": 1 if Permission.judge_power(customer_id, d.id) else 0
                     } for d in docs],
