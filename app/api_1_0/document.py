@@ -183,6 +183,43 @@ def get_doc_realpath():
     return jsonify(res)
 
 
+# 修改doc在es中的doc_type（文档的祖目录id）
+def modify_doc_es_doc_type(ids):
+    try:
+        if isinstance(ids, list):
+            doc_list = Document.query.filter(Document.id.in_(ids)).all()
+            for doc in doc_list:
+                # 获得es对应doc
+                url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+                header = {"Content-Type": "application/json; charset=UTF-8"}
+                search_json = {
+                    "id": {"type": "id", "value": doc.id}
+                }
+
+                es_id_para = {"search_index": "document", "search_json": search_json}
+
+                search_result = requests.post(url + '/searchId', data=json.dumps(es_id_para), headers=header)
+                try:
+                    es_id = search_result.json()['data']['dataList'][0]
+                except:
+                    es_id = ''
+
+                # 替换doc_type 修改es已有doc
+                an_catalog = Catalog.get_ancestorn_catalog(doc.catalog_id)
+                doc_type = an_catalog.id if an_catalog else 0
+                key_value_json = {'doc_type': doc_type}
+                inesert_para = {"update_index": 'document',
+                                "data_update_json": [{es_id: key_value_json}]}
+
+                requests.post(url + '/updatebyId', data=json.dumps(inesert_para), headers=header)
+        else:
+            res = fail_res("paramter \"ids\" is not list type")
+    except Exception as e:
+        print(str(e))
+        res = fail_res()
+    return jsonify(res)
+
+
 # 获取文档内容
 @blue_print.route('/get_content', methods=['GET'])
 # @swag_from(get_content_dict)
@@ -932,9 +969,19 @@ def search_advanced_pagination():
     else:
         list_return = []
 
-    res = {'data': list_return,
+    list_return = []
+    with open(os.path.join(os.getcwd(), 'static', 'search_advanced_pagination.json'), 'r', encoding='utf-8') as f:
+        print("read search_advanced_doc_type.json")
+        res_json = json.loads(f.read())
+        list_return = res_json.get("data", [])
+        for i in range(5):
+            list_return += list_return
+        total_count = len(list_return)
+
+    res = {'data': list_return[(cur_page - 1) * page_size: cur_page * page_size],
            'page_count': int(total_count / page_size) + 1,
            'total_count': total_count}
+
     return jsonify(res)
 
 

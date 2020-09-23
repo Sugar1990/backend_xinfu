@@ -9,7 +9,7 @@ from ..models import Catalog, Document, Customer, Permission
 from .. import db
 from .utils import success_res, fail_res
 from ..conf import TAG_TABS
-from .document import delete_doc_in_pg_es
+from .document import delete_doc_in_pg_es, modify_doc_es_doc_type
 
 
 @blue_print.route('/insert_catalog', methods=['POST'])
@@ -329,10 +329,11 @@ def move_catalog():
             if catalog:
                 catalog_same = Catalog.query.filter_by(name=catalog.name, parent_id=parent_id).first()
                 if catalog_same:
-                    move_catalog_recursive(catalog_id, catalog_same.id)
+                    move_catalog_same_recursive(catalog_id, catalog_same.id)
                 else:
                     catalog.parent_id = parent_id
                     db.session.commit()
+                    move_catalog_recursive(catalog.id)
                 res = success_res()
             else:
                 res = fail_res(msg="操作对象不存在")
@@ -343,8 +344,21 @@ def move_catalog():
     return jsonify(res)
 
 
-# 处理重名目录下文件和子目录
-def move_catalog_recursive(source_catalog_id, target_catalog_id):
+# 移动目录-处理文件和子目录
+def move_catalog_recursive(source_catalog_id):
+    # 处理文件
+    source_docs = Document.query.filter_by(catalog_id=source_catalog_id).all()
+    doc_ids = [i.id for i in source_docs]
+    modify_doc_es_doc_type(doc_ids)
+
+    # 处理目录
+    source_catalog_children = Catalog.query.filter_by(parent_id=source_catalog_id).all()
+    for source_catalog_child in source_catalog_children:
+        move_catalog_recursive(source_catalog_child.id)
+
+
+# 移动目录-处理重名目录下文件和子目录
+def move_catalog_same_recursive(source_catalog_id, target_catalog_id):
     source_docs = Document.query.filter_by(catalog_id=source_catalog_id).all()
     target_docs = Document.query.filter_by(catalog_id=target_catalog_id).all()
 
@@ -358,12 +372,14 @@ def move_catalog_recursive(source_catalog_id, target_catalog_id):
                 # 目标文件未标注，移动文件已标注，删除目标文件
                 del_doc_id.append(target_doc_item.id)
                 source_doc_item.catalog_id = target_catalog_id
+                modify_doc_es_doc_type([source_doc_item.id])
                 db.session.commit()
             else:
                 # 目标文件已标注，删除移动文件
                 del_doc_id.append(source_doc_item.id)
         else:
             source_doc_item.catalog_id = target_catalog_id
+            modify_doc_es_doc_type([source_doc_item.id])
             db.session.commit()
     delete_doc_in_pg_es(del_doc_id)
 
@@ -376,7 +392,7 @@ def move_catalog_recursive(source_catalog_id, target_catalog_id):
     for source_catalog_child in source_catalog_children:
         if source_catalog_child.name in target_catalog_children_name_dict:
             target_catalog_child = target_catalog_children_name_dict[source_catalog_child.name]
-            move_catalog_recursive(source_catalog_child.id, target_catalog_child.id)
+            move_catalog_same_recursive(source_catalog_child.id, target_catalog_child.id)
 
     source_catalog = Catalog.query.filter_by(id=source_catalog_id).first()
     db.session.delete(source_catalog)
