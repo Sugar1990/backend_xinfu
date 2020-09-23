@@ -9,6 +9,7 @@ from flask import jsonify, request
 from pypinyin import lazy_pinyin
 from sqlalchemy import or_
 from werkzeug.utils import secure_filename
+import math
 # from app.swagger.document_dict import *
 from . import api_document as blue_print
 from .utils import success_res, fail_res
@@ -610,7 +611,7 @@ def get_search_panigation():
 
         total_count = len(data)
 
-        if total_count > page_size * cur_page:
+        if total_count >= page_size * cur_page:
             list_return = data[page_size * (cur_page - 1):page_size * cur_page]
 
         elif total_count < page_size * cur_page and total_count > page_size * (cur_page - 1):
@@ -619,7 +620,7 @@ def get_search_panigation():
             list_return = []
         # print(esurl, para, flush=True)
         res = {'data': list_return,
-               'page_count': int(total_count / page_size) + 1,
+               'page_count': math.ceil(total_count / page_size),
                'total_count': total_count}
     except Exception as e:
         print(str(e))
@@ -975,7 +976,7 @@ def search_advanced_pagination():
             data['permission'] = 1 if Permission.judge_power(customer_id, doc.id) else 0
             data_screen_res.append(data)
     total_count = len(data_screen_res)
-    if total_count > page_size * cur_page:
+    if total_count >= page_size * cur_page:
         list_return = data_screen_res[page_size * (cur_page - 1):page_size * cur_page]
 
     elif total_count < page_size * cur_page and total_count > page_size * (cur_page - 1):
@@ -996,7 +997,7 @@ def search_advanced_pagination():
     '''
 
     res = {'data': list_return,
-           'page_count': int(total_count / page_size) + 1,
+           'page_count': math.ceil(total_count / page_size),
            'total_count': total_count}
 
     return jsonify(res)

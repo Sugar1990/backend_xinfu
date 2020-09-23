@@ -7,6 +7,7 @@ import os
 import re
 import requests
 import xlrd
+import math
 # from flasgger import swag_from
 from flask import request, jsonify
 from pypinyin import lazy_pinyin
@@ -40,7 +41,7 @@ def get_all():
     category = EntityCategory.query.filter_by(id=category_id, name=PLACE_BASE_NAME, valid=1).first()
     if category and int(USE_PLACE_SERVER):
         data, total_count = get_place_from_base_server(page_size=page_size, cur_page=current_page, search='')
-        page_count = int(total_count / page_size) + 1
+        page_count = math.ceil(total_count / page_size)
 
     else:
         conditions = [Entity.valid == 1]
