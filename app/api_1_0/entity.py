@@ -379,7 +379,7 @@ def add_synonyms():
             header = {"Content-Type": "application/json; charset=UTF-8"}
             url = YC_ROOT_URL + "/entitysync/update"
             data = json.dumps({"id": entity.id,
-                               " categoryId": entity.category_id,
+                               "categoryId": entity.category_id,
                                "synonyms": entity.synonyms})
             yc_res = requests.post(url=url, data=data, headers=header)
         res = success_res()
@@ -421,6 +421,7 @@ def delete_synonyms():
             header = {"Content-Type": "application/json; charset=UTF-8"}
             url = YC_ROOT_URL + "/entitysync/update"
             data = json.dumps({"id": entity.id,
+                               "category_id": entity.category_id,
                                "synonyms": entity.synonyms})
             yc_res = requests.post(url=url, data=data, headers=header)
         res = success_res()
