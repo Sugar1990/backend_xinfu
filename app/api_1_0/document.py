@@ -184,10 +184,23 @@ def get_doc_realpath():
 
 
 # 修改doc在es中的doc_type（文档的祖目录id）
-def modify_doc_es_doc_type(ids):
+@blue_print.route("/update_es_doc_type", methods=['GET'])
+def update_es_doc_type():
     try:
-        if isinstance(ids, list):
-            doc_list = Document.query.filter(Document.id.in_(ids)).all()
+        docs = Document.query.all()
+        doc_ids = [i.id for i in docs]
+        res = modify_doc_es_doc_type(doc_ids)
+    except Exception as e:
+        print(str(e))
+        res = fail_res()
+    return jsonify(res)
+
+
+# 修改doc在es中的doc_type（文档的祖目录id）
+def modify_doc_es_doc_type(doc_ids):
+    try:
+        if isinstance(doc_ids, list):
+            doc_list = Document.query.filter(Document.id.in_(doc_ids)).all()
             for doc in doc_list:
                 # 获得es对应doc
                 url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
@@ -212,12 +225,13 @@ def modify_doc_es_doc_type(ids):
                                 "data_update_json": [{es_id: key_value_json}]}
 
                 requests.post(url + '/updatebyId', data=json.dumps(inesert_para), headers=header)
+            res = success_res()
         else:
             res = fail_res("paramter \"ids\" is not list type")
     except Exception as e:
         print(str(e))
         res = fail_res()
-    return jsonify(res)
+    return res
 
 
 # 获取文档内容
