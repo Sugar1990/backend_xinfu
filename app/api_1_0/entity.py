@@ -93,8 +93,7 @@ def insert_entity():
         #     res = fail_res(msg="地名库由专业团队维护,不能添加！")
         #     return jsonify(res)
 
-        entity = Entity.query.filter(and_(or_(Entity.name == name, Entity.synonyms.has_key(name))),
-                                     Entity.valid == 1, Entity.category_id == category_id).first()
+        entity = Entity.query.filter(Entity.name == name, Entity.valid == 1, Entity.category_id == category_id).first()
 
         if not entity:
             props = props if props else {}
@@ -380,6 +379,7 @@ def add_synonyms():
             header = {"Content-Type": "application/json; charset=UTF-8"}
             url = YC_ROOT_URL + "/entitysync/update"
             data = json.dumps({"id": entity.id,
+                               " categoryId": entity.category_id,
                                "synonyms": entity.synonyms})
             yc_res = requests.post(url=url, data=data, headers=header)
         res = success_res()
