@@ -1,11 +1,10 @@
-from flasgger import Swagger
+# from flasgger import Swagger
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from config import config
 from flask_cors import CORS
 import os
 import threading
-# from flasgger import Swagger
 
 lock = threading.Lock()
 
