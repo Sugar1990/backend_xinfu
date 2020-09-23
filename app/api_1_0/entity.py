@@ -175,7 +175,8 @@ def update_entity():
         entity = Entity.query.filter_by(id=id, valid=1).first()
 
         if entity:
-            entity_same = Entity.query.filter(Entity.name == name, Entity.valid == 1, Entity.id != id).first()
+            entity_same = Entity.query.filter(Entity.name == name, Entity.valid == 1, Entity.id != id,
+                                              Entity.category_id == entity.category_id).first()
             if entity_same:
                 res = fail_res(msg="相同实体名称已存在")
                 return jsonify(res)
@@ -212,7 +213,7 @@ def update_entity():
             es_id = search_result.json()['data']['dataList'][0]
             # 更新ES实体
             update_para = {"update_index": 'entity',
-                            "data_update_json": [{es_id: key_value_json}]}
+                           "data_update_json": [{es_id: key_value_json}]}
 
             search_result = requests.post(url + '/updatebyId', data=json.dumps(update_para), headers=header)
 
