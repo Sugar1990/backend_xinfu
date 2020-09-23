@@ -524,10 +524,10 @@ def get_search_panigation():
         url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
         if search and search_type:
             if search[0] == "\"" or search[0] == "“":
-                search_json = {search_type: {"type": "phrase", "value": search},
+                search_json = {search_type: {"type": "like", "value": search},
                                "sort": {"type": "normal", "sort": "create_time", "asc_desc": "desc"}}
             else:
-                search_json = {search_type: {"type": "like", "value": search},
+                search_json = {search_type: {"type": "phrase", "value": search},
                                "sort": {"type": "normal", "sort": "create_time", "asc_desc": "desc"}}
         else:
             search_json = {}
