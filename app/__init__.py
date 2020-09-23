@@ -5,6 +5,7 @@ from config import config
 from flask_cors import CORS
 import os
 import threading
+# from flasgger import Swagger
 
 lock = threading.Lock()
 
@@ -16,7 +17,7 @@ cache_config = {'CACHE_TYPE': 'filesystem', 'CACHE_DIR': '/data/cache'}
 
 def create_app(config_name):
     app = Flask(__name__, static_folder=os.path.join(os.getcwd(), 'static'), static_url_path='/static')
-    Swagger(app)
+    # Swagger(app)
     app.config.from_object(config[config_name])
     config[config_name].init_app(app)
     CORS(app)

@@ -1,23 +1,22 @@
 import json
 
-from flasgger import swag_from
-from ..swagger.event_dict import *
+# from flasgger import swag_from
+# from ..swagger.event_dict import *
 from . import api_event as blue_print
 from flask import jsonify, request
 import os
 from ..conf import YC_ROOT_URL
 import requests
 
-
 @blue_print.route('/get_base_names', methods=['GET'])
-@swag_from(get_base_names_dict)
+# @swag_from(get_base_names_dict)
 def get_base_names():
     res = ["文件标注库", "人员库", "部队库", "地名库", "装备库", "工程库", "机构库", "国家库"]
     return jsonify(res)
 
 
 @blue_print.route('/search_documents', methods=['GET'])
-@swag_from(search_documents_dict)
+# @swag_from(search_documents_dict)
 def search_documents():
     search = request.args.get('search', '')
     start_date = request.args.get('start_date', '1900-01-01')
@@ -200,7 +199,7 @@ def search_documents():
 
 
 @blue_print.route('/find_event', methods=['GET'])
-@swag_from(find_event_dict)
+# @swag_from(find_event_dict)
 def find_event():
     try:
         event_object = request.args.get('object', '')
@@ -248,7 +247,7 @@ def if_match(content, event_object, event, start_date, end_date, place):
 
 
 @blue_print.route('/get_doc_events', methods=['GET'])
-@swag_from(get_doc_events_dict)
+# @swag_from(get_doc_events_dict)
 def get_doc_events():
     docId = request.args.get('docId', "")
     res = []
@@ -312,7 +311,7 @@ def get_doc_events():
 
 
 @blue_print.route('/get_during_events', methods=['GET'])
-@swag_from(get_during_events_dict)
+# @swag_from(get_during_events_dict)
 def get_during_events():
     start_date = request.args.get('start_date', "")
     end_date = request.args.get('end_date', "")

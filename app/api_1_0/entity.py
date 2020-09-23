@@ -7,12 +7,12 @@ import os
 import re
 import requests
 import xlrd
-from flasgger import swag_from
+# from flasgger import swag_from
 from flask import request, jsonify
 from pypinyin import lazy_pinyin
 from sqlalchemy import or_, and_, not_
 from werkzeug.utils import secure_filename
-from ..swagger.entity_dict import *
+# from ..swagger.entity_dict import *
 from . import api_entity as blue_print
 from .utils import success_res, fail_res
 from .. import db
@@ -30,7 +30,7 @@ from .place import get_place_from_base_server
 
 # get_entity
 @blue_print.route('/get_all', methods=['GET'])
-@swag_from(get_all_dict)
+# @swag_from(get_all_dict)
 def get_all():
     ### 重要参数:(当前页和每页条目数)
     current_page = request.args.get('cur_page', 0, type=int)
@@ -74,7 +74,7 @@ def get_all():
 
 
 @blue_print.route('/insert_entity', methods=['POST'])
-@swag_from(insert_entity_dict)
+# @swag_from(insert_entity_dict)
 def insert_entity():
     try:
         name = request.json.get('name', "")
@@ -150,7 +150,7 @@ def insert_entity():
 
 
 @blue_print.route('/update_entity', methods=['PUT'])
-@swag_from(update_entity_dict)
+# @swag_from(update_entity_dict)
 def update_entity():
     try:
         id = request.json.get('id', 0)
@@ -236,7 +236,7 @@ def update_entity():
 
 
 @blue_print.route('/delete_entity', methods=['POST'])
-@swag_from(delete_entity_dict)
+# @swag_from(delete_entity_dict)
 def delete_entity():
     try:
         id = request.json.get('id', 0)
@@ -285,7 +285,7 @@ def delete_entity():
 
 
 @blue_print.route('/delete_entity_by_ids', methods=['POST'])
-@swag_from(delete_entity_by_ids_dict)
+# @swag_from(delete_entity_by_ids_dict)
 def delete_entity_by_ids():
     try:
         ids = request.json.get('ids')
@@ -343,7 +343,7 @@ def delete_entity_by_ids():
 
 
 @blue_print.route('/add_synonyms', methods=['PUT'])
-@swag_from(add_synonyms_dict)
+# @swag_from(add_synonyms_dict)
 def add_synonyms():
     try:
         id = request.json.get('id', 0)
@@ -390,7 +390,7 @@ def add_synonyms():
 
 
 @blue_print.route('/delete_synonyms', methods=['PUT'])
-@swag_from(delete_synonyms_dict)
+# @swag_from(delete_synonyms_dict)
 def delete_synonyms():
     try:
         id = request.json.get('id', 0)
@@ -432,7 +432,7 @@ def delete_synonyms():
 
 # 获取某词语所指向实体（只返回id，name，category_id）
 @blue_print.route('/get_linking_entity', methods=['GET'])
-@swag_from(get_linking_entity_dict)
+# @swag_from(get_linking_entity_dict)
 def get_linking_entity():
     try:
         entity_name = request.args.get('search', '')
@@ -455,7 +455,7 @@ def get_linking_entity():
 
 # 暂无使用，es数据库中模糊搜索
 @blue_print.route('/get_top_list_es', methods=['GET'])
-@swag_from(get_top_list_es_dict)
+# @swag_from(get_top_list_es_dict)
 def get_entity_list_es():
     try:
         entity_name = request.args.get('search', '')
@@ -479,7 +479,7 @@ def get_entity_list_es():
 
 # 模糊搜索实体分页展示
 @blue_print.route('/get_search_panigation', methods=['GET'])
-@swag_from(get_search_panigation_dict)
+# @swag_from(get_search_panigation_dict)
 def get_search_panigation():
     try:
         search = request.args.get('search', "")
@@ -549,7 +549,7 @@ def get_search_panigation_es(search='', page_size=10, cur_page=1, category_id=0)
 
 # 精准搜索
 @blue_print.route('/get_entity_data_es', methods=['GET'])
-@swag_from(get_entity_data_es_dict)
+# @swag_from(get_entity_data_es_dict)
 def get_entity_data_es():
     # try:
     entity_name = request.args.get('search', '')
@@ -573,7 +573,7 @@ def get_entity_data_es():
 
 # 获取实体信息
 @blue_print.route('/get_entity_info', methods=['GET'])
-@swag_from(get_entity_info_dict)
+# @swag_from(get_entity_info_dict)
 def get_entity_info():
     try:
         id = request.args.get('id', 0, type=int)
@@ -593,7 +593,7 @@ def get_entity_info():
 
 # 获取某词语所有信息
 @blue_print.route('/get_entity_data', methods=['GET'])
-@swag_from(get_entity_data_dict)
+# @swag_from(get_entity_data_dict)
 def get_entity_data():
     try:
         search = request.args.get('search', '')
@@ -612,7 +612,7 @@ def get_entity_data():
 
 # 获取某词语的5个实体推荐
 @blue_print.route('/get_top_list', methods=['GET'])
-@swag_from(get_top_list_dict)
+# @swag_from(get_top_list_dict)
 def get_top_list():
     try:
         search = request.args.get('search', '')
@@ -628,7 +628,7 @@ def get_top_list():
 
 # 模糊搜索分页展示pg
 @blue_print.route('/get_search_panigation_pg', methods=['GET'])
-@swag_from(get_search_panigation_pg_dict)
+# @swag_from(get_search_panigation_pg_dict)
 def get_search_panigation_pg():
     try:
         entity_name = request.args.get('search', '')
@@ -663,14 +663,14 @@ def get_search_panigation_pg():
 
 # 下载excel批量导入实体
 @blue_print.route('download_entity_excel_example', methods=['GET'])
-@swag_from(download_entity_excel_example_dict)
+# @swag_from(download_entity_excel_example_dict)
 def download_entity_excel_example():
     return '/static/{0}'.format("shitidaorumuban.xlsx")
 
 
 # excel批量导入实体
 @blue_print.route('import_entity_excel', methods=['POST'])
-@swag_from(import_entity_excel_dict)
+# @swag_from(import_entity_excel_dict)
 def import_entity_excel():
     file_obj = request.files.get('file', None)
     try:
@@ -800,7 +800,7 @@ def import_entity_excel():
 
 # 不做实体与数据库对齐和去重等操作，直接插入，excel批量导入实体
 @blue_print.route('import_entity_excel_straightly', methods=['POST'])
-@swag_from(import_entity_excel_straightly_dict)
+# @swag_from(import_entity_excel_straightly_dict)
 def import_entity_excel_straightly():
     file_obj = request.files.get('file', None)
     try:
