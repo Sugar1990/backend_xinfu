@@ -98,7 +98,8 @@ def insert_entity():
 
         if not entity:
             props = props if props else {}
-
+            if name in synonyms:
+                synonyms.remove(name)
             entity = Entity(name=name, category_id=category_id, props=props, synonyms=synonyms, summary=summary,
                             valid=1)
             db.session.add(entity)
@@ -190,9 +191,11 @@ def update_entity():
                 entity.props = props
                 key_value_json['props'] = props
             if summary:
-                entity.synonyms = summary
+                entity.summary = summary
                 key_value_json['summary'] = summary
             if isinstance(synonyms, list):
+                if name in synonyms:
+                    synonyms.remove(name)
                 entity.synonyms = synonyms
                 key_value_json['synonyms'] = synonyms
             db.session.commit()
@@ -208,10 +211,10 @@ def update_entity():
             search_result = requests.post(url + '/searchId', data=json.dumps(es_id_para), headers=header)
             es_id = search_result.json()['data']['dataList'][0]
             # 更新ES实体
-            inesert_para = {"update_index": 'entity',
+            update_para = {"update_index": 'entity',
                             "data_update_json": [{es_id: key_value_json}]}
 
-            search_result = requests.post(url + '/updatebyId', data=json.dumps(inesert_para), headers=header)
+            search_result = requests.post(url + '/updatebyId', data=json.dumps(update_para), headers=header)
 
             # 雨辰同步
             if sync and YC_ROOT_URL:
@@ -354,6 +357,8 @@ def add_synonyms():
         if entity.synonyms:
             synonyms.extend(entity.synonyms)
 
+        if name in synonyms:
+            synonyms.remove(name)
         entity.synonyms = synonyms
 
         db.session.commit()
@@ -399,33 +404,39 @@ def delete_synonyms():
         sync = request.json.get('sync', 1)
 
         entity = Entity.query.filter_by(id=id, valid=1).first()
-        original_list = [item for item in entity.synonyms if item not in synonyms]
-        entity.synonyms = original_list
-        db.session.commit()
-        # 获得es对应实体
-        url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
-        header = {"Content-Type": "application/json; charset=UTF-8"}
-        search_json = {
-            "id": {"type": "id", "value": id}
-        }
-        es_id_para = {"search_index": "entity", "search_json": search_json}
-        search_result = requests.post(url + '/searchId', data=json.dumps(es_id_para), headers=header)
-        es_id = search_result.json()['data']['dataList'][0]
-        # 更新ES实体
-        key_value_json = {"synonyms": entity.synonyms}
-        inesert_para = {"update_index": 'entity',
-                        "data_update_json": [{es_id: key_value_json}]}
-        search_result = requests.post(url + '/updatebyId', params=json.dumps(inesert_para), headers=header)
+        if entity:
+            entity_synonyms = [item for item in entity.synonyms if item not in synonyms]
+            if entity.name in entity_synonyms:
+                entity_synonyms.remove(entity.name)
 
-        # 雨辰同步
-        if sync and YC_ROOT_URL:
+            entity.synonyms = entity_synonyms
+            db.session.commit()
+            # 获得es对应实体
+            url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
             header = {"Content-Type": "application/json; charset=UTF-8"}
-            url = YC_ROOT_URL + "/entitysync/update"
-            data = json.dumps({"id": entity.id,
-                               "category_id": entity.category_id,
-                               "synonyms": entity.synonyms})
-            yc_res = requests.post(url=url, data=data, headers=header)
-        res = success_res()
+            search_json = {
+                "id": {"type": "id", "value": id}
+            }
+            es_id_para = {"search_index": "entity", "search_json": search_json}
+            search_result = requests.post(url + '/searchId', data=json.dumps(es_id_para), headers=header)
+            es_id = search_result.json()['data']['dataList'][0]
+            # 更新ES实体
+            key_value_json = {"synonyms": entity_synonyms}
+            inesert_para = {"update_index": 'entity',
+                            "data_update_json": [{es_id: key_value_json}]}
+            search_result = requests.post(url + '/updatebyId', params=json.dumps(inesert_para), headers=header)
+
+            # 雨辰同步
+            if sync and YC_ROOT_URL:
+                header = {"Content-Type": "application/json; charset=UTF-8"}
+                url = YC_ROOT_URL + "/entitysync/update"
+                data = json.dumps({"id": entity.id,
+                                   "category_id": entity.category_id,
+                                   "synonyms": entity_synonyms})
+                yc_res = requests.post(url=url, data=data, headers=header)
+            res = success_res()
+        else:
+            res = fail_res(msg="该实体不存在")
     except:
         db.session.rollback()
         res = fail_res()
