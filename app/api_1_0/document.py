@@ -715,7 +715,6 @@ def search_advanced_doc_type():
             elif date_type == 'frequency':
                 frequency = date_value
 
-
         places = request.json.get('places', {})
         if places.get("place_type", False):
             place_type = places.get("place_type", "")
@@ -748,11 +747,11 @@ def search_advanced_doc_type():
         content = request.json.get('content', "")
         url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
         data_screen = get_es_doc(url, customer_id=customer_id, date=date, time_range=time_range,
-                                 time_period=time_period,frequency = frequency,
+                                 time_period=time_period, frequency=frequency,
                                  place=place, place_direction_distance=place_direction_distance, location=location,
                                  degrees=degrees, length=length, route=route, entities=entities, keywords=keywords,
                                  event_categories=event_categories,
-                                 notes=notes, doc_type=doc_type, content=content,notes_content=notes_content)
+                                 notes=notes, doc_type=doc_type, content=content, notes_content=notes_content)
 
         # 组装ids，和结构化数据
         ids = []
@@ -796,15 +795,16 @@ def search_advanced_doc_type():
                 yc_events = search_result.json()['data']
                 for event in yc_events:
                     place = []
-                    for event_place in event.get("eventAddress", []):
-                        if event_place.get("placeIon", "") and event_place.get("placeLat", ""):
-                            place = [event_place]
-                            break
-                    event_list.append({"datetime": event.get("eventTime", ""),
-                                        "subject": event.get("eventSubject", ""),
-                                        "place": place,
-                                        "title": event.get("title", ""),
-                                        "object": event.get("eventObject", "")})
+                    if isinstance(event.get("eventAddress", []), list):
+                        for event_place in event.get("eventAddress", []):
+                            if event_place.get("placeIon", "") and event_place.get("placeLat", ""):
+                                place = [event_place]
+                                break
+                        event_list.append({"datetime": event.get("eventTime", ""),
+                                           "subject": event.get("eventSubject", ""),
+                                           "place": place,
+                                           "title": event.get("title", ""),
+                                           "object": event.get("eventObject", "")})
         res = {
             "doc": data_forms,
             "event_list": event_list
@@ -938,7 +938,6 @@ def search_advanced_pagination():
     return jsonify(res)
 
 
-
 # 标记结果储存
 @blue_print.route('/save_tagging_result', methods=['POST'])
 # @swag_from('..swagger/save_tagging_result.yml')
@@ -1050,7 +1049,7 @@ def get_latest_upload_file_tagging_url():
 
 def get_es_doc(url, customer_id=0, date=[], time_range=[], time_period=[], place=[], place_direction_distance=[],
                location=[], degrees=[], length=[], route=[], entities=[], keywords=[], event_categories={}, notes=[],
-               doc_type=0, content="",frequency = [],notes_content =[]):
+               doc_type=0, content="", frequency=[], notes_content=[]):
     search_json = {}
     if content:
         # search_json["name"] = {"type": "like", "value": content}
@@ -1062,10 +1061,9 @@ def get_es_doc(url, customer_id=0, date=[], time_range=[], time_period=[], place
                                       "value": time_period}  # {"type": "like", "value": time_period}
     if frequency:
         search_json["frequency"] = {"type": "multi_term",
-                                      "value": frequency}
+                                    "value": frequency}
     if place:
         search_json["place"] = {"type": "multi_term", "value": place}
-
 
     if place_direction_distance:  # need analysis
         place_direction_distance = place_direction_distance[0]
@@ -1187,13 +1185,13 @@ def screen_doc(data_inppt, time_range=[], degrees=[], entities=[], event_categor
                 entites_bool = False
                 for entity_name in screen_dict["entities"]["name"]:
                     list_search = list(entity_name)
-                    len_search = int(0.65 *len(list_search))
-                    print(list_search,len_search,flush = True)
+                    len_search = int(0.65 * len(list_search))
+                    print(list_search, len_search, flush=True)
                     for doc_ent in entities_names:
                         list_doc = list(doc_ent)
-                        uni_list_len = len([ ent_letter for ent_letter in list_search if ent_letter in list_doc])
-                        print(uni_list_len , flush=True)
-                        if uni_list_len >=len_search and uni_list_len > 1:
+                        uni_list_len = len([ent_letter for ent_letter in list_search if ent_letter in list_doc])
+                        print(uni_list_len, flush=True)
+                        if uni_list_len >= len_search and uni_list_len > 1:
                             entites_bool = True
                             break
 
