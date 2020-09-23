@@ -983,6 +983,7 @@ def search_advanced_pagination():
     else:
         list_return = []
 
+    '''
     list_return = []
     with open(os.path.join(os.getcwd(), 'static', 'search_advanced_pagination.json'), 'r', encoding='utf-8') as f:
         print("read search_advanced_doc_type.json")
@@ -991,8 +992,10 @@ def search_advanced_pagination():
         for i in range(5):
             list_return += list_return
         total_count = len(list_return)
+        list_return = list_return[page_size * (cur_page - 1):page_size * cur_page]
+    '''
 
-    res = {'data': list_return[(cur_page - 1) * page_size: cur_page * page_size],
+    res = {'data': list_return,
            'page_count': int(total_count / page_size) + 1,
            'total_count': total_count}
 
