@@ -186,6 +186,7 @@ def get_doc_realpath():
 
 # 修改doc在es中的doc_type（文档的祖目录id）
 @blue_print.route("/update_es_doc_type", methods=['GET'])
+# @swag_from(update_es_doc_type_dict)
 def update_es_doc_type():
     try:
         docs = Document.query.all()
@@ -632,7 +633,7 @@ def get_search_panigation():
 
 # 高级搜索
 @blue_print.route('/search_advanced', methods=['POST'])
-# @swag_from('..swagger/search_advanced.yml')
+# @swag_from('../swagger/search_advanced.yml')
 def search_advanced():
     try:
         start_date = request.json.get('start_date', "")
@@ -735,7 +736,7 @@ def search_advanced():
 
 # 高级搜索 doc_type
 @blue_print.route('/search_advanced_doc_type', methods=['POST'])
-# @swag_from('..swagger/search_advanced_doc_type.yml')
+# @swag_from('../swagger/search_advanced_doc_type.yml')
 def search_advanced_doc_type():
     try:
         start_date = request.json.get('start_date', "")
@@ -1005,7 +1006,7 @@ def search_advanced_pagination():
 
 # 标记结果储存
 @blue_print.route('/save_tagging_result', methods=['POST'])
-# @swag_from('..swagger/save_tagging_result.yml')
+# @swag_from('../swagger/save_tagging_result.yml')
 def save_tagging_result():
     try:
 

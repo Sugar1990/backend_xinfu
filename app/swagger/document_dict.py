@@ -56,6 +56,42 @@ get_doc_realpath_dict = {
         }
 }
 
+update_es_doc_type_dict = {
+"tags": [
+        {
+            "name": "document"
+        }
+    ],
+    "parameters":[],
+    "responses":{
+        "500":{"description": "Error !"},
+        "200":{
+            "description": "Update es doc type !"}
+        }
+}
+
+modify_doc_es_doc_type_doc_ids_dict = {
+"tags": [
+        {
+            "name": "document"
+        }
+    ],
+    "parameters":[
+        {
+            "name": "doc_ids",
+            "in": "path",
+            "type": "array",
+            "items":{"type": "integer"},
+            "required": "true",
+            "description": "ids of doc"
+        }],
+    "responses":{
+        "500":{"description": "Error !"},
+        "200":{
+            "description": "Modify es_doc_type by doc_ids !"}
+        }
+}
+
 get_content_dict = {
     "tags": [
         {
