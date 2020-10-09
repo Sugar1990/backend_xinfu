@@ -1110,6 +1110,34 @@ def get_latest_upload_file_tagging_url():
     return res
 
 
+# 收藏文件
+@blue_print.route('/set_favorite', methods=['POST'])
+# @swag_from(set_favorite)
+def set_favorite():
+    try:
+        doc_id = request.json.get("doc_id", 0)
+        favorite = request.json.get("favorite", 0)
+        print(type(doc_id))
+        if isinstance(doc_id, str) and not doc_id.isdigit():
+            res = fail_res(msg="文档id格式有误")
+        elif isinstance(favorite, str) and not favorite.isdigit():
+            res = fail_res(msg="收藏参数有误")
+        else:
+            doc_id = int(doc_id)
+            favorite = int(favorite)
+            doc = Document.query.filter_by(id=doc_id).first()
+            if doc:
+                doc.is_favorite = favorite
+                db.session.commit()
+                res = success_res()
+            else:
+                res = fail_res(msg="文档不存在")
+    except Exception as e:
+        print(str(e))
+        res = fail_res()
+    return res
+
+
 # ——————————————————————— 文档抽取、删选 —————————————————————————————
 
 

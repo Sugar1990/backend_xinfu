@@ -195,6 +195,40 @@ def get_all():
     return jsonify(res)
 
 
+@blue_print.route('/get_favorite_files', methods=['GET'])
+def get_favorite_files():
+    customer_id = request.args.get("customer_id", 0, type=int)
+
+    try:
+        docs = Document.query.all()
+        customer = Customer.query.filter_by(id=customer_id).first()
+
+        if not customer:
+            res = fail_res(msg="无效用户")
+        else:
+            if customer:
+                res = {
+                    "files": [{
+                        "id": d.id,
+                        "name": d.name,
+                        "create_time": d.create_time,
+                        "create_username": Customer.get_username_by_id(d.create_by),
+                        "extension": d.category.replace('\n\"', ""),
+                        'tag_flag': 1 if d.status == 1 else 0,
+                        "status": d.get_status_name(),
+                        "permission": 1 if Permission.judge_power(customer_id, d.id) else 0
+                    } for d in docs if d.is_favorite == 1],
+                    # } for i in docs if i.get_power() <= customer.get_power()],
+                    "catalogs": []
+                }
+            else:
+                res = {"files": [], "catalogs": []}
+    except Exception as e:
+        print(str(e))
+        res = {"files": [], "catalogs": []}
+    return jsonify(res)
+
+
 @blue_print.route('/get_catalog_files', methods=['GET'])
 def get_catalog_files():
     catalog_id = request.args.get("catalog_id", 0, type=int)

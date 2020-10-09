@@ -39,6 +39,7 @@ class Document(db.Model):
     status = db.Column(db.Integer)
     keywords = db.Column(db.JSON)
     md5 = db.Column(db.String)
+    is_favorite = db.Column(db.Integer)
 
     def category_name(self):
         conf = EntityCategory.query.filter_by(id=self.category_id).first()
@@ -179,7 +180,8 @@ class EntityCategory(db.Model):
     __table_args__ = {"schema": "public"}
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.Text)
-    valid = db.Column(db.Integer)  # 取值0或1，0表示已删除，1表示正常
+    valid = db.Column(db.Integer)   # 取值0或1，0表示已删除，1表示正常
+    type = db.Column(db.Integer)    # 1：实体（地名、国家、人物...）；2：概念（条约公约、战略、战法...）
 
     @staticmethod
     def get_category_name(id):
