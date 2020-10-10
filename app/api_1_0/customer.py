@@ -1,6 +1,9 @@
 # -*- coding: UTF-8 -*-
 from flask import jsonify, request
 from sqlalchemy import not_, and_, or_
+import hashlib
+import datetime
+
 from . import api_customer as blue_print
 from ..models import Customer
 from .. import db
@@ -15,49 +18,72 @@ def login():
     input_pwd = request.json.get('pwd', '')
     try:
         if not input_name or not input_pwd:
-            res = fail_res(msg="用户或密码设置为空")
+            res = fail_res(msg="用户或密码不得为空")
         else:
-            customer = db.session.query(Customer).filter(
-                and_(Customer.username == input_name, Customer.valid == 1)).first()
+            customer = Customer.query.filter_by(username=input_name, valid=1).first()
             if customer:
                 if input_pwd == customer.pwd:
-                    role = 3
-                    if customer.get_power() == ADMIN_ROLE_POWER:
-                        role = 1
-                    elif customer.get_power() == ASSIS_ROLE_POWER:
-                        role = 2
-                    res = success_res(data={"uid": customer.id, "role": role})
+                    md5_hash = hashlib.md5(
+                        "{}{}{}".format(customer.id, datetime.datetime.now().timestamp(), customer.username).encode(
+                            encoding="utf-8"))
+                    token = md5_hash.hexdigest()
+                    print(token)
+                    customer.token = token
+                    db.session.commit()
+                    res = success_res(data={"token": token})
                 else:
                     res = fail_res(msg="密码不正确")
             else:
                 res = fail_res(msg="用户不存在")
-    except:
+    except Exception as e:
+        print(str(e))
+        db.session.rollback()
         res = fail_res(msg='登录失败')
+    return jsonify(res)
+
+
+@blue_print.route('/verify_token', methods=['POST'])
+def verify_token():
+    token = request.json.get('token', '')
+    try:
+        if not token:
+            res = fail_res(msg="无效空token")
+        else:
+            customer = Customer.query.filter_by(token=token, valid=1).first()
+            if customer:
+                role = 3
+                if customer.get_power() == ADMIN_ROLE_POWER:
+                    role = 1
+                elif customer.get_power() == ASSIS_ROLE_POWER:
+                    role = 2
+                res = success_res(data={"uid": customer.id, "uname": customer.username, "role": role})
+            else:
+                res = fail_res(msg="验证失败")
+    except Exception as e:
+        print(str(e))
+        res = fail_res(msg='验证异常')
     return jsonify(res)
 
 
 # 修改时，如果找不到是报错
 @blue_print.route('/logout', methods=['POST'])
 def logout():
-    uid = request.json.get('uid', '')
+    token = request.json.get('token', '')
     try:
-        if not uid:
-            customer = db.session.query(Customer).filter(
-                and_(Customer.username == input_name, Customer.valid == 1)).first()
+        if not token:
+            res = fail_res(msg="无效空token")
+        else:
+            customer = Customer.query.filter_by(token=token, valid=1).first()
             if customer:
-                if input_pwd == customer.pwd:
-                    role = 3
-                    if customer.get_power() == ADMIN_ROLE_POWER:
-                        role = 1
-                    elif customer.get_power() == ASSIS_ROLE_POWER:
-                        role = 2
-                    res = success_res(data={"uid": customer.id, "role": role})
-                else:
-                    res = fail_res(msg="密码不正确")
+                customer.token = ""
+                db.session.commit()
+                res = success_res()
             else:
-                res = fail_res(msg="用户不存在")
-    except:
-        res = fail_res(msg='登录失败')
+                res = fail_res(msg="验证失败")
+    except Exception as e:
+        print(str(e))
+        db.session.rollback()
+        res = fail_res(msg='退出异常')
     return jsonify(res)
 
 

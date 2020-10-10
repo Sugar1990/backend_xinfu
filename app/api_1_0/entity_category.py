@@ -204,13 +204,14 @@ def get_entity_category_paginate():
 def get_entity_ideas():
     try:
         categories = EntityCategory.query.filter_by(type=2, valid=1).all()
-        res = [{
+        res = success_res(data=[{
             "id": i.id,
             "name": i.name
-        } for i in categories]
+        } for i in categories])
 
-    except:
-        res = []
+    except Exception as e:
+        print(str(e))
+        res = fail_res(data=[])
 
     return jsonify(res)
 
@@ -222,17 +223,17 @@ def get_one_entity_idea():
         id = request.args.get('id', 0, type=int)
         category = EntityCategory.query.filter_by(id=id, type=1, valid=1).first()
         if category:
-            res = {
+            res = success_res({
                 "id": category.id,
                 "name": category.name
-            }
+            })
         else:
             res = fail_res(msg="实体概念不存在")
-    except:
-        res = {
+    except Exception as e:
+        res = fail_res({
             "id": -1,
             "name": ""
-        }
+        })
 
     return jsonify(res)
 
@@ -367,20 +368,20 @@ def get_entity_idea_paginate():
                 "id": item.id,
                 "name": item.name
             })
-        res = {
+        res = success_res(data={
             "total_count": pagination.total,
             "page_count": pagination.pages,
             "data": data,
             "cur_page": pagination.page
-        }
+        })
 
     except Exception as e:
         print(str(e))
-        res = {
+        res = fail_res({
             "total_count": 0,
             "page_count": 0,
             "data": [],
             "cur_page": 0
-        }
+        })
     return jsonify(res)
 # </editor-fold>

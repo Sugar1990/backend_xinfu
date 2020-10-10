@@ -81,6 +81,7 @@ class Customer(db.Model):
     pwd = db.Column(db.Text)
     permission_id = db.Column(db.Integer)
     valid = db.Column(db.Integer)
+    token = db.Column(db.String)
 
     @staticmethod
     def get_username_by_id(id):
