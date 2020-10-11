@@ -221,7 +221,7 @@ def get_entity_ideas():
 def get_one_entity_idea():
     try:
         id = request.args.get('id', 0, type=int)
-        category = EntityCategory.query.filter_by(id=id, type=1, valid=1).first()
+        category = EntityCategory.query.filter_by(id=id, type=2, valid=1).first()
         if category:
             res = success_res({
                 "id": category.id,
