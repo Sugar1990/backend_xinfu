@@ -43,4 +43,4 @@ YC_ROOT_URL = os.getenv('YC_ROOT_URL', "http://124.207.211.146:8810/dev")
 YC_TAGGING_PAGE_URL = os.getenv('YC_TAGGING_PAGE_URL', "http://192.168.6.82:8098/index")
 
 # 标注tab功能
-TAG_TABS = os.getenv('TAG_TABS', "{\"实体标注\":1,\"时间标注\":2,\"地点标注\":3,\"关系标注\":4,\"事件标注\":5,\"批注\":6,\"思维导图\":7}")
+TAG_TABS = os.getenv('TAG_TABS', "{\"实体标注\":1,\"时间标注\":2,\"地点标注\":3,\"关系标注\":4,\"事件标注\":5,\"批注\":6,\"思维导图\":7,\"实体概念\":8}")

@@ -26,6 +26,23 @@ def get_entity_categories():
     return jsonify(res)
 
 
+# 查全集实体类型（不含地名）
+@blue_print.route('/get_entity_categories_without_place', methods=['GET'])
+def get_entity_categories_without_place():
+    try:
+        categories = EntityCategory.query.filter(EntityCategory.type == 1, EntityCategory.valid == 1,
+                                                 EntityCategory.name != PLACE_BASE_NAME).all()
+        res = [{
+            "id": i.id,
+            "name": i.name
+        } for i in categories]
+
+    except:
+        res = []
+
+    return jsonify(res)
+
+
 # 查单条数据
 @blue_print.route('/get_one_entity_category', methods=['GET'])
 def get_one_entity_category():
