@@ -64,4 +64,28 @@ def create_app(config_name):
     from .api_1_0 import api_place as api_1_0_place_blueprint
     app.register_blueprint(api_1_0_place_blueprint, url_prefix='/place')
 
+    from .api_1_0 import api_mongo as api_1_0_mongo_blueprint
+    app.register_blueprint(api_1_0_mongo_blueprint, url_prefix='/mongo')
+
+    from .api_1_0 import api_doc_mark_comment as api_1_0_doc_mark_comment_blueprint
+    app.register_blueprint(api_1_0_doc_mark_comment_blueprint, url_prefix='/doc_mark_comment')
+
+    from .api_1_0 import api_doc_mark_entity as api_1_0_doc_mark_entity_blueprint
+    app.register_blueprint(api_1_0_doc_mark_entity_blueprint, url_prefix='/doc_mark_entity')
+
+    from .api_1_0 import api_doc_mark_event as api_1_0_doc_mark_event_blueprint
+    app.register_blueprint(api_1_0_doc_mark_event_blueprint, url_prefix='/doc_mark_event')
+
+    from .api_1_0 import api_doc_mark_place as api_1_0_doc_mark_place_blueprint
+    app.register_blueprint(api_1_0_doc_mark_place_blueprint, url_prefix='/doc_mark_place')
+
+    from .api_1_0 import api_doc_mark_time_tag as api_1_0_doc_mark_time_tag_blueprint
+    app.register_blueprint(api_1_0_doc_mark_time_tag_blueprint, url_prefix='/doc_mark_time_tag')
+
+    from .api_1_0 import api_doc_mark_relation_property as api_1_0_doc_mark_relation_property_blueprint
+    app.register_blueprint(api_1_0_doc_mark_relation_property_blueprint, url_prefix='/doc_mark_relation_property')
+
+    from .api_1_0 import api_doc_mark_mind as api_1_0_doc_mark_mind_blueprint
+    app.register_blueprint(api_1_0_doc_mark_mind_blueprint, url_prefix='/doc_mark_mind')
+
     return app

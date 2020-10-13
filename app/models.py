@@ -246,3 +246,150 @@ class RelationCategory(db.Model):
 
     def __repr__(self):
         return '<RelationCategory %r>' % self.relation_name
+
+class DocMarkComment(db.Model):
+    __tablename__ = 'doc_mark_comment'
+    __table_args__ = {"schema": "public"}
+    id = db.Column(db.Integer, primary_key=True)
+    doc_id = db.Column(db.Integer)
+    name = db.Column(db.Text)
+    position = db.Column(db.String)
+    comment = db.Column(db.String)
+    create_by = db.Column(db.Integer)
+    create_time = db.Column(db.TIMESTAMP)
+    update_by = db.Column(db.Integer)
+    update_time = db.Column(db.TIMESTAMP)
+    valid = db.Column(db.Integer)
+
+
+    def __repr__(self):
+        return '<DocMarkComment %r>' % self.name
+
+
+class DocMarkEntity(db.Model):
+    __tablename__ = 'doc_mark_entity'
+    __table_args__ = {"schema": "public"}
+    id = db.Column(db.Integer, primary_key=True)
+    doc_id = db.Column(db.Integer)
+    word = db.Column(db.String)
+    entity_id = db.Column(db.Integer)
+    source = db.Column(db.Integer)
+    create_by = db.Column(db.Integer)
+    create_time = db.Column(db.TIMESTAMP)
+    update_by = db.Column(db.Integer)
+    update_time = db.Column(db.TIMESTAMP)
+    paragraph_index = db.Column(db.Integer)
+    valid = db.Column(db.Integer)
+
+    def __repr__(self):
+        return '<DocMarkEntity %r>' % self.word
+
+
+class DocMarkEvent(db.Model):
+    __tablename__ = 'doc_mark_event'
+    __table_args__ = {"schema": "public"}
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.String)
+    event_desc = db.Column(db.String)
+    event_subject = db.Column(db.String)
+    event_predicate = db.Column(db.String)
+    event_object = db.Column(db.String)
+    event_time = db.Column(db.String)
+    event_address = db.Column(db.String)
+    event_why = db.Column(db.String)
+    event_result = db.Column(db.String)
+    event_conduct = db.Column(db.String)
+    event_talk = db.Column(db.String)
+    event_how = db.Column(db.String)
+    doc_id = db.Column(db.Integer)
+    customer_id = db.Column(db.Integer)
+    parent_id = db.Column(db.Integer)
+    title = db.Column(db.String)
+    event_class_id = db.Column(db.Integer)
+    event_type_id = db.Column(db.Integer)
+    create_by = db.Column(db.Integer)
+    create_time = db.Column(db.TIMESTAMP)
+    update_by = db.Column(db.Integer)
+    update_time = db.Column(db.TIMESTAMP)
+    add_time = db.Column(db.TIMESTAMP)
+    valid = db.Column(db.Integer)
+
+    def __repr__(self):
+        return '<DocMarkEvent %r>' % self.title
+
+
+class DocMarkPlace(db.Model):
+    __tablename__ = 'doc_mark_place'
+    __table_args__ = {"schema": "public"}
+    id = db.Column(db.Integer, primary_key=True)
+    doc_id = db.Column(db.Integer)
+    word = db.Column(db.Text)
+    type = db.Column(db.Integer)
+    place_id = db.Column(db.Integer)
+    direction = db.Column(db.Text)
+    place_lon = db.Column(db.Text)
+    place_lat = db.Column(db.Text)
+    height = db.Column(db.Text)
+    unit = db.Column(db.Text)
+    dms = db.Column(db.JSON)
+    distance = db.Column(db.Integer)
+    relation = db.Column(db.Text)
+    create_by = db.Column(db.Integer)
+    create_time = db.Column(db.DateTime)
+    update_by = db.Column(db.Integer)
+    update_time = db.Column(db.DateTime)
+    valid = db.Column(db.Integer)
+    entity_or_sys = db.Column(db.Integer)
+
+    def __repr__(self):
+        return '<DocumentRecords %r>' % self.doc_id
+
+class DocMarkTimeTag(db.Model):
+    __tablename__ = 'doc_mark_time_tag'
+    __table_args__ = {"schema": "public"}
+    id = db.Column(db.Integer, primary_key=True)
+    doc_id = db.Column(db.Integer)
+    word = db.Column(db.Text)
+    format_date = db.Column(db.DateTime)
+    format_date_end = db.Column(db.DateTime)
+    mark_position = db.Column(db.Text)
+    time_type = db.Column(db.Text)
+    reserve_fields = db.Column(db.Text)
+    valid = db.Column(db.Integer)
+    arab_time = db.Column(db.Text)
+    update_by = db.Column(db.Integer)
+    update_time = db.Column(db.DateTime)
+
+    def __repr__(self):
+        return '<DocumentRecords %r>' % self.doc_id
+
+
+class DocMarkRelationProperty(db.Model):
+    __tablename__ = 'doc_mark_relation_property'
+    __table_args__ = {"schema": "public"}
+    id = db.Column(db.Integer, primary_key=True)
+    doc_id = db.Column(db.Integer)
+    nid = db.Column(db.Text)
+    relation_id = db.Column(db.Integer)
+    relation_name = db.Column(db.Text)
+    start_time = db.Column(db.DateTime)
+    start_type = db.Column(db.Text)
+    end_time = db.Column(db.DateTime)
+    end_type = db.Column(db.Text)
+    valid = db.Column(db.Integer)
+
+    def __repr__(self):
+        return '<DocMarkRelationProperty %r>' % self.id
+
+
+class DocMarkMind(db.Model):
+    __tablename__ = 'doc_mark_mind'
+    __table_args__ = {"schema": "public"}
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.Text)
+    parent_id = db.Column(db.Integer)
+    doc_id = db.Column(db.Integer)
+    valid = db.Column(db.Integer)
+
+    def __repr__(self):
+        return '<DocMarkMind %r>' % self.id
