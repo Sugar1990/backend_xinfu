@@ -94,9 +94,19 @@ def insert_entity():
         #     res = fail_res(msg="地名库由专业团队维护,不能添加！")
         #     return jsonify(res)
 
-        entity = Entity.query.filter(Entity.name == name, Entity.valid == 1, Entity.category_id == category_id).first()
+        entity = Entity.query.filter(Entity.name == name, Entity.valid == 1,
+                                     Entity.category_id == category_id).first()
 
         if not entity:
+            # 地名实体获取经纬度
+            if EntityCategory.get_category_name(category_id) == PLACE_BASE_NAME:
+                longitude = request.json.get('longitude', 0)
+                latitude = request.json.get('latitude', 0)
+                if longitude:
+                    entity.longitude = longitude
+                if latitude:
+                    entity.longitude = latitude
+
             props = props if props else {}
             if name in synonyms:
                 synonyms.remove(name)
@@ -140,7 +150,7 @@ def insert_entity():
                                    })
                 yc_res = requests.post(url=url, data=data, headers=header)
 
-            res = success_res()
+            res = success_res(data={"entity_id":entity.id})
         else:
             res = fail_res(msg="该实体名称已存在")
     except Exception as e:
@@ -180,6 +190,15 @@ def update_entity():
             if entity_same:
                 res = fail_res(msg="相同实体名称已存在")
                 return jsonify(res)
+
+            # 地名实体获取经纬度
+            if EntityCategory.get_category_name(category_id) == PLACE_BASE_NAME:
+                longitude = request.json.get('longitude', 0)
+                latitude = request.json.get('latitude', 0)
+                if longitude:
+                    entity.longitude = longitude
+                if latitude:
+                    entity.longitude = latitude
 
             key_value_json = {}
             if name:
@@ -358,8 +377,8 @@ def add_synonyms():
         if entity.synonyms:
             synonyms.extend(entity.synonyms)
 
-        if name in synonyms:
-            synonyms.remove(name)
+        if entity.name in synonyms:
+            synonyms.remove(entity.name)
         entity.synonyms = synonyms
 
         db.session.commit()
