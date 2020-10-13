@@ -20,9 +20,7 @@ def add_relation_category():
             entity_category_id_list.append(item.id)
         if source_entity_category_id in entity_category_id_list and target_entity_category_id in entity_category_id_list:
             if name:
-                relation = RelationCategory.query.filter_by(source_entity_category_id=source_entity_category_id,
-                                                            target_entity_category_id=target_entity_category_id,
-                                                            relation_name=name, valid=1).first()
+                relation = RelationCategory.query.filter_by(relation_name=name, valid=1).first()
                 if relation:
                     res = fail_res(msg="关联信息已存在")
                 else:
