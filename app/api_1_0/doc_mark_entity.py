@@ -124,7 +124,6 @@ def modify_doc_mark_entity():
         doc_id = request.json.get("doc_id", 0)
         word = request.json.get("word", "")
         entity_id = request.json.get("entity_id", 0)
-        paragraph_index = request.json.get("paragraph_index", 0)
         source = request.json.get("source", 0)
         create_by = request.json.get("create_by", 0)
         create_time = request.json.get("create_time", None)

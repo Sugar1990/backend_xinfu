@@ -64,9 +64,6 @@ def create_app(config_name):
     from .api_1_0 import api_place as api_1_0_place_blueprint
     app.register_blueprint(api_1_0_place_blueprint, url_prefix='/place')
 
-    from .api_1_0 import api_mongo as api_1_0_mongo_blueprint
-    app.register_blueprint(api_1_0_mongo_blueprint, url_prefix='/mongo')
-
     from .api_1_0 import api_doc_mark_comment as api_1_0_doc_mark_comment_blueprint
     app.register_blueprint(api_1_0_doc_mark_comment_blueprint, url_prefix='/doc_mark_comment')
 
