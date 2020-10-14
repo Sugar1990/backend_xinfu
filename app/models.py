@@ -281,6 +281,8 @@ class DocMarkEntity(db.Model):
     update_by = db.Column(db.Integer)
     update_time = db.Column(db.TIMESTAMP)
     paragraph_index = db.Column(db.Integer)
+    appear_text = db.Column(db.String)
+    appear_index_in_text = db.Column(db.Integer)
     valid = db.Column(db.Integer)
 
     def __repr__(self):
