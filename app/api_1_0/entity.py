@@ -150,7 +150,7 @@ def insert_entity():
                                    })
                 yc_res = requests.post(url=url, data=data, headers=header)
 
-            res = success_res(data={"entity_id":entity.id})
+            res = success_res(data={"entity_id": entity.id})
         else:
             res = fail_res(msg="该实体名称已存在")
     except Exception as e:
@@ -612,15 +612,20 @@ def get_entity_info():
         id = request.args.get('id', 0, type=int)
         entity = Entity.query.filter_by(id=id, valid=1).first()
         if entity:
-            res = {'id': entity.id, 'name': entity.name, 'synonyms': entity.synonyms if entity.synonyms else [],
-                   'props': entity.props if entity.props else {}, 'category': entity.category_name(),
-                   'summary': entity.summary if entity.summary else ''}
+            res = {'id': entity.id, 'name': entity.name,
+                   'synonyms': entity.synonyms if entity.synonyms else [],
+                   'props': entity.props if entity.props else {},
+                   'category_id': entity.category_id,
+                   'category': entity.category_name(),
+                   'summary': entity.summary if entity.summary else '',
+                   'longitude': entity.longitude,
+                   'latitude': entity.latitude}
         else:
-            res = {'id': -1, 'name': '', 'synonyms': [], 'props': {},
-                   'category': ''}
+            res = {'id': -1, 'name': '', 'synonyms': [], 'props': {}, 'category_id': -1, 'category': '',
+                   'longitude': None, 'latitude': None}
     except:
-        res = {'id': -1, 'name': '', 'synonyms': [], 'props': {},
-               'category': ''}
+        res = {'id': -1, 'name': '', 'synonyms': [], 'props': {}, 'category_id': -1, 'category': '', 'longitude': None,
+               'latitude': None}
     return jsonify(res)
 
 
