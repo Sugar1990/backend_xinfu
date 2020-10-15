@@ -16,7 +16,7 @@ from .utils import success_res, fail_res
 from .. import db, lock
 from ..conf import LEXICON_IP, LEXICON_PORT, SUMMARY_IP, SUMMARY_PORT, YC_ROOT_URL, ES_SERVER_IP, ES_SERVER_PORT, \
     YC_TAGGING_PAGE_URL
-from ..models import Document, Entity, Customer, Permission, Catalog
+from ..models import Document, Entity, Customer, Permission, Catalog, DocMarkEntity, DocMarkPlace, DocMarkTimeTag
 from ..serve.word_parse import extract_word_content
 
 
@@ -113,12 +113,50 @@ def upload_doc():
                                                               headers=header)
                                 print(insert_result.text)
 
+                                # if YC_ROOT_URL:
+                                #     header = {"Content-Type": "application/x-form-urlencode; charset=UTF-8"}
+                                #     url = YC_ROOT_URL + '/doc/preprocess?docId={0}'.format(doc.id)
+                                #     yc_res = requests.post(url=url, headers=header)
+                                #     print("doc_preprocess", yc_res)
+                                #     doc.status = 1
+                                #     db.session.commit()
                                 if YC_ROOT_URL:
-                                    header = {"Content-Type": "application/x-form-urlencode; charset=UTF-8"}
-                                    url = YC_ROOT_URL + '/doc/preprocess?docId={0}'.format(doc.id)
-                                    yc_res = requests.post(url=url, headers=header)
+
+                                    header = {"Content-Type": "application/json; charset=UTF-8"}
+                                    url = YC_ROOT_URL + 'api/mark/result'
+                                    body = {"content": doc.content}
+                                    data_dict = {"content", "%s" % (body["content"])}
+                                    data = json.dumps(data_dict)
+                                    yc_res = requests.post(url=url, data=data, headers=header)
                                     print("doc_preprocess", yc_res)
-                                    doc.status = 1
+                                    yc_res = yc_res.json()['data']
+                                    res_entity = yc_res["entity"]
+                                    res_place = yc_res["place"]
+                                    res_time = yc_res["time"]
+                                    print("entity", res_entity)
+                                    print("place", res_place)
+                                    print("time", res_time)
+
+                                    for item_entity in res_entity:
+                                        doc_mark_entity = DocMarkEntity(doc_id=doc.id, word=item_entity["word"],
+                                                                        entity_id=item_entity["entity_id"],
+                                                                        appear_text=item_entity["word_sentence"],
+                                                                        appear_index_in_text=item_entity["word_count"], valid=1)
+                                        db.session.add(doc_mark_entity)
+                                    db.session.commit()
+
+                                    for item_place in res_place:
+                                        doc_mark_place = DocMarkPlace(doc_id=doc.id, word=item_place["word"], type=item_place["type"], place_id=item_place["place_id"],
+                                                                    direction=item_place["direction"], place_lon=item_place["place_lon"],
+                                                                    place_lat=item_place["place_lat"], height=item_place["height"],
+                                                                    unit=item_place["unit"], distance=item_place["distance"], valid=1)
+                                        db.session.add(doc_mark_place)
+                                    db.session.commit()
+
+                                    for item_time in res_time:
+                                        doc_mark_time_tag = DocMarkTimeTag(doc_id=doc.id, word=item_time["word"], format_date=item_time["format_date"],
+                                                                        format_date_end=item_time["format_date_end"], arab_time=item_time["arab_time"], valid=1)
+                                        db.session.add(doc_mark_time_tag)
                                     db.session.commit()
 
                                 url = YC_TAGGING_PAGE_URL + "?doc_id={0}&uid={1}".format(doc.id, uid)
