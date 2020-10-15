@@ -38,7 +38,7 @@ PLACE_BASE_OLD_SERVER_IP = os.getenv('PLACE_BASE_OLD_SERVER_IP', 'http://192.168
 USE_PLACE_SERVER = os.getenv('USE_PLACE_SERVER', 0)
 
 # 雨辰团队接口url, http://192.168.3.75:8096/dev
-YC_ROOT_URL = os.getenv('YC_ROOT_URL', "http://124.207.211.146:8810/dev")
+YC_ROOT_URL = os.getenv('YC_ROOT_URL', "http://124.207.211.146:8810/")
 # 雨辰团队标注页面
 YC_TAGGING_PAGE_URL = os.getenv('YC_TAGGING_PAGE_URL', "http://192.168.6.82:8098/index")
 

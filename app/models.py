@@ -15,6 +15,8 @@ class Entity(db.Model):
     category_id = db.Column(db.Integer)
     summary = db.Column(db.Text)
     valid = db.Column(db.Integer)
+    longitude = db.Column(db.Float)
+    latitude = db.Column(db.Float)
 
     def category_name(self):
         conf = EntityCategory.query.filter_by(id=self.category_id).first()
@@ -181,13 +183,18 @@ class EntityCategory(db.Model):
     __table_args__ = {"schema": "public"}
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.Text)
-    valid = db.Column(db.Integer)   # 取值0或1，0表示已删除，1表示正常
-    type = db.Column(db.Integer)    # 1：实体（地名、国家、人物...）；2：概念（条约公约、战略、战法...）
+    valid = db.Column(db.Integer)  # 取值0或1，0表示已删除，1表示正常
+    type = db.Column(db.Integer)  # 1：实体（地名、国家、人物...）；2：概念（条约公约、战略、战法...）
 
     @staticmethod
     def get_category_name(id):
         category = EntityCategory.query.filter_by(id=id).first()
         return category.name if category else ""
+
+    @staticmethod
+    def get_category_type(id):
+        category = EntityCategory.query.filter_by(id=id).first()
+        return category.type if category else 0
 
     @staticmethod
     def get_category_id(name):
@@ -279,6 +286,8 @@ class DocMarkEntity(db.Model):
     update_by = db.Column(db.Integer)
     update_time = db.Column(db.TIMESTAMP)
     paragraph_index = db.Column(db.Integer)
+    appear_text = db.Column(db.String)
+    appear_index_in_text = db.Column(db.Integer)
     valid = db.Column(db.Integer)
 
     def __repr__(self):

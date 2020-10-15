@@ -77,9 +77,7 @@ def logout():
             if customer:
                 customer.token = ""
                 db.session.commit()
-                res = success_res()
-            else:
-                res = fail_res(msg="验证失败")
+            res = success_res()
     except Exception as e:
         print(str(e))
         db.session.rollback()

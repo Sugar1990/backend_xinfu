@@ -37,6 +37,7 @@ def get_all():
     current_page = request.args.get('cur_page', 0, type=int)
     page_size = request.args.get('page_size', 0, type=int)
     category_id = request.args.get('category_id', 0, type=int)
+    type = request.args.get('type', 0, type=int)
 
     category = EntityCategory.query.filter_by(id=category_id, name=PLACE_BASE_NAME, valid=1).first()
     if category and int(USE_PLACE_SERVER):
@@ -47,6 +48,10 @@ def get_all():
         conditions = [Entity.valid == 1]
         if category_id:
             conditions.append(Entity.category_id == category_id)
+        else:
+            category_ids = EntityCategory.query.with_entities(EntityCategory.id).filter_by(type=type, valid=1).all()
+            category_ids = [i[0] for i in category_ids]
+            conditions.append(Entity.category_id.in_(category_ids))
 
         conditions = tuple(conditions)
         pagination = Entity.query.filter(and_(*conditions)).order_by(Entity.id.desc()).paginate(current_page, page_size,
@@ -141,16 +146,29 @@ def insert_entity():
             # 雨辰同步
             if sync and YC_ROOT_URL:
                 header = {"Content-Type": "application/json; charset=UTF-8"}
-                url = YC_ROOT_URL + "/entitysync/add"
-                data = json.dumps({"id": entity.id,
-                                   "name": name,
-                                   "categoryId": entity.category_id,
-                                   "props": props,  # ["props"] if props.get("props",False) else props,
-                                   "synonyms": synonyms
-                                   })
+                url = YC_ROOT_URL + "/api/redis/add"
+                mark_category = "ner"
+                if entity.category_id == EntityCategory.get_category_id(PLACE_BASE_NAME):
+                    mark_category = "place"
+                elif EntityCategory.get_category_type(entity.category_id) == 2:
+                    mark_category = "concept"
+
+                sync_yc_redis_data = {
+                    "entity_data": {
+                        "entity_id": entity.id,
+                        "name": name,
+                        "type": 1,
+                        "entity_category_id": entity.category_id
+                    },
+                    "mark_category": mark_category
+                }
+                if entity.category_id == EntityCategory.get_category_id(PLACE_BASE_NAME):
+                    sync_yc_redis_data["entity_data"]['lon'] = entity.longitude
+                    sync_yc_redis_data["entity_data"]['lat'] = entity.latitude
+                data = json.dumps(sync_yc_redis_data)
                 yc_res = requests.post(url=url, data=data, headers=header)
 
-            res = success_res(data={"entity_id":entity.id})
+            res = success_res(data={"entity_id": entity.id})
         else:
             res = fail_res(msg="该实体名称已存在")
     except Exception as e:
@@ -612,15 +630,20 @@ def get_entity_info():
         id = request.args.get('id', 0, type=int)
         entity = Entity.query.filter_by(id=id, valid=1).first()
         if entity:
-            res = {'id': entity.id, 'name': entity.name, 'synonyms': entity.synonyms if entity.synonyms else [],
-                   'props': entity.props if entity.props else {}, 'category': entity.category_name(),
-                   'summary': entity.summary if entity.summary else ''}
+            res = {'id': entity.id, 'name': entity.name,
+                   'synonyms': entity.synonyms if entity.synonyms else [],
+                   'props': entity.props if entity.props else {},
+                   'category_id': entity.category_id,
+                   'category': entity.category_name(),
+                   'summary': entity.summary if entity.summary else '',
+                   'longitude': entity.longitude,
+                   'latitude': entity.latitude}
         else:
-            res = {'id': -1, 'name': '', 'synonyms': [], 'props': {},
-                   'category': ''}
+            res = {'id': -1, 'name': '', 'synonyms': [], 'props': {}, 'category_id': -1, 'category': '',
+                   'longitude': None, 'latitude': None}
     except:
-        res = {'id': -1, 'name': '', 'synonyms': [], 'props': {},
-               'category': ''}
+        res = {'id': -1, 'name': '', 'synonyms': [], 'props': {}, 'category_id': -1, 'category': '', 'longitude': None,
+               'latitude': None}
     return jsonify(res)
 
 

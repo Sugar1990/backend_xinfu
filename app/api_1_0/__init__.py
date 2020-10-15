@@ -13,7 +13,6 @@ api_permission = Blueprint('permission', __name__)
 api_initial = Blueprint('initial', __name__)
 api_document_records = Blueprint('document_records', __name__)
 api_place = Blueprint('place', __name__)
-api_mongo = Blueprint('mongo', __name__)
 api_doc_mark_comment = Blueprint('doc_mark_comment', __name__)
 api_doc_mark_entity = Blueprint('doc_mark_entity', __name__)
 api_doc_mark_event = Blueprint('doc_mark_event', __name__)
@@ -35,7 +34,6 @@ from . import permission
 from . import initial
 from . import document_records
 from . import place
-from . import mongo
 from . import doc_mark_comment
 from . import doc_mark_entity
 from . import doc_mark_event
