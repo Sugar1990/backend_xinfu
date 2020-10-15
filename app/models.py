@@ -192,6 +192,11 @@ class EntityCategory(db.Model):
         return category.name if category else ""
 
     @staticmethod
+    def get_category_type(id):
+        category = EntityCategory.query.filter_by(id=id).first()
+        return category.type if category else 0
+
+    @staticmethod
     def get_category_id(name):
         category = EntityCategory.query.filter_by(name=name).first()
         return category.id if category else 0

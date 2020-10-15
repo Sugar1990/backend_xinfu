@@ -141,13 +141,26 @@ def insert_entity():
             # 雨辰同步
             if sync and YC_ROOT_URL:
                 header = {"Content-Type": "application/json; charset=UTF-8"}
-                url = YC_ROOT_URL + "/entitysync/add"
-                data = json.dumps({"id": entity.id,
-                                   "name": name,
-                                   "categoryId": entity.category_id,
-                                   "props": props,  # ["props"] if props.get("props",False) else props,
-                                   "synonyms": synonyms
-                                   })
+                url = YC_ROOT_URL + "/api/redis/add"
+                mark_category = "ner"
+                if entity.category_id == EntityCategory.get_category_id(PLACE_BASE_NAME):
+                    mark_category = "place"
+                elif EntityCategory.get_category_type(entity.category_id) == 2:
+                    mark_category = "concept"
+
+                sync_yc_redis_data = {
+                    "entity_data": {
+                        "entity_id": entity.id,
+                        "name": name,
+                        "type": 1,
+                        "entity_category_id": entity.category_id
+                    },
+                    "mark_category": mark_category
+                }
+                if entity.category_id == EntityCategory.get_category_id(PLACE_BASE_NAME):
+                    sync_yc_redis_data["entity_data"]['lon'] = entity.longitude
+                    sync_yc_redis_data["entity_data"]['lat'] = entity.latitude
+                data = json.dumps(sync_yc_redis_data)
                 yc_res = requests.post(url=url, data=data, headers=header)
 
             res = success_res(data={"entity_id": entity.id})
