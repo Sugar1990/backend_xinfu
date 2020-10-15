@@ -18,6 +18,7 @@ from ..conf import LEXICON_IP, LEXICON_PORT, SUMMARY_IP, SUMMARY_PORT, YC_ROOT_U
     YC_TAGGING_PAGE_URL
 from ..models import Document, Entity, Customer, Permission, Catalog, DocMarkEntity, DocMarkPlace, DocMarkTimeTag
 from ..serve.word_parse import extract_word_content
+import re
 
 
 # 上传文档
@@ -124,9 +125,16 @@ def upload_doc():
 
                                     header = {"Content-Type": "application/json; charset=UTF-8"}
                                     url = YC_ROOT_URL + 'api/mark/result'
-                                    body = {"content": doc.content}
-                                    data_dict = {"content", "%s" % (body["content"])}
-                                    data = json.dumps(data_dict)
+                                    content_list = doc.content
+                                    content_str = str(content_list)
+                                    new_str_sub = re.sub(r'[\r\n]', '', content_str)
+                                    new_str = ''.join(new_str_sub)
+                                    body = {"content": new_str}
+
+                                    # data_dict = {"content", "%s" % (body["content"])}
+                                    # data = json.dumps(data_dict)
+
+                                    data = json.dumps(body)
                                     yc_res = requests.post(url=url, data=data, headers=header)
                                     print("doc_preprocess", yc_res)
                                     yc_res = yc_res.json()['data']
