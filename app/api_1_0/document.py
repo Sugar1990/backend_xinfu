@@ -16,7 +16,7 @@ from .utils import success_res, fail_res
 from .. import db, lock
 from ..conf import LEXICON_IP, LEXICON_PORT, SUMMARY_IP, SUMMARY_PORT, YC_ROOT_URL, ES_SERVER_IP, ES_SERVER_PORT, \
     YC_TAGGING_PAGE_URL
-from ..models import Document, Entity, Customer, Permission, Catalog
+from ..models import Document, Entity, Customer, Permission, Catalog, DocMarkEvent, DocMarkPlace, DocMarkEntity
 from ..serve.word_parse import extract_word_content
 
 
@@ -436,10 +436,10 @@ def get_info():
                 "create_time": "",
                 "keywords": [],
                 "pre_doc_id": 0,
-                "next_doc_id": 0
+                "next_doc_id": 0,
+                "favorite": 0
             }
         else:
-
             # ----------------------- 获取上下篇文章 --------------------------
             lower_permission_id_list = []
 
@@ -475,7 +475,8 @@ def get_info():
                 "keywords": doc.keywords if doc.keywords else [],
                 "pre_doc_id": documentPrevious.id if documentPrevious else 0,
                 "next_doc_id": documentNext.id if documentNext else 0,
-                "tagging_tabs": ancestorn_catalog_tagging_tabs if flag else []
+                "tagging_tabs": ancestorn_catalog_tagging_tabs if flag else [],
+                "favorite": doc.is_favorite
             }
     except Exception as e:
         print(str(e))
@@ -485,8 +486,8 @@ def get_info():
                     "create_time": "",
                     "keywords": [],
                     "pre_doc_id": 0,
-                    "next_doc_id": 0
-                    }
+                    "next_doc_id": 0,
+                    "favorite": 0}
 
     return jsonify(doc_info)
 
@@ -707,23 +708,62 @@ def search_advanced():
             if data.get("id", False):
                 ids.append(data["id"])
 
-        event_list = []
-        # 雨辰接口
-        if YC_ROOT_URL:
-            body = {}
-            if ids:
-                body["ids"] = ids
-            if start_date:
-                body["startTime"] = start_date
-            if end_date:
-                body["endTime"] = end_date
-            header = {"Content-Type": "application/json; charset=UTF-8"}
-            url = YC_ROOT_URL + "/event/listByDocIds"
-            search_result = requests.post(url, data=json.dumps(body), headers=header)
-            event_list = search_result.json()['data']
+        event_dict = {}
+        events = DocMarkEvent.query.all()
+        for i in events:
+            if i.event_address:
+                mark_place_ids = i.event_address.split(",")
+                place_ids = DocMarkPlace.query.with_entities(DocMarkPlace.place_id).filter(
+                    DocMarkPlace.id.in_(mark_place_ids)).all()
+                if place_ids:
+                    place_ids = [i[0] for i in place_ids]
+                    places = Entity.query.filter(Entity.id.in_(place_ids), Entity.valid == 1).all()
+                    if places:
+                        object_ids, subject_ids = [], []
+                        objects, subjects = [], []
+                        if i.event_object:
+                            mark_object_ids = i.event_object.split(",")
+                            object_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_id).filter(
+                                DocMarkEntity.id.in_(mark_object_ids)).all()
+                            if object_ids:
+                                object_ids = [i[0] for i in object_ids]
+                                objects = Entity.query.filter(Entity.id.in_(object_ids), Entity.valid == 1).all()
+                        if i.event_subject:
+                            mark_subject_ids = i.event_subject.split(",")
+                            subject_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_id).filter(
+                                DocMarkEntity.id.in_(mark_subject_ids)).all()
+                            if subject_ids:
+                                subject_ids = [i[0] for i in subject_ids]
+                                subjects = Entity.query.filter(Entity.id.in_(subject_ids), Entity.valid == 1).all()
+
+                        if object_ids + subject_ids:
+                            # 确立时间线的key值
+                            timeline_key = ",".join([str(i) for i in sorted(list(set(object_ids + subject_ids)))])
+
+                            item = {
+                                "datetime": i.event_time,
+                                "subject": [i.name for i in subjects],
+                                "place": [{
+                                    "place_lat": place.latitude,
+                                    "place_lon": place.longitude,
+                                    "place_id": place.id,
+                                    # "type": 1,
+                                    "word": place.name,
+                                } for place in places],
+                                "title": i.title,
+                                "object": [i.name for i in objects]
+                            }
+
+                            # print(event_dict, timeline_key, item, event_dict[timeline_key])
+                            if event_dict[timeline_key]:
+                                event_dict[timeline_key].append(item)
+                            else:
+                                event_dict[timeline_key] = [item]
+                            # print(event_dict)
+
         final_data = {
             "doc": data_screen,
-            "event_list": event_list
+            "event_list": event_dict.values()
         }
     except Exception as e:
         print(str(e))
