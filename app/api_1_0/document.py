@@ -16,7 +16,8 @@ from .utils import success_res, fail_res
 from .. import db, lock
 from ..conf import LEXICON_IP, LEXICON_PORT, SUMMARY_IP, SUMMARY_PORT, YC_ROOT_URL, ES_SERVER_IP, ES_SERVER_PORT, \
     YC_TAGGING_PAGE_URL
-from ..models import Document, Entity, Customer, Permission, Catalog, DocMarkEntity, DocMarkPlace, DocMarkTimeTag, DocMarkEntity
+from ..models import Document, Entity, Customer, Permission, Catalog, DocMarkEntity, DocMarkPlace, DocMarkTimeTag, \
+    DocMarkEvent
 from ..serve.word_parse import extract_word_content
 import re
 
@@ -149,21 +150,29 @@ def upload_doc():
                                         doc_mark_entity = DocMarkEntity(doc_id=doc.id, word=item_entity["word"],
                                                                         entity_id=item_entity["entity_id"],
                                                                         appear_text=item_entity["word_sentence"],
-                                                                        appear_index_in_text=item_entity["word_count"], valid=1)
+                                                                        appear_index_in_text=item_entity["word_count"],
+                                                                        valid=1)
                                         db.session.add(doc_mark_entity)
                                     db.session.commit()
 
                                     for item_place in res_place:
-                                        doc_mark_place = DocMarkPlace(doc_id=doc.id, word=item_place["word"], type=item_place["type"], place_id=item_place["place_id"],
-                                                                    direction=item_place["direction"], place_lon=item_place["place_lon"],
-                                                                    place_lat=item_place["place_lat"], height=item_place["height"],
-                                                                    unit=item_place["unit"], distance=item_place["distance"], valid=1)
+                                        doc_mark_place = DocMarkPlace(doc_id=doc.id, word=item_place["word"],
+                                                                      type=item_place["type"],
+                                                                      place_id=item_place["place_id"],
+                                                                      direction=item_place["direction"],
+                                                                      place_lon=item_place["place_lon"],
+                                                                      place_lat=item_place["place_lat"],
+                                                                      height=item_place["height"],
+                                                                      unit=item_place["unit"],
+                                                                      distance=item_place["distance"], valid=1)
                                         db.session.add(doc_mark_place)
                                     db.session.commit()
 
                                     for item_time in res_time:
-                                        doc_mark_time_tag = DocMarkTimeTag(doc_id=doc.id, word=item_time["word"], format_date=item_time["format_date"],
-                                                                        format_date_end=item_time["format_date_end"], arab_time=item_time["arab_time"], valid=1)
+                                        doc_mark_time_tag = DocMarkTimeTag(doc_id=doc.id, word=item_time["word"],
+                                                                           format_date=item_time["format_date"],
+                                                                           format_date_end=item_time["format_date_end"],
+                                                                           arab_time=item_time["arab_time"], valid=1)
                                         db.session.add(doc_mark_time_tag)
                                     db.session.commit()
 
@@ -753,23 +762,62 @@ def search_advanced():
             if data.get("id", False):
                 ids.append(data["id"])
 
-        event_list = []
-        # 雨辰接口
-        if YC_ROOT_URL:
-            body = {}
-            if ids:
-                body["ids"] = ids
-            if start_date:
-                body["startTime"] = start_date
-            if end_date:
-                body["endTime"] = end_date
-            header = {"Content-Type": "application/json; charset=UTF-8"}
-            url = YC_ROOT_URL + "/event/listByDocIds"
-            search_result = requests.post(url, data=json.dumps(body), headers=header)
-            event_list = search_result.json()['data']
+        event_dict = {}
+        events = DocMarkEvent.query.all()
+        for i in events:
+            if i.event_address:
+                mark_place_ids = i.event_address.split(",")
+                place_ids = DocMarkPlace.query.with_entities(DocMarkPlace.place_id).filter(
+                    DocMarkPlace.id.in_(mark_place_ids)).all()
+                if place_ids:
+                    place_ids = [i[0] for i in place_ids]
+                    places = Entity.query.filter(Entity.id.in_(place_ids), Entity.valid == 1).all()
+                    if places:
+                        object_ids, subject_ids = [], []
+                        objects, subjects = [], []
+                        if i.event_object:
+                            mark_object_ids = i.event_object.split(",")
+                            object_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_id).filter(
+                                DocMarkEntity.id.in_(mark_object_ids)).all()
+                            if object_ids:
+                                object_ids = [i[0] for i in object_ids]
+                                objects = Entity.query.filter(Entity.id.in_(object_ids), Entity.valid == 1).all()
+                        if i.event_subject:
+                            mark_subject_ids = i.event_subject.split(",")
+                            subject_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_id).filter(
+                                DocMarkEntity.id.in_(mark_subject_ids)).all()
+                            if subject_ids:
+                                subject_ids = [i[0] for i in subject_ids]
+                                subjects = Entity.query.filter(Entity.id.in_(subject_ids), Entity.valid == 1).all()
+
+                        if object_ids + subject_ids:
+                            # 确立时间线的key值
+                            timeline_key = ",".join([str(i) for i in sorted(list(set(object_ids + subject_ids)))])
+
+                            item = {
+                                "datetime": i.event_time,
+                                "subject": [i.name for i in subjects],
+                                "place": [{
+                                    "place_lat": place.latitude,
+                                    "place_lon": place.longitude,
+                                    "place_id": place.id,
+                                    # "type": 1,
+                                    "word": place.name,
+                                } for place in places],
+                                "title": i.title,
+                                "object": [i.name for i in objects]
+                            }
+
+                            print("q", event_dict, timeline_key, item, event_dict[timeline_key])
+                            if event_dict[timeline_key]:
+                                event_dict[timeline_key].append(item)
+                            else:
+                                event_dict[timeline_key] = [item]
+                            print("qe", event_dict)
+
         final_data = {
             "doc": data_screen,
-            "event_list": event_list
+            "event_list": event_dict.values()
         }
     except Exception as e:
         print(str(e))
@@ -845,6 +893,7 @@ def search_advanced_doc_type():
         doc_type = request.json.get('doc_type', 0)
         content = request.json.get('content', "")
         url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+
         data_screen = get_es_doc(url, customer_id=customer_id, date=date, time_range=time_range,
                                  time_period=time_period, frequency=frequency,
                                  place=place, place_direction_distance=place_direction_distance, location=location,
@@ -873,40 +922,63 @@ def search_advanced_doc_type():
             {"name": Catalog.get_name_by_id(doc_type), "data": data_by_doc_id[doc_type]}
             for doc_type in data_by_doc_id if Catalog.get_name_by_id(doc_type)
         ]
-        event_list = []
-        # 雨辰接口
-        if YC_ROOT_URL:
-            body = {}
-            if ids:
-                body["ids"] = ids
-            if start_date:
-                body["startTime"] = start_date
-            if end_date:
-                body["endTime"] = end_date
-            if cur_page:
-                body["page"] = cur_page
-            if page_size:
-                body["size"] = page_size
-            header = {"Content-Type": "application/json; charset=UTF-8"}
-            url = YC_ROOT_URL + "/event/listByDocIds"
-            search_result = requests.post(url, data=json.dumps(body), headers=header)
-            if search_result.status_code == 200:
-                yc_events = search_result.json()['data']
-                for event in yc_events:
-                    place = []
-                    if isinstance(event.get("eventAddress", []), list):
-                        for event_place in event.get("eventAddress", []):
-                            if event_place.get("placeIon", "") and event_place.get("placeLat", ""):
-                                place = [event_place]
-                                break
-                        event_list.append({"datetime": event.get("eventTime", ""),
-                                           "subject": event.get("eventSubject", ""),
-                                           "place": place,
-                                           "title": event.get("title", ""),
-                                           "object": event.get("eventObject", "")})
+
+        event_dict = {}
+        events = DocMarkEvent.query.all()
+        for i in events:
+            if i.event_address:
+                mark_place_ids = i.event_address.split(",")
+                place_ids = DocMarkPlace.query.with_entities(DocMarkPlace.place_id).filter(
+                    DocMarkPlace.id.in_(mark_place_ids)).all()
+                if place_ids:
+                    place_ids = [i[0] for i in place_ids]
+                    places = Entity.query.filter(Entity.id.in_(place_ids), Entity.valid == 1).all()
+                    if places:
+                        object_ids, subject_ids = [], []
+                        objects, subjects = [], []
+                        if i.event_object:
+                            mark_object_ids = i.event_object.split(",")
+                            object_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_id).filter(
+                                DocMarkEntity.id.in_(mark_object_ids)).all()
+                            if object_ids:
+                                object_ids = [i[0] for i in object_ids]
+                                objects = Entity.query.filter(Entity.id.in_(object_ids), Entity.valid == 1).all()
+                        if i.event_subject:
+                            mark_subject_ids = i.event_subject.split(",")
+                            subject_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_id).filter(
+                                DocMarkEntity.id.in_(mark_subject_ids)).all()
+                            if subject_ids:
+                                subject_ids = [i[0] for i in subject_ids]
+                                subjects = Entity.query.filter(Entity.id.in_(subject_ids), Entity.valid == 1).all()
+
+                        if object_ids + subject_ids:
+                            # 确立时间线的key值
+                            timeline_key = ",".join([str(i) for i in sorted(list(set(object_ids + subject_ids)))])
+
+                            item = {
+                                "datetime": i.event_time,
+                                "subject": [i.name for i in subjects],
+                                "place": [{
+                                    "place_lat": place.latitude,
+                                    "place_lon": place.longitude,
+                                    "place_id": place.id,
+                                    # "type": 1,
+                                    "word": place.name,
+                                } for place in places],
+                                "title": i.title,
+                                "object": [i.name for i in objects]
+                            }
+
+                            print("q", event_dict, timeline_key, item, event_dict[timeline_key])
+                            if event_dict[timeline_key]:
+                                event_dict[timeline_key].append(item)
+                            else:
+                                event_dict[timeline_key] = [item]
+                            print("qe", event_dict)
+
         res = {
             "doc": data_forms,
-            "event_list": event_list
+            "event_list": event_dict.values()
         }
 
         '''
