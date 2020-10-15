@@ -37,6 +37,7 @@ def get_all():
     current_page = request.args.get('cur_page', 0, type=int)
     page_size = request.args.get('page_size', 0, type=int)
     category_id = request.args.get('category_id', 0, type=int)
+    type = request.args.get('type', 0, type=int)
 
     category = EntityCategory.query.filter_by(id=category_id, name=PLACE_BASE_NAME, valid=1).first()
     if category and int(USE_PLACE_SERVER):
@@ -47,6 +48,10 @@ def get_all():
         conditions = [Entity.valid == 1]
         if category_id:
             conditions.append(Entity.category_id == category_id)
+        else:
+            category_ids = EntityCategory.query.with_entities(EntityCategory.id).filter_by(type=type, valid=1).all()
+            category_ids = [i[0] for i in category_ids]
+            conditions.append(Entity.category_id.in_(category_ids))
 
         conditions = tuple(conditions)
         pagination = Entity.query.filter(and_(*conditions)).order_by(Entity.id.desc()).paginate(current_page, page_size,
