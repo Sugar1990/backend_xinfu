@@ -308,7 +308,7 @@ class DocMarkEvent(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     event_id = db.Column(db.String)
     event_desc = db.Column(db.String)
-    event_subject = db.Column(db.String)
+    event_subject = db.Column(db.JSON)
     event_predicate = db.Column(db.String)
     event_object = db.Column(db.String)
     event_time = db.Column(db.String)

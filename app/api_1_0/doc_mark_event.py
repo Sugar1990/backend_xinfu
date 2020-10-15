@@ -52,7 +52,7 @@ def get_doc_mark_event_by_id():
             "id": -1,
             "event_id": "",
             "event_desc": "",
-            "event_subject": "",
+            "event_subject": [],
             "event_predicate": "",
             "event_object": "",
             "event_time": "",
@@ -126,7 +126,7 @@ def add_doc_mark_event():
     try:
         event_id = request.json.get("event_id", "")
         event_desc = request.json.get("event_desc", "")
-        event_subject = request.json.get("event_subject", "")
+        event_subject = request.json.get("event_subject", [])
         event_predicate = request.json.get("event_predicate", "")
         event_object = request.json.get("event_object", "")
         event_time = request.json.get("event_time", "")
@@ -180,7 +180,7 @@ def modify_doc_mark_event():
         id = request.json.get("id", 0)
         event_id = request.json.get("event_id", "")
         event_desc = request.json.get("event_desc", "")
-        event_subject = request.json.get("event_subject", "")
+        event_subject = request.json.get("event_subject", [])
         event_predicate = request.json.get("event_predicate", "")
         event_object = request.json.get("event_object", "")
         event_time = request.json.get("event_time", "")
