@@ -125,7 +125,7 @@ def upload_doc():
                                 if YC_ROOT_URL:
 
                                     header = {"Content-Type": "application/json; charset=UTF-8"}
-                                    url = YC_ROOT_URL + 'api/mark/result'
+                                    url = YC_ROOT_URL + '/api/mark/result'
                                     content_list = doc.content
                                     content_str = str(content_list)
                                     new_str_sub = re.sub(r'[\r\n]', '', content_str)
