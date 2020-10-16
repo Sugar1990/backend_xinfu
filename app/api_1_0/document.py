@@ -491,7 +491,8 @@ def get_info():
                 "create_time": "",
                 "keywords": [],
                 "pre_doc_id": 0,
-                "next_doc_id": 0
+                "next_doc_id": 0,
+                "favorite": 0
             }
         else:
 
@@ -530,7 +531,8 @@ def get_info():
                 "keywords": doc.keywords if doc.keywords else [],
                 "pre_doc_id": documentPrevious.id if documentPrevious else 0,
                 "next_doc_id": documentNext.id if documentNext else 0,
-                "tagging_tabs": ancestorn_catalog_tagging_tabs if flag else []
+                "tagging_tabs": ancestorn_catalog_tagging_tabs if flag else [],
+                "favorite": doc.is_favorite
             }
     except Exception as e:
         print(str(e))
@@ -540,7 +542,8 @@ def get_info():
                     "create_time": "",
                     "keywords": [],
                     "pre_doc_id": 0,
-                    "next_doc_id": 0
+                    "next_doc_id": 0,
+                    "favorite": 0
                     }
 
     return jsonify(doc_info)
