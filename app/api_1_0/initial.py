@@ -2,7 +2,7 @@
 from flask import jsonify, request
 import json
 from . import api_initial as blue_print
-from ..models import Customer, EntityCategory, Document, Catalog
+from ..models import Customer, EntityCategory, Document, Catalog ,Entity
 from .. import db
 from ..conf import ADMIN_NAME, ADMIN_PWD, ASSIS_NAME, ASSIS_PWD, TAG_TABS, PLACE_BASE_NAME, ES_SERVER_IP, ES_SERVER_PORT
 from .utils import success_res, fail_res
@@ -68,14 +68,19 @@ def pg_insert_es():
                 # "synonyms": "ik",
                 # "props": "ik",
                 "summary": "ik",
-                "category_id": "id"
+                "category_id": "id",
+                "latitude":"id",
+                "longitude":"id",
+                "location":"location"
             }
             pg_dict = {"id": {"col_type": "align", "entity": "id"},
                        "name": {"col_type": "", "entity": "name"},
                        "synonyms": {"col_type": "", "entity": "synonyms"},
                        "props": {"col_type": "", "entity": "props"},
                        "category_id": {"col_type": "", "entity": "category_id"},
-                       "summary": {"col_type": "", "entity": "summary"}}
+                       "summary": {"col_type": "", "entity": "summary"},
+                       "latitude": {"col_type": "", "entity": "latitude"},
+                       "longitude": {"col_type": "", "entity": "longitude"}}
         elif pg_table == 'document':
             es_mapping_dict = {
                 "id": "id",
@@ -221,3 +226,36 @@ def pg_insert_test():
     search_result = requests.post(url=esurl, data=json.dumps(para), headers=header)
     print(search_result, flush=True)
     return success_res()
+
+@blue_print.route('/entity_update_loaction', methods=['GET'])
+def entity_update_loaction():
+    try:
+        entities = Entity.query.all()
+        url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+        header = {"Content-Type": "application/json; charset=UTF-8"}
+        for entity in entities:
+            ent_id = entity .id
+            ent_location = Entity.get_location_of_entity(ent_id)
+            # 获得es对应doc
+            search_json = {
+                "id": {"type": "id", "value": ent_id}
+            }
+            es_id_para = {"search_index": "entity", "search_json": search_json}
+
+            search_result = requests.post(url + '/searchId', data=json.dumps(es_id_para), headers=header)
+            try:
+                es_id = search_result.json()['data']['dataList'][0]
+            except:
+                es_id = ''
+            # 替换name 修改es已有do
+            key_value_json = {'location': ent_location}
+            inesert_para = {"update_index": 'entity',
+                            "data_update_json": [{es_id: key_value_json}]}
+            requests.post(url + '/updatebyId', data=json.dumps(inesert_para), headers=header)
+            res = success_res()
+    except Exception as e:
+        print(str(e))
+        res = fail_res()
+    return res
+
+
