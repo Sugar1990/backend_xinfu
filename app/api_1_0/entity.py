@@ -191,7 +191,7 @@ def update_entity():
 
         if entity:
             entity_same = Entity.query.filter(Entity.name == name, Entity.valid == 1, Entity.id != id,
-                                              Entity.category_id == entity.category_id).first()
+                                              Entity.category_id == category_id).first()
             if entity_same:
                 res = fail_res(msg="相同实体名称已存在")
                 return jsonify(res)
