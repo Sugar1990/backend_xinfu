@@ -54,9 +54,9 @@ def get_doc_mark_event_by_id():
             "event_desc": "",
             "event_subject": [],
             "event_predicate": "",
-            "event_object": "",
-            "event_time": "",
-            "event_address": "",
+            "event_object": [],
+            "event_time": [],
+            "event_address": [],
             "event_why": "",
             "event_result": "",
             "event_conduct": "",
@@ -128,9 +128,9 @@ def add_doc_mark_event():
         event_desc = request.json.get("event_desc", "")
         event_subject = request.json.get("event_subject", [])
         event_predicate = request.json.get("event_predicate", "")
-        event_object = request.json.get("event_object", "")
-        event_time = request.json.get("event_time", "")
-        event_address = request.json.get("event_address", "")
+        event_object = request.json.get("event_object", [])
+        event_time = request.json.get("event_time", [])
+        event_address = request.json.get("event_address", [])
         event_why = request.json.get("event_why", "")
         event_result = request.json.get("event_result", "")
         event_conduct = request.json.get("event_conduct", "")
@@ -165,7 +165,7 @@ def add_doc_mark_event():
                                           valid=1)
             db.session.add(doc_mark_event)
             db.session.commit()
-            res = success_res()
+            res = success_res(data={"id": doc_mark_event.id})
 
     except:
         res = fail_res()
@@ -182,9 +182,9 @@ def modify_doc_mark_event():
         event_desc = request.json.get("event_desc", "")
         event_subject = request.json.get("event_subject", [])
         event_predicate = request.json.get("event_predicate", "")
-        event_object = request.json.get("event_object", "")
-        event_time = request.json.get("event_time", "")
-        event_address = request.json.get("event_address", "")
+        event_object = request.json.get("event_object", [])
+        event_time = request.json.get("event_time", [])
+        event_address = request.json.get("event_address", [])
         event_why = request.json.get("event_why", "")
         event_result = request.json.get("event_result", "")
         event_conduct = request.json.get("event_conduct", "")

@@ -1,8 +1,8 @@
 import os
-
 from sqlalchemy.dialects.postgresql import JSONB
 
 from . import db
+from .conf import PLACE_BASE_NAME
 
 
 class Entity(db.Model):
@@ -21,6 +21,14 @@ class Entity(db.Model):
     def category_name(self):
         conf = EntityCategory.query.filter_by(id=self.category_id).first()
         return conf.name if conf else ""
+
+    def get_yc_mark_category(self):
+        mark_category = "ner"
+        if self.category_id == EntityCategory.get_category_id(PLACE_BASE_NAME):
+            mark_category = "place"
+        elif EntityCategory.get_category_type(self.category_id) == 2:
+            mark_category = "concept"
+        return mark_category
 
     def __repr__(self):
         return '<Entity %r>' % self.name
@@ -254,6 +262,7 @@ class RelationCategory(db.Model):
     def __repr__(self):
         return '<RelationCategory %r>' % self.relation_name
 
+
 class DocMarkComment(db.Model):
     __tablename__ = 'doc_mark_comment'
     __table_args__ = {"schema": "public"}
@@ -267,7 +276,6 @@ class DocMarkComment(db.Model):
     update_by = db.Column(db.Integer)
     update_time = db.Column(db.TIMESTAMP)
     valid = db.Column(db.Integer)
-
 
     def __repr__(self):
         return '<DocMarkComment %r>' % self.name
@@ -302,9 +310,9 @@ class DocMarkEvent(db.Model):
     event_desc = db.Column(db.String)
     event_subject = db.Column(db.JSON)
     event_predicate = db.Column(db.String)
-    event_object = db.Column(db.String)
-    event_time = db.Column(db.String)
-    event_address = db.Column(db.String)
+    event_object = db.Column(db.JSON)
+    event_time = db.Column(db.JSON)
+    event_address = db.Column(db.JSON)
     event_why = db.Column(db.String)
     event_result = db.Column(db.String)
     event_conduct = db.Column(db.String)
@@ -352,6 +360,7 @@ class DocMarkPlace(db.Model):
 
     def __repr__(self):
         return '<DocumentRecords %r>' % self.doc_id
+
 
 class DocMarkTimeTag(db.Model):
     __tablename__ = 'doc_mark_time_tag'
