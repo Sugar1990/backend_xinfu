@@ -248,16 +248,22 @@ class RelationCategory(db.Model):
     __tablename__ = 'relation_category'
     __table_args__ = {"schema": "public"}
     id = db.Column(db.Integer, primary_key=True)
-    source_entity_category_id = db.Column(db.Integer)  # NOTE: not null
-    target_entity_category_id = db.Column(db.Integer)  # NOTE: not null
+    source_entity_category_ids = db.Column(db.JSON)  # NOTE: not null
+    target_entity_category_ids = db.Column(db.JSON)  # NOTE: not null
     relation_name = db.Column(db.Text)
     valid = db.Column(db.Integer)
 
     def source_entity_category(self):
-        return EntityCategory.get_category_name(self.source_entity_category_id)
+        source_entity_categories = []
+        for id in self.source_entity_category_ids:
+            source_entity_categories.append(EntityCategory.get_category_name(id))
+        return source_entity_categories
 
     def target_entity_category(self):
-        return EntityCategory.get_category_name(self.target_entity_category_id)
+        target_entity_categories = []
+        for id in self.target_entity_category_ids:
+            target_entity_categories.append(EntityCategory.get_category_name(id))
+        return target_entity_categories
 
     def __repr__(self):
         return '<RelationCategory %r>' % self.relation_name
