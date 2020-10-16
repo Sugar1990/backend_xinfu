@@ -132,6 +132,7 @@ def modify_relation_category():
                     target_id = rc.target_entity_category_ids
                     source_entity_category_ids_set = set(source_id)
                     target_entity_category_ids_set = set(target_id)
+
                     if (set(source_entity_category_ids).issubset(source_entity_category_ids_set)) and (set(target_entity_category_ids).issubset(target_entity_category_ids_set)):
                         res_flag = False
                     if not res_flag:
