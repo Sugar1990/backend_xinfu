@@ -316,7 +316,7 @@ def delete_entity():
 
             res = success_res()
         else:
-            res = fail_res()
+            res = fail_res(msg="实体不存在")
 
     except Exception as e:
         print(str(e))
