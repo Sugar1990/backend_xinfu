@@ -119,7 +119,7 @@ def add_doc_mark_entity():
                                                 appear_index_in_text=appear_index_in_text, valid=1)
                 db.session.add(doc_mark_entity)
                 db.session.commit()
-                res = success_res()
+                res = success_res(data={"id":doc_mark_entity.id})
 
     except:
         res = fail_res()

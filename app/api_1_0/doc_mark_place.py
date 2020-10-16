@@ -140,7 +140,7 @@ def add_doc_mark_place():
                                                       entity_or_sys=entity_or_sys,valid=1)
             db.session.add(docMarkPlace)
             db.session.commit()
-            res = success_res()
+            res = success_res(data={"id": docMarkPlace.id})
     except:
         db.session.rollback()
         res = fail_res()

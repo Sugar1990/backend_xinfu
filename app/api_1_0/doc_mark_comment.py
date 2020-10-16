@@ -102,7 +102,7 @@ def add_doc_mark_comment():
                                                   update_by=update_by, update_time=update_time, valid=1)
                 db.session.add(doc_mark_comment)
                 db.session.commit()
-                res = success_res()
+                res = success_res(data={"id":doc_mark_comment.id})
 
     except:
         res = fail_res()

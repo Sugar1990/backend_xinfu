@@ -101,7 +101,7 @@ def add_doc_mark_time_tag():
                                             update_time=datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),valid=1)
             db.session.add(docMarkTimeTag)
             db.session.commit()
-            res = success_res()
+            res = success_res(data={"id": docMarkTimeTag.id})
     except:
         db.session.rollback()
         res = fail_res()

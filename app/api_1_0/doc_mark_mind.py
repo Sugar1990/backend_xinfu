@@ -24,7 +24,7 @@ def add_doc_mark_mind():
             doc_mark_mind = DocMarkMind(doc_id=doc_id, name=name, parent_id=parent_id, valid=1)
             db.session.add(doc_mark_mind)
             db.session.commit()
-            res = success_res()
+            res = success_res(data={"id": doc_mark_mind.id})
     except:
         db.session.rollback()
         res = fail_res()
