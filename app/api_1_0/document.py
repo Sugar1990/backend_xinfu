@@ -113,15 +113,7 @@ def upload_doc():
 
                                 insert_result = requests.post(url + '/dataInsert', data=json.dumps(para),
                                                               headers=header)
-                                print(insert_result.text)
 
-                                # if YC_ROOT_URL:
-                                #     header = {"Content-Type": "application/x-form-urlencode; charset=UTF-8"}
-                                #     url = YC_ROOT_URL + '/doc/preprocess?docId={0}'.format(doc.id)
-                                #     yc_res = requests.post(url=url, headers=header)
-                                #     print("doc_preprocess", yc_res)
-                                #     doc.status = 1
-                                #     db.session.commit()
                                 if YC_ROOT_URL:
                                     header = {"Content-Type": "application/json; charset=UTF-8"}
                                     url = YC_ROOT_URL + '/api/mark/result'
@@ -161,12 +153,16 @@ def upload_doc():
 
                                         for item_time in res_time:
                                             doc_mark_time_tag = DocMarkTimeTag(doc_id=doc.id, word=item_time["word"],
-                                                                               format_date=item_time["format_date"],
-                                                                               format_date_end=item_time[
-                                                                                   "format_date_end"],
                                                                                arab_time=item_time["arab_time"],
                                                                                valid=1)
+                                            if item_time.get("format_date", ""):
+                                                doc_mark_time_tag.format_date = item_time["format_date"]
+                                            if item_time.get("format_date_end", ""):
+                                                doc_mark_time_tag.format_date_end = item_time["format_date_end"]
                                             db.session.add(doc_mark_time_tag)
+                                        db.session.commit()
+
+                                        doc.status = 2
                                         db.session.commit()
                                     else:
                                         res = fail_res(msg="上传成功，但预处理失败")

@@ -103,6 +103,15 @@ def insert_entity():
                                      Entity.category_id == category_id).first()
 
         if not entity:
+            props = props if props else {}
+            if name in synonyms:
+                synonyms.remove(name)
+            entity = Entity(name=name, category_id=category_id, props=props, synonyms=synonyms, summary=summary,
+                            valid=1)
+
+            # es 插入操作
+            es_insert_item = {'id': entity.id}
+
             longitude, latitude = 0, 0
             # 地名实体获取经纬度
             if EntityCategory.get_category_name(category_id) == PLACE_BASE_NAME:
@@ -110,19 +119,14 @@ def insert_entity():
                 latitude = request.json.get('latitude', 0)
                 if longitude:
                     entity.longitude = longitude
+                    es_insert_item["longitude"] = name
                 if latitude:
-                    entity.longitude = latitude
+                    entity.latitude = latitude
+                    es_insert_item["latitude"] = name
 
-            props = props if props else {}
-            if name in synonyms:
-                synonyms.remove(name)
-            entity = Entity(name=name, category_id=category_id, props=props, synonyms=synonyms, summary=summary,
-                            valid=1)
             db.session.add(entity)
             db.session.commit()
 
-            # es 插入操作
-            es_insert_item = {'id': entity.id}
             if name:
                 es_insert_item["name"] = name
             if category_id:
