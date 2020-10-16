@@ -549,7 +549,7 @@ def sync_yc_update_name(old_name, new_name, entity_id, longitude=None, latitude=
 
 
 def sync_yc_update_category_id(entity_id, old_category_id, new_category_id, longitude=None, latitude=None,
-                         sync=1):
+                               sync=1):
     try:
         # 雨辰同步
         if sync and YC_ROOT_URL:
@@ -708,7 +708,7 @@ def get_search_panigation_es(search='', page_size=10, cur_page=1, category_id=0)
                      'synonyms': entity['_source'].get('synonyms', []),
                      'summary': entity['_source'].get('summary', ""),
                      'category': EntityCategory.get_category_name(entity['_source'].get('category_id', 0)),
-                     "longitude":entity['_source'].get('longitude', []),
+                     "longitude": entity['_source'].get('longitude', []),
                      "latitude": entity['_source'].get('latitude', [])
                      } for entity in search_result.json()['data']['dataList']]
             # for entity in data:
@@ -769,6 +769,26 @@ def get_entity_info():
     except:
         res = {'id': -1, 'name': '', 'synonyms': [], 'props': {}, 'category_id': -1, 'category': '', 'longitude': None,
                'latitude': None}
+    return jsonify(res)
+
+
+# 获取实体信息
+@blue_print.route('/get_entities_info', methods=['POST'])
+# @swag_from(get_entities_info)
+def get_entities_info():
+    try:
+        ids = request.json.get('ids', [])
+        entities = Entity.query.filter(Entity.id.in_(ids), Entity.valid==1).all()
+        res = success_res(data=[{'id': i.id,
+                                 'name': i.name,
+                                 'synonyms': i.synonyms if i.synonyms else [],
+                                 'category_id': i.category_id,
+                                 'category': i.category_name(),
+                                 'longitude': i.longitude,
+                                 'latitude': i.latitude} for i in entities])
+    except Exception as e:
+        print(str(e))
+        res = fail_res(data=[])
     return jsonify(res)
 
 
