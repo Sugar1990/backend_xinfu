@@ -123,58 +123,54 @@ def upload_doc():
                                 #     doc.status = 1
                                 #     db.session.commit()
                                 if YC_ROOT_URL:
-
                                     header = {"Content-Type": "application/json; charset=UTF-8"}
                                     url = YC_ROOT_URL + '/api/mark/result'
-                                    content_list = doc.content
-                                    content_str = str(content_list)
-                                    new_str_sub = re.sub(r'[\r\n]', '', content_str)
-                                    new_str = ''.join(new_str_sub)
+                                    new_str = '\r\n'.join(doc.content)
                                     body = {"content": new_str}
-
-                                    # data_dict = {"content", "%s" % (body["content"])}
-                                    # data = json.dumps(data_dict)
 
                                     data = json.dumps(body)
                                     yc_res = requests.post(url=url, data=data, headers=header)
-                                    print("doc_preprocess", yc_res)
-                                    yc_res = yc_res.json()['data']
-                                    res_entity = yc_res["entity"]
-                                    res_place = yc_res["place"]
-                                    res_time = yc_res["time"]
-                                    print("entity", res_entity)
-                                    print("place", res_place)
-                                    print("time", res_time)
+                                    if yc_res.status_code in (200, 201):
+                                        yc_res = yc_res.json()['data']
+                                        res_entity = yc_res["entity"]
+                                        res_place = yc_res["place"]
+                                        res_time = yc_res["time"]
 
-                                    for item_entity in res_entity:
-                                        doc_mark_entity = DocMarkEntity(doc_id=doc.id, word=item_entity["word"],
-                                                                        entity_id=item_entity["entity_id"],
-                                                                        appear_text=item_entity["word_sentence"],
-                                                                        appear_index_in_text=item_entity["word_count"],
-                                                                        valid=1)
-                                        db.session.add(doc_mark_entity)
-                                    db.session.commit()
+                                        for item_entity in res_entity:
+                                            doc_mark_entity = DocMarkEntity(doc_id=doc.id, word=item_entity["word"],
+                                                                            entity_id=item_entity["entity_id"],
+                                                                            appear_text=item_entity["word_sentence"],
+                                                                            appear_index_in_text=item_entity[
+                                                                                "word_count"],
+                                                                            valid=1)
+                                            db.session.add(doc_mark_entity)
+                                        db.session.commit()
 
-                                    for item_place in res_place:
-                                        doc_mark_place = DocMarkPlace(doc_id=doc.id, word=item_place["word"],
-                                                                      type=item_place["type"],
-                                                                      place_id=item_place["place_id"],
-                                                                      direction=item_place["direction"],
-                                                                      place_lon=item_place["place_lon"],
-                                                                      place_lat=item_place["place_lat"],
-                                                                      height=item_place["height"],
-                                                                      unit=item_place["unit"],
-                                                                      distance=item_place["distance"], valid=1)
-                                        db.session.add(doc_mark_place)
-                                    db.session.commit()
+                                        for item_place in res_place:
+                                            doc_mark_place = DocMarkPlace(doc_id=doc.id, word=item_place["word"],
+                                                                          type=item_place["type"],
+                                                                          place_id=item_place["place_id"],
+                                                                          direction=item_place["direction"],
+                                                                          place_lon=item_place["place_lon"],
+                                                                          place_lat=item_place["place_lat"],
+                                                                          height=item_place["height"],
+                                                                          unit=item_place["unit"],
+                                                                          distance=item_place["distance"], valid=1)
+                                            db.session.add(doc_mark_place)
+                                        db.session.commit()
 
-                                    for item_time in res_time:
-                                        doc_mark_time_tag = DocMarkTimeTag(doc_id=doc.id, word=item_time["word"],
-                                                                           format_date=item_time["format_date"],
-                                                                           format_date_end=item_time["format_date_end"],
-                                                                           arab_time=item_time["arab_time"], valid=1)
-                                        db.session.add(doc_mark_time_tag)
-                                    db.session.commit()
+                                        for item_time in res_time:
+                                            doc_mark_time_tag = DocMarkTimeTag(doc_id=doc.id, word=item_time["word"],
+                                                                               format_date=item_time["format_date"],
+                                                                               format_date_end=item_time[
+                                                                                   "format_date_end"],
+                                                                               arab_time=item_time["arab_time"],
+                                                                               valid=1)
+                                            db.session.add(doc_mark_time_tag)
+                                        db.session.commit()
+                                    else:
+                                        res = fail_res(msg="上传成功，但预处理失败")
+                                        return res
 
                                 url = YC_TAGGING_PAGE_URL + "?doc_id={0}&uid={1}".format(doc.id, uid)
                                 doc_power = doc.get_power() if doc else 0
