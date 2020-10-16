@@ -177,7 +177,8 @@ def get_relation_categories():
             "name": rc.relation_name
         } for rc in relation_category]
         res = success_res(data=data)
-    except:
+    except Exception as e:
+        print(str(e))
         res = fail_res(data=[])
 
     return jsonify(res)
