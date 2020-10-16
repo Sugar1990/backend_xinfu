@@ -122,14 +122,23 @@ def modify_relation_category():
             #                                                      valid=1).first()
             # if relation_category_same:
             #     res = fail_res(msg="已存在相同关系记录!")
-            relation_category_same = RelationCategory.query.filter_by(relation_name=name, valid=1).first()
+            relation_category_same = RelationCategory.query.filter_by(relation_name=name, valid=1).all()
+
             if relation_category_same:
-                source_id = relation_category_same.source_entity_category_ids
-                target_id = relation_category_same.target_entity_category_ids
-                source_entity_category_ids_set = set(source_id)
-                target_entity_category_ids_set = set(target_id)
-                if (source_entity_category_ids_set.issubset(set(source_entity_category_ids))) \
-                        and (target_entity_category_ids_set.issubset(set(target_entity_category_ids))):
+                flag = True
+                res_flag = True
+                for rc in relation_category_same:
+                    source_id = rc.source_entity_category_ids
+                    target_id = rc.target_entity_category_ids
+                    source_entity_category_ids_set = set(source_id)
+                    target_entity_category_ids_set = set(target_id)
+
+                    if (set(source_entity_category_ids).issubset(source_entity_category_ids_set)) and (set(target_entity_category_ids).issubset(target_entity_category_ids_set)):
+                        res_flag = False
+                    if not res_flag:
+                        break
+
+                if not flag & res_flag:
                     res = fail_res(msg="已存在相同关系记录!")
                 else:
                     entity_category_id_list = []
