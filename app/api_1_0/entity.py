@@ -241,7 +241,7 @@ def update_entity():
                                          entity.get_yc_mark_category(), longitude, latitude)
                 if remove_synonyms:
                     # 删除别名
-                    sync_yc_del_synonyms(remove_synonyms, entity.id, entity.category_id)
+                    sync_yc_del_synonyms(remove_synonyms, entity.id, entity.get_yc_mark_category())
                 # </editor-fold>
                 if name in synonyms:
                     synonyms.remove(name)
@@ -309,9 +309,9 @@ def delete_entity():
             search_result = requests.post(url + '/deletebyId', data=json.dumps(delete_para), headers=header)
 
             # <editor-fold desc="yc del entity">
-            sync_yc_del_name(entity.name, entity.id, entity.category_id)
+            sync_yc_del_name(entity.name, entity.id, entity.get_yc_mark_category())
             if entity.synonyms:
-                sync_yc_del_synonyms(entity.synonyms, entity.id, entity.category_id)
+                sync_yc_del_synonyms(entity.synonyms, entity.id, entity.get_yc_mark_category())
             # </editor-fold>
 
             res = success_res()
@@ -341,9 +341,9 @@ def delete_entity_by_ids():
                 # else:
 
                 # <editor-fold desc="yc del entity">
-                sync_yc_del_name(uni_entity.name, uni_entity.id, uni_entity.category_id)
+                sync_yc_del_name(uni_entity.name, uni_entity.id, uni_entity.get_yc_mark_category())
                 if uni_entity.synonyms:
-                    sync_yc_del_synonyms(uni_entity.synonyms, uni_entity.id, uni_entity.category_id)
+                    sync_yc_del_synonyms(uni_entity.synonyms, uni_entity.id, uni_entity.get_yc_mark_category())
                 # </editor-fold>
 
                 valid_ids.append(uni_entity.id)
@@ -461,7 +461,7 @@ def delete_synonyms():
             search_result = requests.post(url + '/updatebyId', params=json.dumps(inesert_para), headers=header)
 
             # <editor-fold desc="sync yc del synonmys">
-            sync_yc_del_synonyms(synonyms, entity.id, entity.category_id)
+            sync_yc_del_synonyms(synonyms, entity.id, entity.get_yc_mark_category())
             # </editor-fold>
             res = success_res()
         else:
@@ -472,7 +472,7 @@ def delete_synonyms():
     return jsonify(res)
 
 
-# <editor-fold desc="实体增删改">
+# <editor-fold desc="雨辰同步-实体增删改">
 def sync_yc_add_name(name, entity_id, category_id, mark_category, longitude=None, latitude=None, sync=1):
     try:
         # 雨辰同步
@@ -484,7 +484,7 @@ def sync_yc_add_name(name, entity_id, category_id, mark_category, longitude=None
                     "entity_id": entity_id,
                     "name": name,
                     "type": 1,  # 1主体；2别名
-                    "entity_category_id": category_id
+                    "category_id": category_id
                 },
                 "mark_category": mark_category
             }
@@ -528,11 +528,12 @@ def sync_yc_update_name(old_name, new_name, entity_id, longitude=None, latitude=
     try:
         # 雨辰同步
         if sync and YC_ROOT_URL:
-            yc_update_item = {"old_name": old_name,
-                              "new_name": new_name,
-                              "entity_id": entity_id,
-                              "type": 1,  # 1主体；2别名,
-                              "update_type": "name"}
+            yc_update_item = {
+                "old_name": old_name,
+                "new_name": new_name,
+                "entity_id": entity_id,
+                "type": 1  # 1主体；2别名
+            }
             if longitude:
                 yc_update_item['lon'] = longitude
             if latitude:
@@ -553,48 +554,48 @@ def sync_yc_update_category_id(entity_id, old_category_id, new_category_id, long
     try:
         # 雨辰同步
         if sync and YC_ROOT_URL:
-            yc_update_item = {"entity_id": entity_id,
-                              "old_category_id": old_category_id,
-                              "new_category_id": new_category_id,
-                              "update_type": "field"}
-            if longitude:
-                yc_update_item['lon'] = longitude
-            if latitude:
-                yc_update_item['lat'] = latitude
-            yc_update_data = [yc_update_item]
-            # 雨辰同步
-            if sync and YC_ROOT_URL:
-                header = {"Content-Type": "application/json; charset=UTF-8"}
-                url = YC_ROOT_URL + "/api/redis/update"
-                data = json.dumps(yc_update_data)
-                yc_res = requests.post(url=url, data=data, headers=header)
+            for type in ["1", "2"]:
+                yc_update_item = {"entity_id": entity_id,
+                                  "category_id": new_category_id,
+                                  "type": type}
+                if longitude:
+                    yc_update_item['lon'] = longitude
+                if latitude:
+                    yc_update_item['lat'] = latitude
+                yc_update_data = [yc_update_item]
+                # 雨辰同步
+                if sync and YC_ROOT_URL:
+                    header = {"Content-Type": "application/json; charset=UTF-8"}
+                    url = YC_ROOT_URL + "/api/redis/update"
+                    data = json.dumps(yc_update_data)
+                    yc_res = requests.post(url=url, data=data, headers=header)
     except Exception as e:
         print(str(e))
 
 
-def sync_yc_del_name(name, entity_id, category_id, sync=1):
+def sync_yc_del_name(name, entity_id, mark_category, sync=1):
     try:
         if sync and YC_ROOT_URL:
             header = {"Content-Type": "application/json; charset=UTF-8"}
             url = YC_ROOT_URL + "/api/redis/del"
-            data = {"entity_data": name,
-                    "entity_id": entity_id,
-                    "category_id": category_id}
+            data = {"entity_data": {"name": name,
+                                    "entity_id": entity_id},
+                    "mark_category": mark_category}
             yc_res = requests.post(url=url, data=data, headers=header)
     except Exception as e:
         print(str(e))
 
 
-def sync_yc_del_synonyms(del_synonyms, entity_id, category_id, sync=1):
+def sync_yc_del_synonyms(del_synonyms, entity_id, mark_category, sync=1):
     try:
         # 雨辰同步
         if sync and YC_ROOT_URL:
             for i in del_synonyms:
                 header = {"Content-Type": "application/json; charset=UTF-8"}
                 url = YC_ROOT_URL + "/api/redis/del"
-                sync_yc_redis_data = {"name": i,
-                                      "entity_id": entity_id,
-                                      "category_id": category_id}
+                sync_yc_redis_data = {"entity_data": {"name": i,
+                                                      "entity_id": entity_id},
+                                      "mark_category": mark_category}
                 data = json.dumps(sync_yc_redis_data)
                 yc_res = requests.post(url=url, data=data, headers=header)
     except Exception as e:
@@ -778,7 +779,7 @@ def get_entity_info():
 def get_entities_info():
     try:
         ids = request.json.get('ids', [])
-        entities = Entity.query.filter(Entity.id.in_(ids), Entity.valid==1).all()
+        entities = Entity.query.filter(Entity.id.in_(ids), Entity.valid == 1).all()
         res = success_res(data=[{'id': i.id,
                                  'name': i.name,
                                  'synonyms': i.synonyms if i.synonyms else [],
@@ -934,7 +935,7 @@ def import_entity_excel():
                                                      entity.get_yc_mark_category())
                             if remove_synonyms:
                                 # 删除别名
-                                sync_yc_del_synonyms(remove_synonyms, entity.id, entity.category_id)
+                                sync_yc_del_synonyms(remove_synonyms, entity.id, entity.get_yc_mark_category())
                         # </editor-fold>
 
                         entity.name = ex_name
