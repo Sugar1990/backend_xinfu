@@ -16,7 +16,8 @@ def get_one_doc_mark_relation_property():
     try:
         doc_mark_relation_property_id = request.args.get('id', 0, type=int)
         if isinstance(doc_mark_relation_property_id, int):
-            doc_mark_relation_property = DocMarkRelationProperty.query.filter_by(id=doc_mark_relation_property_id, valid=1).first()
+            doc_mark_relation_property = DocMarkRelationProperty.query.filter_by(id=doc_mark_relation_property_id,
+                                                                                 valid=1).first()
             res = {
                 "id": doc_mark_relation_property.id,
                 "doc_id": doc_mark_relation_property.doc_id,
@@ -47,13 +48,14 @@ def get_one_doc_mark_relation_property():
         }
     return jsonify(res)
 
+
 @blue_print.route('/get_doc_mark_relation_property_by_docId', methods=['GET'])
 def get_doc_mark_relation_property_by_docId():
     try:
         doc_id = request.args.get('doc_id', 0, type=int)
         if isinstance(doc_id, int):
-            doc_mark_relation_property = DocMarkRelationProperty.query.filter_by(doc_id=doc_id, valid=1).first()
-            res = {
+            doc_mark_relation_property_list = DocMarkRelationProperty.query.filter_by(doc_id=doc_id, valid=1).all()
+            res = success_res(data=[{
                 "id": doc_mark_relation_property.id,
                 "doc_id": doc_mark_relation_property.doc_id,
                 "nid": doc_mark_relation_property.nid,
@@ -65,23 +67,14 @@ def get_doc_mark_relation_property_by_docId():
                 "end_time": doc_mark_relation_property.end_time.strftime(
                     '%Y-%m-%d %H:%M:%S') if doc_mark_relation_property.end_time else None,
                 "end_type": doc_mark_relation_property.end_type
-            }
+            } for doc_mark_relation_property in doc_mark_relation_property_list])
         else:
             res = fail_res("paramter \"id\" is not int type")
     except Exception as e:
         print(str(e))
-        res = {
-            "id": -1,
-            "doc_id": -1,
-            "nid": '',
-            "relation_id": -1,
-            "relation_name": '',
-            "start_time": None,
-            "start_type": '',
-            "end_time": None,
-            "end_type": ''
-        }
+        res = fail_res(data=[])
     return jsonify(res)
+
 
 @blue_print.route('/add_doc_mark_relation_property', methods=['POST'])
 def add_doc_mark_relation_property():
@@ -114,6 +107,7 @@ def add_doc_mark_relation_property():
 
     return jsonify(res)
 
+
 @blue_print.route('/modify_doc_mark_relation_property', methods=['PUT'])
 def modify_doc_mark_relation_property():
     try:
@@ -127,7 +121,8 @@ def modify_doc_mark_relation_property():
         end_time = request.json.get('end_time', None)
         end_type = request.json.get('end_type', '')
         if isinstance(doc_mark_relation_property_id, int):
-            doc_mark_place_expand = DocMarkRelationProperty.query.filter_by(id=doc_mark_relation_property_id, valid=1).first()
+            doc_mark_place_expand = DocMarkRelationProperty.query.filter_by(id=doc_mark_relation_property_id,
+                                                                            valid=1).first()
             if doc_mark_place_expand:
                 if doc_id:
                     doc_mark_place_expand.doc_id = doc_id
@@ -157,12 +152,14 @@ def modify_doc_mark_relation_property():
         res = fail_res(msg="修改失败！")
     return jsonify(res)
 
+
 @blue_print.route('/delete_doc_mark_relation_property', methods=['POST'])
 def delete_doc_mark_relation_property():
     try:
         doc_mark_relation_property_id = request.json.get("id", 0)
         if isinstance(doc_mark_relation_property_id, int):
-            doc_mark_relation_property = DocMarkRelationProperty.query.filter_by(id=doc_mark_relation_property_id, valid=1).first()
+            doc_mark_relation_property = DocMarkRelationProperty.query.filter_by(id=doc_mark_relation_property_id,
+                                                                                 valid=1).first()
             if doc_mark_relation_property:
                 doc_mark_relation_property.valid = 0
                 res = success_res()

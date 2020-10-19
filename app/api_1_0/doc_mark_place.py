@@ -5,40 +5,6 @@ from . import api_doc_mark_place as blue_print
 from ..models import DocMarkPlace
 from .. import db
 from .utils import success_res, fail_res
-@blue_print.route('/get_doc_mark_place_by_doc_id', methods=['GET'])
-def get_doc_mark_place_by_doc_id():
-    try:
-        doc_mark_place_doc_id = request.args.get('doc_id', 0, type=int)
-        if isinstance(doc_mark_place_doc_id, int):
-            doc_mark_places = DocMarkPlace.query.filter_by(id=doc_mark_place_doc_id, valid=1).all()
-            res = success_res(data=[{
-                "id": doc_mark_place.id,
-                "doc_id": doc_mark_place.doc_id,
-                "word": doc_mark_place.word,
-                "type": doc_mark_place.type,
-                "place_id": doc_mark_place.place_id,
-                "direction": doc_mark_place.direction,
-                "place_lon": doc_mark_place.place_lon,
-                "place_lat": doc_mark_place.place_lat,
-                "height": doc_mark_place.height,
-                "unit": doc_mark_place.unit,
-                "dms": doc_mark_place.dms,
-                "distance": doc_mark_place.distance,
-                "relation": doc_mark_place.relation,
-                "create_by": doc_mark_place.create_by,
-                "create_time": doc_mark_place.create_time,
-                "update_by": doc_mark_place.update_by,
-                "update_time": doc_mark_place.update_time,
-                "valid": doc_mark_place.valid,
-                "entity_or_sys": doc_mark_place.entity_or_sys,
-                "appear_index_in_text": doc_mark_place.appear_index_in_text
-            } for doc_mark_place in doc_mark_places])
-    except Exception as e:
-        print(str(e))
-        res = fail_res(data=[])
-    return jsonify(res)
-
-
 
 @blue_print.route('/get_doc_mark_place_by_doc_id', methods=['GET'])
 def get_doc_mark_place_by_doc_id():
@@ -186,7 +152,6 @@ def get_one_doc_mark_place_by_doc_id():
     return jsonify(res)
 
 
-
 @blue_print.route('/add_doc_mark_place', methods=['POST'])
 def add_doc_mark_place():
     try:
@@ -304,6 +269,7 @@ def modify_doc_mark_place():
         db.session.rollback()
         res = fail_res(msg="修改失败！")
     return jsonify(res)
+
 
 @blue_print.route('/delete_doc_mark_place', methods=['POST'])
 def delete_doc_mark_place():
