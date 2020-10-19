@@ -926,33 +926,32 @@ def get_event_list_from_docs():
     event_dict = {}
     events = DocMarkEvent.query.all()
     for i in events:
-        if i.event_address:
-            mark_place_ids = i.event_address.split(",")
+        if i.event_address and isinstance(i.event_address, list):
             place_ids = DocMarkPlace.query.with_entities(DocMarkPlace.place_id).filter(
-                DocMarkPlace.id.in_(mark_place_ids)).all()
+                DocMarkPlace.id.in_(i.event_address)).all()
             if place_ids:
                 place_ids = [i[0] for i in place_ids]
                 places = Entity.query.filter(Entity.id.in_(place_ids), Entity.valid == 1).all()
                 if places:
                     object_ids, subject_ids = [], []
                     objects, subjects, form_time = [], [], ""
-                    if i.event_object:
-                        mark_object_ids = i.event_object.split(",")
+
+                    if i.event_object and isinstance(i.event_object, list):
                         object_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_id).filter(
-                            DocMarkEntity.id.in_(mark_object_ids)).all()
+                            DocMarkEntity.id.in_(i.event_object)).all()
                         if object_ids:
                             object_ids = [i[0] for i in object_ids]
                             objects = Entity.query.filter(Entity.id.in_(object_ids), Entity.valid == 1).all()
-                    if i.event_subject:
-                        mark_subject_ids = i.event_subject.split(",")
+
+                    if i.event_subject and isinstance(i.event_subject, list):
                         subject_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_id).filter(
-                            DocMarkEntity.id.in_(mark_subject_ids)).all()
+                            DocMarkEntity.id.in_(i.event_subject)).all()
                         if subject_ids:
                             subject_ids = [i[0] for i in subject_ids]
                             subjects = Entity.query.filter(Entity.id.in_(subject_ids), Entity.valid == 1).all()
 
-                    if i.event_time:
-                        mark_time_ids = i.event_time.split(',')
+                    if i.event_time and isinstance(i.event_time, list):
+                        mark_time_ids = i.event_time
                         times = DocMarkTimeTag.query.with_entities(DocMarkTimeTag.format_date).filter(
                             DocMarkTimeTag.id.in_(mark_time_ids), DocMarkTimeTag.time_type.in_(['1', '2'])).all()
                         if times:
