@@ -149,7 +149,7 @@ def add_doc_mark_event():
         create_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         update_by = request.json.get("update_by", 0)
         update_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-        add_time = request.json.get("add_time", None)
+        add_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
         if not (isinstance(doc_id, int) and isinstance(customer_id, int) and isinstance(parent_id, int)
                 and isinstance(event_class_id, int) and isinstance(event_type_id, int) and isinstance(create_by, int)
@@ -173,7 +173,8 @@ def add_doc_mark_event():
             db.session.commit()
             res = success_res(data={"id": doc_mark_event.id})
 
-    except:
+    except Exception as e:
+        print(str(e))
         res = fail_res()
 
     return jsonify(res)
@@ -320,15 +321,12 @@ def search_doc_mark_event_by_sources():
         event_time_tag_ids = DocMarkTimeTag.query.with_entities(DocMarkTimeTag.id).filter(and_(*conditions)).all()
         event_time_tag_ids = [i[0] for i in event_time_tag_ids]
 
-        print(event_time_tag_ids)
-
         # 标记主宾语条件
         conditions = [DocMarkEntity.word.like("%{}%".format(search)),
                       DocMarkEntity.valid == 1]
         conditions = tuple(conditions)
         event_entity_ids = DocMarkEntity.query.with_entities(DocMarkEntity.id).filter(and_(*conditions)).all()
         event_entity_ids = [i[0] for i in event_entity_ids]
-        print(event_entity_ids)
 
         # 标记地点条件
         conditions = [DocMarkPlace.word.like("%{}%".format(search)),
@@ -336,8 +334,6 @@ def search_doc_mark_event_by_sources():
         conditions = tuple(conditions)
         event_place_ids = DocMarkPlace.query.with_entities(DocMarkPlace.id).filter(and_(*conditions)).all()
         event_place_ids = [i[0] for i in event_place_ids]
-
-        print(event_place_ids)
 
         # 综合搜索
         conditions = [
