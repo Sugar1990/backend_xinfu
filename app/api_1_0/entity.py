@@ -723,6 +723,75 @@ def get_search_panigation_es(search='', page_size=10, cur_page=1, category_id=0)
     return res
 
 
+
+# 实体模糊搜索
+
+@blue_print.route('/get_search_entity', methods=['GET'])
+# @swag_from(get_search_dict)
+def get_search_entity():
+    try:
+        search = request.args.get('search', "")
+        # page_size = request.args.get('page_size', 10, type=int)
+        # cur_page = request.args.get('cur_page', 1, type=int)
+        category_id = request.args.get('category_id', 0, type=int)
+        data, total_count = get_search_es(search=search,
+                                                     category_id=category_id)
+        res = {
+            "data": data,
+            "total_count": total_count
+        }
+    except Exception as e:
+        print(str(e))
+        res = {
+            "data": [],
+            "total_count": 0
+        }
+    return jsonify(res)
+
+def get_search_es(search='', page_size=10, cur_page=1, category_id=0):
+    try:
+        if category_id == EntityCategory.get_category_id(PLACE_BASE_NAME) and USE_PLACE_SERVER:
+            data, total_count = get_place_from_base_server(page_size=10000, cur_page=1,search=search)
+        else:
+            url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+            if not search:
+                search_json = {}
+            else:
+                search_json = {"name": {"type": "text", "value": search, "boost": 5},
+                               "synonyms": {"type": "text", "value": search, "boost": 5}}
+
+            if category_id != 0:
+                search_json['category_id'] = {"type": "id", "value": category_id}
+
+            para = {"search_index": 'entity', "search_json": search_json, "pageSize": page_size,
+                    "currentPage": cur_page}
+            header = {"Content-Type": "application/json"}
+            esurl = url + "/searchCustom"
+            search_result = requests.post(url=esurl, data=json.dumps(para), headers=header)
+            # print(search_result.text)
+            null = 'None'
+            total_count = search_result.json()['data']['totalCount']
+            data = [{'id': entity['_source'].get('id', 0),
+                     'name': entity['_source'].get('name', ""),
+                     'props': entity['_source'].get('props', {}),
+                     'synonyms': entity['_source'].get('synonyms', []),
+                     'summary': entity['_source'].get('summary', ""),
+                     'category': EntityCategory.get_category_name(entity['_source'].get('category_id', 0)),
+                     "longitude": entity['_source'].get('longitude', []),
+                     "latitude": entity['_source'].get('latitude', [])
+                     } for entity in search_result.json()['data']['dataList']]
+            # for entity in data:
+            #     entity['props'] = {} if entity['props'] == "None" else eval(
+            #         entity['props'])  # json.dumps(entity['props'].replace("\"",""),ensure_ascii= False)
+            #     entity['synonyms'] = [] if entity['synonyms'] == "None" else eval(entity['synonyms'])
+
+        res = data, total_count
+    except Exception as e:
+        print(str(e))
+        res = [], 0
+    return res
+
+
 # 精准搜索
 @blue_print.route('/get_entity_data_es', methods=['GET'])
 # @swag_from(get_entity_data_es_dict)
