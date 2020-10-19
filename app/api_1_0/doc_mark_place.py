@@ -31,7 +31,8 @@ def get_one_doc_mark_place_by_id():
                 "update_by":doc_mark_place.update_by,
                 "update_time":doc_mark_place.update_time.strftime('%Y-%m-%d %H:%M:%S') if doc_mark_place.update_time else None,
                 "valid":doc_mark_place.valid,
-                "entity_or_sys":doc_mark_place.entity_or_sys
+                "entity_or_sys":doc_mark_place.entity_or_sys,
+                "appear_index_in_text": doc_mark_place.appear_index_in_text
             }
     except Exception as e:
         print(str(e))
@@ -54,7 +55,8 @@ def get_one_doc_mark_place_by_id():
             "update_by":-1,
             "update_time":"",
             "valid":-1,
-            "entity_or_sys":-1
+            "entity_or_sys":-1,
+            "appear_index_in_text":-1
         }
     return jsonify(res)
 
@@ -83,7 +85,8 @@ def get_one_doc_mark_place_by_doc_id():
                 "update_by":doc_mark_place.update_by,
                 "update_time":doc_mark_place.update_time,
                 "valid":doc_mark_place.valid,
-                "entity_or_sys":doc_mark_place.entity_or_sys
+                "entity_or_sys":doc_mark_place.entity_or_sys,
+                "appear_index_in_text": doc_mark_place.appear_index_in_text
             }
     except Exception as e:
         print(str(e))
@@ -106,7 +109,8 @@ def get_one_doc_mark_place_by_doc_id():
             "update_by":-1,
             "update_time":"",
             "valid":-1,
-            "entity_or_sys":-1
+            "entity_or_sys":-1,
+            "appear_index_in_text":[]
         }
     return jsonify(res)
 
@@ -128,10 +132,11 @@ def add_doc_mark_place():
         relation = request.json.get('relation', '')
         create_by = request.json.get('create_by', 0)
         entity_or_sys = request.json.get('entity_or_sys', 0)
+        appear_index_in_text = request.json.get('appear_index_in_text',[])
         doc_mark_place = DocMarkPlace.query.filter_by(doc_id=doc_id, word=word,type=type,place_id=place_id,
                                                       direction=direction, place_lon=place_lon, place_lat=place_lat, height=height,
                                                       unit=unit,dms=dms,distance=distance,relation=relation,create_by=create_by,
-                                                      entity_or_sys=entity_or_sys,valid=1).first()
+                                                      entity_or_sys=entity_or_sys,appear_index_in_text=appear_index_in_text,valid=1).first()
         if doc_mark_place:
             res = fail_res(msg="文档标记地点已存在!")
         else:
@@ -139,6 +144,7 @@ def add_doc_mark_place():
                                                       direction=direction, place_lon=place_lon, place_lat=place_lat, height=height,
                                                       unit=unit,dms=dms,distance=distance,relation=relation,create_by=create_by,
                                                       create_time=datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                                                      appear_index_in_text=appear_index_in_text,
                                                       entity_or_sys=entity_or_sys,valid=1)
             db.session.add(docMarkPlace)
             db.session.commit()
@@ -170,12 +176,13 @@ def modify_doc_mark_place():
         entity_or_sys = request.json.get('entity_or_sys', 0)
         create_by = request.json.get('create_by', 0)
         create_time = request.json.get('create_time', None)
+        appear_index_in_text = request.json.get('appear_index_in_text', [])
         doc_mark_place = DocMarkPlace.query.filter_by(id=id, valid=1).first()
         if doc_mark_place:
             doc_mark_place1 = DocMarkPlace.query.filter_by(doc_id=doc_id,word=word,type=type, place_id=place_id,
                                                       direction=direction, place_lon=place_lon, place_lat=place_lat, height=height,
                                                       unit=unit,dms=dms,distance=distance,relation=relation,create_by=create_by,
-                                                      entity_or_sys=entity_or_sys,valid=1).first()
+                                                      entity_or_sys=entity_or_sys,appear_index_in_text=appear_index_in_text,valid=1).first()
             if doc_mark_place1:
                 res = fail_res(msg="文档标记地点已存在")
             else:
@@ -213,6 +220,8 @@ def modify_doc_mark_place():
                 doc_mark_place.update_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 if entity_or_sys:
                     doc_mark_place.entity_or_sys  = entity_or_sys
+                if appear_index_in_text:
+                    doc_mark_place.appear_index_in_text = appear_index_in_text
                 db.session.commit()
                 res = success_res()
         else:

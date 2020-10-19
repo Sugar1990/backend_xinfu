@@ -24,6 +24,7 @@ def get_one_doc_mark_time_tag_by_id():
                 "arab_time":doc_mark_time_tag.arab_time,
                 "update_by":doc_mark_time_tag.update_by,
                 "update_time":doc_mark_time_tag.update_time.strftime('%Y-%m-%d %H:%M:%S') if doc_mark_time_tag.update_time else None,
+                "appear_index_in_text":doc_mark_time_tag.appear_index_in_text
             }
     except Exception as e:
         print(str(e))
@@ -38,7 +39,8 @@ def get_one_doc_mark_time_tag_by_id():
             "reserve_fields":"",
             "arab_time":"",
             "update_by":"",
-            "update_time":""
+            "update_time":"",
+            "appear_index_in_text":""
         }
     return jsonify(res)
 
@@ -60,6 +62,7 @@ def get_one_doc_mark_time_tag_by_doc_id():
                 "arab_time": doc_mark_time_tag.arab_time,
                 "update_by": doc_mark_time_tag.update_by,
                 "update_time": doc_mark_time_tag.update_time.strftime('%Y-%m-%d %H:%M:%S') if doc_mark_time_tag.update_time else None,
+                "appear_index_in_text": doc_mark_time_tag.appear_index_in_text
             }
     except Exception as e:
         print(str(e))
@@ -74,7 +77,8 @@ def get_one_doc_mark_time_tag_by_doc_id():
             "reserve_fields": "",
             "arab_time": "",
             "update_by": "",
-            "update_time": ""
+            "update_time": "",
+            "appear_index_in_text":""
         }
     return jsonify(res)
 
@@ -90,16 +94,17 @@ def add_doc_mark_time_tag():
         time_type = request.json.get('time_type', '')
         reserve_fields = request.json.get('reserve_fields', '')
         arab_time = request.json.get('arab_time', '')
-        update_by = request.json.get('update_by', 0)
+        update_by = request.json.get('update_by', 0),
+        appear_index_in_text = request.json.get('appear_index_in_text',[])
         doc_mark_time_tag = DocMarkTimeTag.query.filter_by(doc_id=doc_id, word=word,format_date=format_date,format_date_end=format_date_end,
                                                            mark_position=mark_position,time_type=time_type, reserve_fields=reserve_fields, arab_time=arab_time,
-                                                           update_by=update_by,valid=1).first()
+                                                           update_by=update_by,appear_index_in_text=appear_index_in_text,valid=1).first()
         if doc_mark_time_tag:
             res = fail_res(msg="文档标记时间信息已存在!")
         else:
             docMarkTimeTag = DocMarkTimeTag(doc_id=doc_id, word=word,format_date=format_date,format_date_end=format_date_end,
                                             mark_position=mark_position,time_type=time_type, reserve_fields=reserve_fields,
-                                            arab_time=arab_time,update_by=update_by,
+                                            arab_time=arab_time,update_by=update_by,appear_index_in_text=appear_index_in_text,
                                             update_time=datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),valid=1)
             db.session.add(docMarkTimeTag)
             db.session.commit()
@@ -124,13 +129,15 @@ def modify_doc_mark_time_tag():
         reserve_fields = request.json.get('reserve_fields', '')
         arab_time = request.json.get('arab_time', '')
         update_by = request.json.get('update_by', 0)
+        appear_index_in_text = request.json.get('appear_index_in_text', [])
         doc_mark_time_tag = DocMarkTimeTag.query.filter_by(id=id, valid=1).first()
         if doc_mark_time_tag:
             doc_mark_time_tag1 = DocMarkTimeTag.query.filter_by(doc_id=doc_id, word=word, format_date=format_date,
                                                                format_date_end=format_date_end,
                                                                mark_position=mark_position, time_type=time_type,
                                                                reserve_fields=reserve_fields, arab_time=arab_time,
-                                                               update_by=update_by, valid=1).first()
+                                                               update_by=update_by, appear_index_in_text=appear_index_in_text,
+                                                                valid=1).first()
             if doc_mark_time_tag1:
                 res = fail_res(msg="文档标记时间信息已存在")
             else:
@@ -152,6 +159,8 @@ def modify_doc_mark_time_tag():
                     doc_mark_time_tag.arab_time = arab_time
                 if update_by:
                     doc_mark_time_tag.update_by = update_by
+                if appear_index_in_text:
+                    doc_mark_time_tag.appear_index_in_text = appear_index_in_text
                 doc_mark_time_tag.update_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 db.session.commit()
                 res = success_res()
