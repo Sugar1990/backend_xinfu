@@ -299,9 +299,9 @@ class DocMarkEntity(db.Model):
     create_time = db.Column(db.TIMESTAMP)
     update_by = db.Column(db.Integer)
     update_time = db.Column(db.TIMESTAMP)
-    paragraph_index = db.Column(db.Integer)
-    appear_text = db.Column(db.String)
-    appear_index_in_text = db.Column(db.Integer)
+    # paragraph_index = db.Column(db.Integer)
+    # appear_text = db.Column(db.String)
+    appear_index_in_text = db.Column(db.JSON)
     valid = db.Column(db.Integer)
 
     def __repr__(self):
@@ -363,6 +363,7 @@ class DocMarkPlace(db.Model):
     update_time = db.Column(db.DateTime)
     valid = db.Column(db.Integer)
     entity_or_sys = db.Column(db.Integer)
+    appear_index_in_text = db.Column(db.JSON)
 
     def __repr__(self):
         return '<DocumentRecords %r>' % self.doc_id
@@ -383,6 +384,7 @@ class DocMarkTimeTag(db.Model):
     arab_time = db.Column(db.Text)
     update_by = db.Column(db.Integer)
     update_time = db.Column(db.DateTime)
+    appear_index_in_text = db.Column(db.JSON)
 
     def __repr__(self):
         return '<DocumentRecords %r>' % self.doc_id
