@@ -34,7 +34,6 @@ def get_doc_mark_entity_by_id():
         else:
             res = fail_res(msg="实体数据不存在")
 
-
     except Exception as e:
         print(str(e))
         res = fail_res({
@@ -61,24 +60,20 @@ def get_doc_mark_entity_by_doc_id():
     try:
         doc_id = request.args.get("doc_id", 0, type=int)
         doc_mark_entity_list = DocMarkEntity.query.filter_by(doc_id=doc_id, valid=1).all()
-        if doc_mark_entity_list:
-            res = success_res(data=[{
-                "id": i.id,
-                "doc_id": i.doc_id,
-                "word": i.word,
-                "entity_id": i.entity_id,
-                "source": i.source,
-                "create_by": i.create_by,
-                "create_time": i.create_time.strftime("%Y--%m--%d %H:%M:%S") if i.create_time else None,
-                "update_by": i.create_by,
-                "update_time": i.update_time.strftime("%Y--%m--%d %H:%M:%S") if i.update_time else None,
-                "paragraph_index": i.paragraph_index,
-                "appear_text": i.appear_text,
-                "appear_index_in_text": i.appear_index_in_text
-            } for i in doc_mark_entity_list])
-        else:
-            res = fail_res(msg="实体数据不存在")
-
+        res = success_res(data=[{
+            "id": i.id,
+            "doc_id": i.doc_id,
+            "word": i.word,
+            "entity_id": i.entity_id,
+            "source": i.source,
+            "create_by": i.create_by,
+            "create_time": i.create_time.strftime("%Y--%m--%d %H:%M:%S") if i.create_time else None,
+            "update_by": i.create_by,
+            "update_time": i.update_time.strftime("%Y--%m--%d %H:%M:%S") if i.update_time else None,
+            "paragraph_index": i.paragraph_index,
+            "appear_text": i.appear_text,
+            "appear_index_in_text": i.appear_index_in_text
+        } for i in doc_mark_entity_list])
 
     except Exception as e:
         print(str(e))

@@ -89,36 +89,32 @@ def get_doc_mark_event_by_doc_id():
     try:
         doc_id = request.args.get("doc_id", 0, type=int)
         doc_mark_event_list = DocMarkEvent.query.filter_by(doc_id=doc_id, valid=1).all()
-        if doc_mark_event_list:
-            res = success_res(data=[{
-                "id": i.id,
-                "event_id": i.event_id,
-                "event_desc": i.event_desc,
-                "event_subject": i.event_subject,
-                "event_predicate": i.event_predicate,
-                "event_object": i.event_object,
-                "event_time": i.event_time,
-                "event_address": i.event_address,
-                "event_why": i.event_why,
-                "event_result": i.event_result,
-                "event_conduct": i.event_conduct,
-                "event_talk": i.event_talk,
-                "event_how": i.event_how,
-                "doc_id": i.doc_id,
-                "customer_id": i.customer_id,
-                "parent_id": i.parent_id,
-                "title": i.title,
-                "event_class_id": i.event_class_id,
-                "event_type_id": i.event_type_id,
-                "create_by": i.create_by,
-                "create_time": i.create_time.strftime("%Y--%m--%d %H:%M:%S") if i.create_time else None,
-                "update_by": i.update_by,
-                "update_time": i.update_time.strftime("%Y--%m--%d %H:%M:%S") if i.update_time else None,
-                "add_time": i.add_time.strftime("%Y--%m--%d %H:%M:%S") if i.add_time else None
-            } for i in doc_mark_event_list])
-        else:
-            res = fail_res(msg="事件数据不存在")
-
+        res = success_res(data=[{
+            "id": i.id,
+            "event_id": i.event_id,
+            "event_desc": i.event_desc,
+            "event_subject": i.event_subject,
+            "event_predicate": i.event_predicate,
+            "event_object": i.event_object,
+            "event_time": i.event_time,
+            "event_address": i.event_address,
+            "event_why": i.event_why,
+            "event_result": i.event_result,
+            "event_conduct": i.event_conduct,
+            "event_talk": i.event_talk,
+            "event_how": i.event_how,
+            "doc_id": i.doc_id,
+            "customer_id": i.customer_id,
+            "parent_id": i.parent_id,
+            "title": i.title,
+            "event_class_id": i.event_class_id,
+            "event_type_id": i.event_type_id,
+            "create_by": i.create_by,
+            "create_time": i.create_time.strftime("%Y--%m--%d %H:%M:%S") if i.create_time else None,
+            "update_by": i.update_by,
+            "update_time": i.update_time.strftime("%Y--%m--%d %H:%M:%S") if i.update_time else None,
+            "add_time": i.add_time.strftime("%Y--%m--%d %H:%M:%S") if i.add_time else None
+        } for i in doc_mark_event_list])
 
     except Exception as e:
         print(str(e))

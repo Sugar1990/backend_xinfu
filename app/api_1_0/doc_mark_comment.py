@@ -23,13 +23,14 @@ def get_doc_mark_comment_by_id():
                 "position": doc_mark_comment.position,
                 "comment": doc_mark_comment.comment,
                 "create_by": doc_mark_comment.create_by,
-                "create_time": doc_mark_comment.create_time.strftime("%Y--%m--%d %H:%M:%S") if doc_mark_comment.create_time else None,
+                "create_time": doc_mark_comment.create_time.strftime(
+                    "%Y--%m--%d %H:%M:%S") if doc_mark_comment.create_time else None,
                 "update_by": doc_mark_comment.update_by,
-                "update_time": doc_mark_comment.update_time.strftime("%Y--%m--%d %H:%M:%S") if doc_mark_comment.update_time else None
+                "update_time": doc_mark_comment.update_time.strftime(
+                    "%Y--%m--%d %H:%M:%S") if doc_mark_comment.update_time else None
             })
         else:
             res = fail_res(msg="批注数据不存在")
-
 
     except Exception as e:
         print(str(e))
@@ -54,21 +55,17 @@ def get_doc_mark_comment_by_doc_id():
     try:
         doc_id = request.args.get("doc_id", 0, type=int)
         doc_mark_comment_list = DocMarkComment.query.filter_by(doc_id=doc_id, valid=1).all()
-        if doc_mark_comment_list:
-            res = success_res(data=[{
-                "id": i.id,
-                "doc_id": i.doc_id,
-                "name": i.name,
-                "position": i.position,
-                "comment": i.comment,
-                "create_by": i.create_by,
-                "create_time": i.create_time.strftime("%Y--%m--%d %H:%M:%S") if i.create_time else None,
-                "update_by": i.update_by,
-                "update_time": i.update_time.strftime("%Y--%m--%d %H:%M:%S") if i.update_time else None
-            } for i in doc_mark_comment_list])
-        else:
-            res = fail_res(msg="批注数据不存在")
-
+        res = success_res(data=[{
+            "id": i.id,
+            "doc_id": i.doc_id,
+            "name": i.name,
+            "position": i.position,
+            "comment": i.comment,
+            "create_by": i.create_by,
+            "create_time": i.create_time.strftime("%Y--%m--%d %H:%M:%S") if i.create_time else None,
+            "update_by": i.update_by,
+            "update_time": i.update_time.strftime("%Y--%m--%d %H:%M:%S") if i.update_time else None
+        } for i in doc_mark_comment_list])
 
     except Exception as e:
         print(str(e))
@@ -90,10 +87,8 @@ def add_doc_mark_comment():
         update_by = request.json.get("update_by", 0)
         update_time = request.json.get("update_time", None)
 
-
-
         if not (isinstance(doc_id, int) and isinstance(create_by, int) and isinstance(update_by, int)):
-            res =fail_res(msg="参数 \"doc_id\"、\"create_by\"、\"update_by\" 应是整数类型")
+            res = fail_res(msg="参数 \"doc_id\"、\"create_by\"、\"update_by\" 应是整数类型")
 
         else:
             doc_mark_comment_same = DocMarkComment.query.filter_by(doc_id=doc_id, name=name,
@@ -106,7 +101,7 @@ def add_doc_mark_comment():
                                                   update_by=update_by, update_time=update_time, valid=1)
                 db.session.add(doc_mark_comment)
                 db.session.commit()
-                res = success_res(data={"id":doc_mark_comment.id})
+                res = success_res(data={"id": doc_mark_comment.id})
 
 
     except Exception as e:
@@ -136,7 +131,7 @@ def modify_doc_mark_comment():
 
         else:
             doc_mark_comment_same = DocMarkComment.query.filter_by(doc_id=doc_id, name=name,
-                                                                 position=position, comment=comment, valid=1).first()
+                                                                   position=position, comment=comment, valid=1).first()
             if doc_mark_comment_same:
                 res = fail_res(msg="相同批注已存在")
             else:
@@ -192,4 +187,3 @@ def delete_doc_mark_comment_by_id():
         res = fail_res()
 
     return jsonify(res)
-
