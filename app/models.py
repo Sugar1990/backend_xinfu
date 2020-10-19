@@ -377,7 +377,7 @@ class DocMarkTimeTag(db.Model):
     format_date = db.Column(db.DateTime)
     format_date_end = db.Column(db.DateTime)
     mark_position = db.Column(db.Text)
-    time_type = db.Column(db.Text)
+    time_type = db.Column(db.Integer)
     reserve_fields = db.Column(db.Text)
     valid = db.Column(db.Integer)
     arab_time = db.Column(db.Text)
