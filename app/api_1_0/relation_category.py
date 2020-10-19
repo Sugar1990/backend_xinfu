@@ -75,7 +75,8 @@ def delete_relation_category():
         else:
             relation_category.valid = 0
             res = success_res()
-    except:
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = fail_res()
 
@@ -96,7 +97,9 @@ def delete_relation_category_by_ids():
         else:
             res = fail_res(msg="关系记录不存在")
 
-    except:
+
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = fail_res(msg="关系记录不存在")
 
@@ -209,7 +212,8 @@ def get_one_relation_category():
             res = success_res(data=data)
         else:
             res = fail_res(msg="关系记录不存在!")
-    except:
+    except Exception as e:
+        print(str(e))
         res = fail_res(data={
                 "id": -1,
                 "source_entity_category_ids": [],
@@ -283,7 +287,8 @@ def get_target_entity_category():
         res = [{
             "target_entity_category": target_entity_category
         }]
-    except:
+    except Exception as e:
+        print(str(e))
         res = []
     return jsonify(res)
 
@@ -302,6 +307,7 @@ def get_entity_category_tuple():
             "source_entity_category": source_entity_category,
             "target_entity_category": target_entity_category
         }]
-    except:
+    except Exception as e:
+        print(str(e))
         res = []
     return jsonify(res)

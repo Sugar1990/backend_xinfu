@@ -20,7 +20,10 @@ def get_entity_categories():
             "name": i.name
         } for i in categories]
 
-    except:
+
+    except Exception as e:
+
+        print(str(e))
         res = []
 
     return jsonify(res)
@@ -37,7 +40,10 @@ def get_entity_categories_without_place():
             "name": i.name
         } for i in categories]
 
-    except:
+
+    except Exception as e:
+
+        print(str(e))
         res = []
 
     return jsonify(res)
@@ -56,7 +62,8 @@ def get_one_entity_category():
             }
         else:
             res = fail_res(msg="实体类型不存在")
-    except:
+    except Exception as e:
+        print(str(e))
         res = {
             "id": -1,
             "name": ""
@@ -81,7 +88,8 @@ def add_entity_category():
             db.session.add(entity)
             db.session.commit()
             res = success_res()
-    except:
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = fail_res()
     return jsonify(res)
@@ -110,7 +118,8 @@ def modify_entity_category():
                     res = fail_res(msg="实体类型不存在")
         else:
             res = fail_res(msg="修改名称不能为空")
-    except:
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = fail_res()
     return jsonify(res)
@@ -171,7 +180,8 @@ def delete_entity_category_by_ids():
             res = success_res()
         else:
             res = fail_res(msg="部分数据无法删除")
-    except:
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = fail_res()
 
@@ -247,6 +257,7 @@ def get_one_entity_idea():
         else:
             res = fail_res(msg="实体概念不存在")
     except Exception as e:
+        print(str(e))
         res = fail_res({
             "id": -1,
             "name": ""
@@ -271,7 +282,8 @@ def add_entity_idea():
             db.session.add(entity)
             db.session.commit()
             res = success_res()
-    except:
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = fail_res()
     return jsonify(res)
@@ -300,7 +312,8 @@ def modify_entity_idea():
                     res = fail_res(msg="实体概念不存在")
         else:
             res = fail_res(msg="修改名称不能为空")
-    except:
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = fail_res()
     return jsonify(res)
@@ -361,7 +374,8 @@ def delete_entity_idea_by_ids():
             res = success_res()
         else:
             res = fail_res(msg="部分数据无法删除")
-    except:
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = fail_res()
 

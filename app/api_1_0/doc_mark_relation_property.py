@@ -32,7 +32,8 @@ def get_one_doc_mark_relation_property():
             }
         else:
             res = fail_res("paramter \"id\" is not int type")
-    except:
+    except Exception as e:
+        print(str(e))
         res = {
             "id": -1,
             "doc_id": -1,
@@ -67,7 +68,8 @@ def get_doc_mark_relation_property_by_docId():
             }
         else:
             res = fail_res("paramter \"id\" is not int type")
-    except:
+    except Exception as e:
+        print(str(e))
         res = {
             "id": -1,
             "doc_id": -1,
@@ -105,7 +107,8 @@ def add_doc_mark_relation_property():
         db.session.add(doc_mark_relation_property)
         db.session.commit()
         res = success_res(data={"id": doc_mark_relation_property.id})
-    except:
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = fail_res()
 
@@ -148,8 +151,8 @@ def modify_doc_mark_relation_property():
                 res = fail_res(msg="id不存在!")
         else:
             res = fail_res("paramter \"id\" is not int type")
-
-    except RuntimeError:
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = fail_res(msg="修改失败！")
     return jsonify(res)
@@ -167,7 +170,8 @@ def delete_doc_mark_relation_property():
                 res = fail_res(msg="操作对象不存在!")
         else:
             res = fail_res("paramter \"id\" is not int type")
-    except:
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = fail_res(msg="删除失败！")
 

@@ -25,7 +25,8 @@ def add_doc_mark_mind():
             db.session.add(doc_mark_mind)
             db.session.commit()
             res = success_res(data={"id": doc_mark_mind.id})
-    except:
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = fail_res()
 
@@ -60,7 +61,9 @@ def modify_doc_mark_mind():
         else:
             res = fail_res("paramter \"id\" is not int type")
 
-    except RuntimeError:
+
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = fail_res(msg="修改失败！")
     return jsonify(res)
@@ -79,7 +82,8 @@ def delete_doc_mark_mind():
                 res = fail_res(msg="操作对象不存在!")
         else:
             res = fail_res("paramter \"id\" is not int type")
-    except:
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = fail_res(msg="删除失败！")
 

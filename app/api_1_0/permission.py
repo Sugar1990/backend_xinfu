@@ -81,7 +81,9 @@ def batch_del_permission():
         else:
             res = fail_res(msg="权限不存在")
 
-    except:
+
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = fail_res()
 
@@ -113,7 +115,8 @@ def update_permission():
                     res = success_res()
                 else:
                     res = fail_res(msg="权限不存在")
-    except:
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = fail_res()
     return jsonify(res)
@@ -134,7 +137,8 @@ def query_by_id():
             }
         else:
             res = fail_res(msg="权限不存在")
-    except:
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = []
     return jsonify(res)
@@ -147,7 +151,8 @@ def query_all():
         permission = Permission.query.filter(not_(Permission.name.in_([ADMIN_ROLE_NAME, ASSIS_ROLE_NAME])),
                                              Permission.valid == 1).all()
         res = [{"id": i.id, "name": i.name, "power": i.power} for i in permission]
-    except:
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = []
     return jsonify(res)

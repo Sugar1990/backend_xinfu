@@ -288,6 +288,7 @@ def delete_entity():
 
             try:
                 entity.valid = 0
+
                 db.session.commit()
             except:
                 print(id, 'already_delete_done')
@@ -345,10 +346,12 @@ def delete_entity_by_ids():
                 # </editor-fold>
 
                 valid_ids.append(uni_entity.id)
+
                 uni_entity.valid = 0
                 # feedback.add(category_place.name)
                 res = success_res("全部成功删除！")
-            except:
+            except Exception as e:
+                print(str(e))
                 pass
         db.session.commit()
 
@@ -421,7 +424,8 @@ def add_synonyms():
         # </editor-fold>
 
         res = success_res()
-    except:
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = fail_res()
     return jsonify(res)
@@ -463,7 +467,8 @@ def delete_synonyms():
             res = success_res()
         else:
             res = fail_res(msg="该实体不存在")
-    except:
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = fail_res()
     return jsonify(res)
@@ -620,7 +625,8 @@ def get_linking_entity():
             res = {'id': entity.id, 'name': entity.name, 'category': entity.category_name()}
         else:
             res = {'id': -1, 'name': '', 'category': ''}
-    except:
+    except Exception as e:
+        print(str(e))
         res = {'id': -1, 'name': '', 'category': ''}
     return res
 
@@ -644,7 +650,8 @@ def get_entity_list_es():
                 'name': entity['_source']['name'],
                 'category': EntityCategory.get_category_name(entity['_source']['category_id'])
                 } for entity in search_result.json()['data']['dataList']]
-    except:
+    except Exception as e:
+        print(str(e))
         res = []
     return jsonify(res[:5])
 
@@ -764,7 +771,8 @@ def get_entity_info():
         else:
             res = {'id': -1, 'name': '', 'synonyms': [], 'props': {}, 'category_id': -1, 'category': '',
                    'longitude': None, 'latitude': None}
-    except:
+    except Exception as e:
+        print(str(e))
         res = {'id': -1, 'name': '', 'synonyms': [], 'props': {}, 'category_id': -1, 'category': '', 'longitude': None,
                'latitude': None}
     return jsonify(res)
@@ -803,7 +811,8 @@ def get_entity_data():
         else:
             res = {'id': -1, 'name': '', 'synonyms': [], 'props': {},
                    'category': ''}
-    except:
+    except Exception as e:
+        print(str(e))
         res = {'id': -1, 'name': '', 'synonyms': [], 'props': {},
                'category': ''}
     return jsonify(res)
@@ -854,7 +863,8 @@ def get_search_panigation_pg():
                             } for entity in entity_list]
 
         res = total_like_list[(cur_page - 1) * page_size:cur_page * page_size]
-    except:
+    except Exception as e:
+        print(str(e))
         res = []
 
     return jsonify(res)

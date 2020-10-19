@@ -20,7 +20,9 @@ def get_event_classes():
                 "name": i.name
             } for i in event_class]
 
-    except Exception:
+
+    except Exception as e:
+        print(str(e))
         res = []
 
     return jsonify(res)
@@ -35,7 +37,8 @@ def get_one_event_class():
             "id": event_class.id,
             "name": event_class.name
         }
-    except:
+    except Exception as e:
+        print(str(e))
         res = {
             "id": -1,
             "name": ""
@@ -55,7 +58,8 @@ def add_event_class():
             db.session.add(eventClass)
             db.session.commit()
             res = success_res()
-    except:
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = fail_res()
 
@@ -79,7 +83,9 @@ def modify_event_class():
         else:
             res = fail_res(msg="事件类别id不存在!")
 
-    except RuntimeError:
+
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = fail_res(msg="修改失败！")
     return jsonify(res)
@@ -96,7 +102,8 @@ def delete_event_class():
             else:
                 event_class.valid = 0
                 res = success_res()
-    except:
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = fail_res(msg="删除失败！")
 
@@ -123,7 +130,8 @@ def delete_event_class_by_ids():
             res = success_res()
         else:
             res = fail_res(msg="部分数据无法删除")
-    except:
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = fail_res(msg="删除失败！")
 

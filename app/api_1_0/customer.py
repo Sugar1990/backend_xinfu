@@ -99,7 +99,8 @@ def insert_customer():
             db.session.add(customer_name)
             db.session.commit()
             res = success_res()
-    except:
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = fail_res(msg="插入失败")
 
@@ -132,7 +133,9 @@ def update_customer():
         else:
             res = fail_res(msg="用户不存在")
 
-    except:
+
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = fail_res()
     return jsonify(res)
@@ -146,7 +149,8 @@ def del_customer():
         customer = db.session.query(Customer).filter(and_(Customer.id == customer_id, Customer.valid == 1)).first()
         customer.valid = 0
         res = success_res(msg="删除成功")
-    except:
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = fail_res(msg="删除失败")
 
@@ -163,7 +167,8 @@ def query_by_id():
             "username": customer.username,
             "permission_id": customer.permission_id
         }
-    except:
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = {"id": -1,
                "username": ""}
@@ -178,7 +183,8 @@ def query_all():
         for i in customer:
             if i.valid:
                 res.append({"id": i.id, "username": i.username, "permission_id": i.permission_id})
-    except:
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = []
     return jsonify(res)
@@ -232,7 +238,8 @@ def batch_del_customer():
             if customer:
                 customer.valid = 0
         res = success_res(msg="批量删除成功")
-    except:
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = fail_res(msg="批量删除失败")
 

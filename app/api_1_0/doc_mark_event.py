@@ -50,7 +50,9 @@ def get_doc_mark_event_by_id():
         else:
             res = fail_res(msg="事件数据不存在")
 
-    except:
+
+    except Exception as e:
+        print(str(e))
         res = fail_res({
             "id": -1,
             "event_id": "",
@@ -117,7 +119,9 @@ def get_doc_mark_event_by_doc_id():
         else:
             res = fail_res(msg="事件数据不存在")
 
-    except:
+
+    except Exception as e:
+        print(str(e))
         res = fail_res(data=[])
 
     return jsonify(res)
@@ -271,7 +275,9 @@ def modify_doc_mark_event():
             else:
                 res = fail_res(msg="事件数据不存在")
 
-    except:
+
+    except Exception as e:
+        print(str(e))
         res = fail_res()
 
     return jsonify(res)
@@ -292,7 +298,9 @@ def delete_doc_mark_entity_by_id():
         else:
             res = fail_res(msg="参数 \"id\" 应是整数类型")
 
-    except:
+
+    except Exception as e:
+        print(str(e))
         res = fail_res()
 
     return jsonify(res)

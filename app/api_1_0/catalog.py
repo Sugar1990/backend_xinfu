@@ -189,7 +189,8 @@ def get_all():
             return result
 
         res = get_subdir(0, catalog_dictory)
-    except:
+    except Exception as e:
+        print(str(e))
         res = []
 
     return jsonify(res)
@@ -289,7 +290,8 @@ def batch_del_catalog():
                 db.session.commit()
 
         res = success_res(msg=msg)
-    except:
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = fail_res()
 
@@ -344,7 +346,8 @@ def modify_catalog():
                 res = success_res()
         else:
             res = fail_res(msg="操作对象不存在")
-    except:
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = fail_res()
     return jsonify(res)
@@ -437,7 +440,8 @@ def move_catalog_same_recursive(source_catalog_id, target_catalog_id):
 def get_tagging_tabs():
     try:
         res = json.loads(TAG_TABS)
-    except Exception:
+    except Exception as e:
+        print(str(e))
         res = {}
 
     return jsonify(res)
@@ -457,7 +461,8 @@ def get_1stfloor_catalog():
                     "create_time": catalog.create_time,
                     "tagging_tabs": catalog.tagging_tabs if catalog.tagging_tabs else []
                     } for catalog in cataloges]
-    except Exception:
+    except Exception as e:
+        print(str(e))
         res = []
 
     return jsonify(res)

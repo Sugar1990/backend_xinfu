@@ -227,7 +227,8 @@ def find_event():
                     }
                     index = index + 1
                     res.append(tmp)
-    except:
+    except Exception as e:
+        print(str(e))
         res = []
     print(res)
     return jsonify(res)

@@ -33,7 +33,8 @@ def get_one_doc_mark_place_by_id():
                 "valid":doc_mark_place.valid,
                 "entity_or_sys":doc_mark_place.entity_or_sys
             }
-    except:
+    except Exception as e:
+        print(str(e))
         res = {
             "id": -1,
             "doc_id": "",
@@ -84,7 +85,8 @@ def get_one_doc_mark_place_by_doc_id():
                 "valid":doc_mark_place.valid,
                 "entity_or_sys":doc_mark_place.entity_or_sys
             }
-    except:
+    except Exception as e:
+        print(str(e))
         res = {
             "id": -1,
             "doc_id": "",
@@ -215,7 +217,8 @@ def modify_doc_mark_place():
                 res = success_res()
         else:
             res = fail_res(msg="文档标记地点id不存在!")
-    except RuntimeError:
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = fail_res(msg="修改失败！")
     return jsonify(res)
@@ -228,7 +231,8 @@ def delete_doc_mark_place():
         if doc_mark_place:
             doc_mark_place.valid = 0
             res = success_res()
-    except:
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = fail_res(msg="删除失败！")
 

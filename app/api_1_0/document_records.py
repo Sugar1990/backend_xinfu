@@ -60,7 +60,8 @@ def get_doc_records():
                     })
         else:
             res = []
-    except Exception:
+    except Exception as e:
+        print(str(e))
         res = []
 
     return jsonify(res)

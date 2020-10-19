@@ -23,7 +23,8 @@ def add_event_category():
                 res = success_res()
         else:
             res = fail_res(msg="event_class_id找不到，无法插入")
-    except:
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = fail_res()
 
@@ -45,7 +46,8 @@ def delete_event_category():
                 catalog_id_frist.valid = 0
                 db.session.commit()
                 res = success_res()
-            except:
+            except Exception as e:
+                print(str(e))
                 db.session.rollback()
                 res = fail_res()
         else:
@@ -69,7 +71,8 @@ def delete_event_category_by_ids():
                     catalog_id_frist.valid = 0
                     db.session.commit()
                     res = success_res()
-                except:
+                except Exception as e:
+                    print(str(e))
                     db.session.rollback()
                     res = fail_res()
             else:
@@ -98,7 +101,9 @@ def modify_event_category():
         else:
             res = fail_res(msg="找不到修改对象")
 
-    except RuntimeError:
+
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = fail_res(msg="修改失败！")
 
@@ -116,7 +121,8 @@ def get_one_event_category():
             "name": eventCategory_find.name,
             "event_class_id": eventCategory_find.event_class_id
         }
-    except:
+    except Exception as e:
+        print(str(e))
         res = {
             "id": -1,
             "name": "",
@@ -136,7 +142,8 @@ def get_event_categories():
             "name": i.name,
             "event_class_id": i.event_class_id,
         } for i in eventCategory_find]
-    except:
+    except Exception as e:
+        print(str(e))
         res = []
 
     return jsonify(res)
@@ -188,6 +195,7 @@ def get_event_categories_by_classid():
             "id": i.id,
             "name": i.name,
         } for i in categories]
-    except:
+    except Exception as e:
+        print(str(e))
         res = []
     return jsonify(res)

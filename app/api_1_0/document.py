@@ -291,7 +291,8 @@ def get_content():
         doc_id = request.args.get('doc_id')
         doc = Document.query.filter_by(id=doc_id).first()
         res = doc.content if doc else []
-    except:
+    except Exception as e:
+        print(str(e))
         res = []
     return jsonify(res)
 
@@ -428,7 +429,8 @@ def delete_doc_in_pg_es(doc_ids):
             search_result = requests.post(url + '/deletebyId', data=json.dumps(delete_para), headers=header)
         else:
             print('No_delete')
-    except:
+    except Exception as e:
+        print(str(e))
         pass
 
 
@@ -1179,7 +1181,8 @@ def get_latest_upload_file_tagging_url():
             res = success_res(data=url)
         else:
             res = fail_res(data="/#")
-    except:
+    except Exception as e:
+        print(str(e))
         res = fail_res(data="/#")
     return res
 

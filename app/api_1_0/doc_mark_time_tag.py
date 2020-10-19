@@ -25,7 +25,8 @@ def get_one_doc_mark_time_tag_by_id():
                 "update_by":doc_mark_time_tag.update_by,
                 "update_time":doc_mark_time_tag.update_time.strftime('%Y-%m-%d %H:%M:%S') if doc_mark_time_tag.update_time else None,
             }
-    except:
+    except Exception as e:
+        print(str(e))
         res = {
             "id": -1,
             "doc_id": "",
@@ -60,7 +61,8 @@ def get_one_doc_mark_time_tag_by_doc_id():
                 "update_by": doc_mark_time_tag.update_by,
                 "update_time": doc_mark_time_tag.update_time.strftime('%Y-%m-%d %H:%M:%S') if doc_mark_time_tag.update_time else None,
             }
-    except:
+    except Exception as e:
+        print(str(e))
         res = {
             "id": -1,
             "doc_id": "",
@@ -102,7 +104,8 @@ def add_doc_mark_time_tag():
             db.session.add(docMarkTimeTag)
             db.session.commit()
             res = success_res(data={"id": docMarkTimeTag.id})
-    except:
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = fail_res()
 
@@ -154,7 +157,8 @@ def modify_doc_mark_time_tag():
                 res = success_res()
         else:
             res = fail_res(msg="文档标记时间信息id不存在!")
-    except RuntimeError:
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = fail_res(msg="修改失败！")
     return jsonify(res)
@@ -167,7 +171,8 @@ def delete_doc_mark_time_tag():
         if doc_mark_time_tag:
             doc_mark_time_tag.valid = 0
             res = success_res()
-    except:
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = fail_res(msg="删除失败！")
 
