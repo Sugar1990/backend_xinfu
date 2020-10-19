@@ -148,7 +148,7 @@ def add_doc_mark_event():
         create_by = request.json.get("create_by", 0)
         create_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         update_by = request.json.get("update_by", 0)
-        update_time = request.json.get("update_time", None)
+        update_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         add_time = request.json.get("add_time", None)
 
         if not (isinstance(doc_id, int) and isinstance(customer_id, int) and isinstance(parent_id, int)
