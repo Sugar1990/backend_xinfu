@@ -141,7 +141,8 @@ def add_doc_mark_place():
             db.session.add(docMarkPlace)
             db.session.commit()
             res = success_res(data={"id": docMarkPlace.id})
-    except:
+    except Exception as e:
+        print(str(e))
         db.session.rollback()
         res = fail_res()
 
