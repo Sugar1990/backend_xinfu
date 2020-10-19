@@ -839,13 +839,13 @@ def get_entity_info():
     return jsonify(res)
 
 
-# 获取实体信息
+# 获取实体信息  yc独用
 @blue_print.route('/get_entities_info', methods=['POST'])
 # @swag_from(get_entities_info)
 def get_entities_info():
     try:
         ids = request.json.get('ids', [])
-        entities = Entity.query.filter(Entity.id.in_(ids), Entity.valid == 1).all()
+        entities = Entity.query.filter(Entity.id.in_(ids)).all()
         res = success_res(data=[{'id': i.id,
                                  'name': i.name,
                                  'synonyms': i.synonyms if i.synonyms else [],
