@@ -342,12 +342,6 @@ def search_doc_mark_event_by_sources():
         # 综合搜索
         conditions = [
             DocMarkEvent.valid == 1,
-            DocMarkEvent.title.like("%{}%".format(search)),
-            DocMarkEvent.event_why.like("%{}%".format(search)),
-            DocMarkEvent.event_result.like("%{}%".format(search)),
-            DocMarkEvent.event_conduct.like("%{}%".format(search)),
-            DocMarkEvent.event_talk.like("%{}%".format(search)),
-            DocMarkEvent.event_how.like("%{}%".format(search)),
         ]
 
         if event_entity_ids:
@@ -358,7 +352,17 @@ def search_doc_mark_event_by_sources():
         if event_place_ids:
             DocMarkEvent.event_address.contains(event_place_ids)
 
-        pagination = DocMarkEvent.query.filter(and_(*conditions)).paginate(current_page, page_size, False)
+        or_conditions = [
+            DocMarkEvent.title.like("%{}%".format(search)),
+            DocMarkEvent.event_why.like("%{}%".format(search)),
+            DocMarkEvent.event_result.like("%{}%".format(search)),
+            DocMarkEvent.event_conduct.like("%{}%".format(search)),
+            DocMarkEvent.event_talk.like("%{}%".format(search)),
+            DocMarkEvent.event_how.like("%{}%".format(search))
+        ]
+
+        pagination = DocMarkEvent.query.filter(and_(*conditions, or_(*or_conditions))).paginate(current_page, page_size,
+                                                                                                False)
 
         data = [{
             "title": i.title,
