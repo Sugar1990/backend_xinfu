@@ -16,42 +16,67 @@ def add_relation_category():
     target_entity_category_ids = request.json.get('target_entity_category_ids', [])
     name = request.json.get('name', '')
     try:
+
         entity_category_id_list = []
         entity_category = EntityCategory.query.filter_by(valid=1).all()
         for item in entity_category:
             entity_category_id_list.append(item.id)
-        source_entity_category_ids_set = set(source_entity_category_ids)
-        target_entity_category_ids_set = set(target_entity_category_ids)
         entity_category_id_list_set = set(entity_category_id_list)
 
-        if source_entity_category_ids_set.issubset(entity_category_id_list_set) and target_entity_category_ids_set.issubset(entity_category_id_list_set):
+        input_source_ids_set = set(source_entity_category_ids)
+        input_target_ids_set = set(target_entity_category_ids)
+
+        if input_source_ids_set.issubset(entity_category_id_list_set) and input_target_ids_set.issubset(
+                entity_category_id_list_set):
+            # <editor-fold desc="judging if same relation_category exits">
             if name:
                 relation_same = RelationCategory.query.filter_by(relation_name=name, valid=1).all()
-                flag = True
-                res_flag = True
+
                 for item in relation_same:
-                    source_ids_list = []
-                    target_ids_list = []
-                    source_ids_list.extend([id for id in item.source_entity_category_ids])
-                    target_ids_list.extend([id for id in item.target_entity_category_ids])
-                    if source_entity_category_ids_set.issubset(set(source_ids_list)) and target_entity_category_ids_set.issubset(set(target_ids_list)):
-                        res_flag = False #已存在相同记录
-                    if not res_flag:
+                    source_ids_db = set(item.source_entity_category_ids)
+                    target_ids_db = set(item.target_entity_category_ids)
+
+                    # 已存在--输入数据与库里已有数据相等或是库里数据的子集
+                    if input_source_ids_set.issubset(
+                            source_ids_db) and input_target_ids_set.issubset(target_ids_db):
+                        res = fail_res(msg="已存在相同关联记录")
+                        return jsonify(res)
+
+                    # update--源ids相等 and 目标ids不相等  update目标ids  取并集
+                    elif (input_source_ids_set == source_ids_db) and input_target_ids_set != target_ids_db:
+                        target_ids_result = list(input_target_ids_set.union(target_ids_db))
+                        item.target_entity_category_ids = target_ids_result
+                        res = success_res(data={"id": item.id})
                         break
 
-                if flag & res_flag:
-                    rc = RelationCategory(source_entity_category_ids=source_entity_category_ids,
-                                          target_entity_category_ids=target_entity_category_ids, relation_name=name,
-                                          valid=1)
-                    db.session.add(rc)
-                    db.session.commit()
-                    res = success_res(data={"id": rc.id})
+                    # update--目标ids相等 and 源ids不相等  update源ids  取并集
+                    elif (input_source_ids_set != source_ids_db) and input_target_ids_set == target_ids_db:
+                        source_ids_result = list(input_source_ids_set.union(source_ids_db))
+                        item.source_entity_category_ids = source_ids_result
+                        res = success_res(data={"id": item.id})
+                        break
 
-                else:
-                    res = fail_res(msg="关联信息已存在")
+                    # update--库里已有数据是输入数据的子集
+                    elif source_ids_db.issubset(
+                            input_source_ids_set) and target_ids_db.issubset(input_target_ids_set):
+                        item.source_entity_category_ids = source_entity_category_ids
+                        item.target_entity_category_ids = target_entity_category_ids
+                        res = success_res(data={"id": item.id})
+                        break
+
+                    # insert--
+                    else:
+                        rc = RelationCategory(source_entity_category_ids=source_entity_category_ids,
+                                              target_entity_category_ids=target_entity_category_ids, relation_name=name,
+                                              valid=1)
+                        db.session.add(rc)
+                        db.session.commit()
+                        res = success_res(data={"id": rc.id})
+                        break
 
             else:
                 res = fail_res(msg="关联名称不得为空")
+            # </editor-fold>
         else:
             res = fail_res(msg="实体类型不存在")
     except Exception as e:
@@ -119,12 +144,6 @@ def modify_relation_category():
         if not relation_category:
             res = fail_res(msg="关系记录不存在!")
         else:
-            # relation_category_same = RelationCategory.query.filter_by(relation_name=name,
-            #                                                      source_entity_category_ids=source_entity_category_ids,
-            #                                                      target_entity_category_ids=target_entity_category_ids,
-            #                                                      valid=1).first()
-            # if relation_category_same:
-            #     res = fail_res(msg="已存在相同关系记录!")
             relation_category_same = RelationCategory.query.filter_by(relation_name=name, valid=1).all()
 
             if relation_category_same:
@@ -262,15 +281,26 @@ def get_relation_category_paginate():
 
 
 # 关联查询--待修改
+'''
 @blue_print.route('/get_source_entity_category', methods=['GET'])
 def get_source_entity_category():
     try:
-        source_entity_category_ids = request.args.get("source_entity_category_ids", [])
-        relation_category = RelationCategory.query.filter_by(source_entity_category_ids=source_entity_category_ids, valid=1).first()
-        source_entity_category = relation_category.source_entity_category()
-        res = [{
-            "source_entity_category": source_entity_category
-        }]
+        source_entity_category_id = request.args.get("source_entity_category_id", 0, type=int)
+        # relation_category = RelationCategory.query.filter(RelationCategory.source_entity_category_ids.contains(source_entity_category_id), RelationCategory.valid==1).first()
+        # relation_category = RelationCategory.query.filter(
+        #         #     RelationCategory.source_entity_category_ids.contains(source_entity_category_id),
+        #         #     RelationCategory.valid == 1).first()
+        #         # source_entity_category = relation_category.source_entity_category()
+        # res = [{
+        #     "source_entity_category": source_entity_category
+        # }]
+        entity_category = EntityCategory.query.filter_by(id=source_entity_category_id, valid=1).first()
+        if entity_category:
+            res = success_res(data=[{
+                "source_entity_category": entity_category.name
+            }])
+        else:
+            res=fail_res(msg="实体类型不存在")
     except Exception as e:
         print(str(e))
         res = []
@@ -311,3 +341,5 @@ def get_entity_category_tuple():
         print(str(e))
         res = []
     return jsonify(res)
+'''
+

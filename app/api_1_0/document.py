@@ -128,30 +128,41 @@ def upload_doc():
                                         res_place = yc_res["place"]
                                         res_time = yc_res["time"]
 
-                                        for item_entity in res_entity:
-                                            doc_mark_entity = DocMarkEntity(doc_id=doc.id, word=item_entity["word"],
-                                                                            entity_id=item_entity["entity_id"],
-                                                                            appear_text=item_entity["word_sentence"],
-                                                                            appear_index_in_text=item_entity[
-                                                                                "word_count"],
-                                                                            valid=1)
+                                        for index, item_entity in enumerate(res_entity):
+                                            doc_mark_entity = DocMarkEntity(doc_id=doc.id, valid=1)
+                                            if item_entity.get("word", ""):
+                                                doc_mark_entity.word = item_entity["word"]
+                                            if item_entity.get("entity_id", 0):
+                                                doc_mark_entity.entity_id = item_entity["entity_id"]
+                                            if item_entity.get("word_count", ""):
+                                                word_count_list = list(item_entity["word_count"].split(','))
+                                                doc_mark_entity.appear_index_in_text = word_count_list
+
                                             db.session.add(doc_mark_entity)
+                                            item_entity["doc_mark_id"] = doc_mark_entity.id
                                         db.session.commit()
 
-                                        for item_place in res_place:
-                                            doc_mark_place = DocMarkPlace(doc_id=doc.id, word=item_place["word"],
-                                                                          type=item_place["type"],
-                                                                          place_id=item_place["place_id"],
-                                                                          direction=item_place["direction"],
-                                                                          place_lon=item_place["place_lon"],
-                                                                          place_lat=item_place["place_lat"],
-                                                                          height=item_place["height"],
-                                                                          unit=item_place["unit"],
-                                                                          distance=item_place["distance"], valid=1)
+                                        for index, item_place in enumerate(res_place):
+                                            doc_mark_place = DocMarkPlace(doc_id=doc.id, valid=1)
+                                            if item_place.get("word", ""):
+                                                doc_mark_place.word = item_place["word"]
+                                            if item_place.get("type", 0):
+                                                doc_mark_place.type = item_place["type"]
+                                            if item_place.get("place_id", 0):
+                                                doc_mark_place.place_id = item_place["place_id"]
+                                            if item_place.get("place_lon", ""):
+                                                doc_mark_place.place_lon = item_place["place_lon"]
+                                            if item_place.get("place_lat", ""):
+                                                doc_mark_place.place_lat = item_place["place_lat"]
+                                            if item_place.get("word_count", ""):
+                                                word_count_list = list(item_entity["word_count"].split(','))
+                                                doc_mark_place.appear_index_in_text = word_count_list
+
                                             db.session.add(doc_mark_place)
+                                            item_place["doc_mark_id"] = doc_mark_place.id
                                         db.session.commit()
 
-                                        for item_time in res_time:
+                                        for index, item_time in enumerate(res_time):
                                             doc_mark_time_tag = DocMarkTimeTag(doc_id=doc.id, word=item_time["word"],
                                                                                arab_time=item_time["arab_time"],
                                                                                valid=1)
@@ -159,11 +170,14 @@ def upload_doc():
                                                 doc_mark_time_tag.format_date = item_time["format_date"]
                                             if item_time.get("format_date_end", ""):
                                                 doc_mark_time_tag.format_date_end = item_time["format_date_end"]
+
                                             db.session.add(doc_mark_time_tag)
+                                            item_time["doc_mark_id"] = doc_mark_time_tag.id
                                         db.session.commit()
 
                                         doc.status = 2
                                         db.session.commit()
+                                        print("yc_res: ", yc_res)
                                     else:
                                         res = fail_res(msg="上传成功，但预处理失败")
                                         return res
