@@ -150,8 +150,7 @@ def insert_entity():
 
             # <editor-fold desc="yc insert name & synonyms">
             sync_yc_add_name(name, entity.id, entity.category_id, entity.get_yc_mark_category(), longitude, latitude)
-            for i in synonyms:
-                sync_yc_add_synonyms(i, entity.id, entity.category_id, entity.get_yc_mark_category(), longitude,
+            sync_yc_add_synonyms(synonyms, entity.id, entity.category_id, entity.get_yc_mark_category(), longitude,
                                      latitude)
             # </editor-fold>
 
@@ -236,8 +235,7 @@ def update_entity():
                 add_synonyms = list(set(synonyms).difference(set(entity.synonyms)))
                 remove_synonyms = list(set(entity.synonyms).difference(set(synonyms)))
 
-                for i in add_synonyms:
-                    sync_yc_add_synonyms(i, entity.id, entity.category_id,
+                sync_yc_add_synonyms(add_synonyms, entity.id, entity.category_id,
                                          entity.get_yc_mark_category(), longitude, latitude)
                 if remove_synonyms:
                     # 删除别名
@@ -419,8 +417,7 @@ def add_synonyms():
         search_result = requests.post(url + '/updatebyId', params=json.dumps(inesert_para), headers=header)
 
         # <editor-fold desc="sync yc del synonmys">
-        for i in synonyms:
-            sync_yc_add_synonyms(i, entity.id, entity.category_id, entity.get_yc_mark_category())
+        sync_yc_add_synonyms(synonyms, entity.id, entity.category_id, entity.get_yc_mark_category())
         # </editor-fold>
 
         res = success_res()
@@ -480,12 +477,12 @@ def sync_yc_add_name(name, entity_id, category_id, mark_category, longitude=None
             header = {"Content-Type": "application/json; charset=UTF-8"}
             url = YC_ROOT_URL + "/api/redis/add"
             sync_yc_redis_data = {
-                "entity_data": {
+                "entity_data": [{
                     "entity_id": entity_id,
                     "name": name,
                     "type": 1,  # 1主体；2别名
                     "category_id": category_id
-                },
+                }],
                 "mark_category": mark_category
             }
             if longitude:
@@ -498,19 +495,19 @@ def sync_yc_add_name(name, entity_id, category_id, mark_category, longitude=None
         print(str(e))
 
 
-def sync_yc_add_synonyms(synonym, entity_id, category_id, mark_category, longitude=None, latitude=None, sync=1):
+def sync_yc_add_synonyms(synonyms, entity_id, category_id, mark_category, longitude=None, latitude=None, sync=1):
     try:
         # 雨辰同步
         if sync and YC_ROOT_URL:
             header = {"Content-Type": "application/json; charset=UTF-8"}
             url = YC_ROOT_URL + "/api/redis/add"
             sync_yc_redis_data = {
-                "entity_data": {
+                "entity_data": [{
                     "entity_id": entity_id,
                     "name": synonym,
                     "type": 2,  # 1主体；2别名
-                    "entity_category_id": category_id
-                },
+                    "category_id": category_id
+                } for synonym in synonyms],
                 "mark_category": mark_category
             }
             if longitude:
@@ -930,8 +927,7 @@ def import_entity_excel():
                             add_synonyms = list(set(ex_synonyms).difference(set(entity.synonyms)))
                             remove_synonyms = list(set(entity.synonyms).difference(set(ex_synonyms)))
 
-                            for i in add_synonyms:
-                                sync_yc_add_synonyms(i, entity.id, entity.category_id,
+                            sync_yc_add_synonyms(add_synonyms, entity.id, entity.category_id,
                                                      entity.get_yc_mark_category())
                             if remove_synonyms:
                                 # 删除别名
@@ -989,8 +985,7 @@ def import_entity_excel():
 
                         # <editor-fold desc="yc insert name & synonyms">
                         sync_yc_add_name(ex_name, entity.id, entity.category_id, entity.get_yc_mark_category())
-                        for i in ex_synonyms:
-                            sync_yc_add_synonyms(i, entity.id, entity.category_id, entity.get_yc_mark_category())
+                        sync_yc_add_synonyms(ex_synonyms, entity.id, entity.category_id, entity.get_yc_mark_category())
                         # </editor-fold>
 
             except Exception as e:
