@@ -18,7 +18,7 @@ from . import api_entity as blue_print
 from .utils import success_res, fail_res
 from .. import db
 from ..conf import ES_SERVER_IP, ES_SERVER_PORT, YC_ROOT_URL, PLACE_BASE_NAME, USE_PLACE_SERVER
-from ..models import Entity, EntityCategory
+from ..models import Entity, EntityCategory, DocMarkPlace, DocMarkEntity
 from .place import get_place_from_base_server
 
 
@@ -288,10 +288,17 @@ def delete_entity():
 
             try:
                 entity.valid = 0
-
-                db.session.commit()
+                category_place = EntityCategory.query.filter_by(id=entity.category_id, valid=1).first()
+                if category_place.name == PLACE_BASE_NAME:
+                    doc_mark_place = DocMarkPlace.query.filter_by(place_id=entity.id, valid=1).all()
+                    for place in doc_mark_place:
+                        place.valid = 0
+                else:
+                    doc_mark_entity = DocMarkEntity.query.filter_by(entity_id=entity.id, valid=1).all()
+                    for entity in doc_mark_entity:
+                        entity.valid = 0
             except:
-                print(id, 'already_delete_done')
+                print(id, 'not delete_done')
 
             url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
             header = {"Content-Type": "application/json; charset=UTF-8"}
@@ -312,7 +319,6 @@ def delete_entity():
             if entity.synonyms:
                 sync_yc_del_synonyms(entity.synonyms, entity.id, entity.get_yc_mark_category())
             # </editor-fold>
-
             res = success_res()
         else:
             res = fail_res(msg="实体不存在")
@@ -346,12 +352,19 @@ def delete_entity_by_ids():
                 # </editor-fold>
 
                 valid_ids.append(uni_entity.id)
-
                 uni_entity.valid = 0
+                category_place = EntityCategory.query.filter_by(id=uni_entity.category_id, valid=1).first()
+                if category_place.name == PLACE_BASE_NAME:
+                    doc_mark_place = DocMarkPlace.query.filter_by(place_id=uni_entity.id, valid=1).all()
+                    for place in doc_mark_place:
+                        place.valid = 0
+                else:
+                    doc_mark_entity = DocMarkEntity.query.filter_by(entity_id=uni_entity.id, valid=1).all()
+                    for entity in doc_mark_entity:
+                        entity.valid = 0
                 # feedback.add(category_place.name)
                 res = success_res("全部成功删除！")
-            except Exception as e:
-                print(str(e))
+            except:
                 pass
         db.session.commit()
 
