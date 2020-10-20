@@ -105,7 +105,6 @@ def add_doc_mark_entity():
                 doc_mark_entity = DocMarkEntity(doc_id=doc_id, word=word, entity_id=entity_id, source=source,
                                                 create_by=create_by, create_time=create_time,
                                                 update_by=update_by, update_time=update_time,
-                                                paragraph_index=paragraph_index, appear_text=appear_text,
                                                 appear_index_in_text=appear_index_in_text, valid=1)
                 db.session.add(doc_mark_entity)
                 db.session.commit()
@@ -156,11 +155,11 @@ def modify_doc_mark_entity():
                     if source:
                         doc_mark_entity.source = source
                     if create_by:
-                        doc_mark_entity.creater = create_by
+                        doc_mark_entity.create_by = create_by
                     if create_time:
                         doc_mark_entity.create_time = create_time
                     if update_by:
-                        doc_mark_entity.updater = update_by
+                        doc_mark_entity.update_by = update_by
                     if update_time:
                         doc_mark_entity.update_time = update_time
                     if appear_index_in_text:
@@ -169,7 +168,6 @@ def modify_doc_mark_entity():
                     res = success_res()
                 else:
                     res = fail_res(msg="实体数据不存在")
-
 
     except Exception as e:
         print(str(e))
@@ -192,7 +190,6 @@ def delete_doc_mark_entity_by_id():
                 res = fail_res(msg="实体数据不存在")
         else:
             res = fail_res(msg="参数 \"id\" 应是整数类型")
-
 
     except Exception as e:
         print(str(e))
