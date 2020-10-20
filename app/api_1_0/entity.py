@@ -109,9 +109,6 @@ def insert_entity():
             entity = Entity(name=name, category_id=category_id, props=props, synonyms=synonyms, summary=summary,
                             valid=1)
 
-            # es 插入操作
-            es_insert_item = {'id': entity.id}
-
             longitude, latitude = 0, 0
             # 地名实体获取经纬度
             if EntityCategory.get_category_name(category_id) == PLACE_BASE_NAME:
@@ -119,14 +116,14 @@ def insert_entity():
                 latitude = request.json.get('latitude', 0)
                 if longitude:
                     entity.longitude = longitude
-                    es_insert_item["longitude"] = name
                 if latitude:
                     entity.latitude = latitude
-                    es_insert_item["latitude"] = name
 
             db.session.add(entity)
             db.session.commit()
 
+            # es 插入操作
+            es_insert_item = {'id': entity.id}
             if name:
                 es_insert_item["name"] = name
             if category_id:
@@ -138,6 +135,11 @@ def insert_entity():
             if synonyms:
                 es_insert_item["synonyms"] = synonyms
 
+            if longitude:
+                es_insert_item["longitude"] = longitude
+            if latitude:
+                es_insert_item["latitude"] = latitude
+
             data_insert_json = [es_insert_item]
             url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
 
@@ -146,6 +148,7 @@ def insert_entity():
             # print(data_insert_json)
             para = {"data_insert_index": "entity", "data_insert_json": data_insert_json}
             search_result = requests.post(url + '/dataInsert', data=json.dumps(para), headers=header)
+            # print(data_insert_json, search_result.text)
 
             # <editor-fold desc="yc insert name & synonyms">
             sync_yc_add_name(name, entity.id, entity.category_id, entity.get_yc_mark_category(), longitude, latitude)
