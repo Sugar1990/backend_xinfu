@@ -93,26 +93,26 @@ def upload_doc():
                                 db.session.add(doc)
                                 db.session.commit()
 
-                                # 抽取id、name、content插入es数据库中
-                                data_insert_json = [{
-                                    "id": doc.id,
-                                    "name": doc.name,
-                                    "content": doc.content,
-                                    "create_time": datetime_now.isoformat(),
-                                    "keywords": doc.keywords
-                                }]
-                                an_catalog = Catalog.get_ancestorn_catalog(catalog_id)
-                                doc_type_id = an_catalog.id if an_catalog else 0
-                                if doc_type_id:
-                                    data_insert_json[0]["doc_type"] = doc_type_id
-
-                                url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
-                                header = {"Content-Type": "application/json; charset=UTF-8"}
-                                para = {"data_insert_index": "document",
-                                        "data_insert_json": data_insert_json}
-
-                                insert_result = requests.post(url + '/dataInsert', data=json.dumps(para),
-                                                              headers=header)
+                                # # 抽取id、name、content插入es数据库中
+                                # data_insert_json = [{
+                                #     "id": doc.id,
+                                #     "name": doc.name,
+                                #     "content": doc.content,
+                                #     "create_time": datetime_now.isoformat(),
+                                #     "keywords": doc.keywords
+                                # }]
+                                # an_catalog = Catalog.get_ancestorn_catalog(catalog_id)
+                                # doc_type_id = an_catalog.id if an_catalog else 0
+                                # if doc_type_id:
+                                #     data_insert_json[0]["doc_type"] = doc_type_id
+                                #
+                                # url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+                                # header = {"Content-Type": "application/json; charset=UTF-8"}
+                                # para = {"data_insert_index": "document",
+                                #         "data_insert_json": data_insert_json}
+                                #
+                                # insert_result = requests.post(url + '/dataInsert', data=json.dumps(para),
+                                #                               headers=header)
 
                                 if YC_ROOT_URL:
                                     header = {"Content-Type": "application/json; charset=UTF-8"}
@@ -122,11 +122,15 @@ def upload_doc():
 
                                     data = json.dumps(body)
                                     yc_res = requests.post(url=url, data=data, headers=header)
+
                                     if yc_res.status_code in (200, 201):
                                         yc_res = yc_res.json()['data']
                                         res_entity = yc_res["entity"]
                                         res_place = yc_res["place"]
                                         res_time = yc_res["time"]
+                                        print("res_entity", res_entity)
+                                        print("res_place", res_place)
+                                        print("res_time", res_time)
 
                                         for index, item_entity in enumerate(res_entity):
                                             doc_mark_entity = DocMarkEntity(doc_id=doc.id, valid=1)
@@ -139,8 +143,9 @@ def upload_doc():
                                                 doc_mark_entity.appear_index_in_text = word_count_list
 
                                             db.session.add(doc_mark_entity)
+                                            db.session.commit()
                                             item_entity["doc_mark_id"] = doc_mark_entity.id
-                                        db.session.commit()
+                                        # print("doc_mark_entity数据插入成功")
 
                                         for index, item_place in enumerate(res_place):
                                             doc_mark_place = DocMarkPlace(doc_id=doc.id, valid=1)
@@ -159,24 +164,34 @@ def upload_doc():
                                                 doc_mark_place.appear_index_in_text = word_count_list
 
                                             db.session.add(doc_mark_place)
+                                            db.session.commit()
                                             item_place["doc_mark_id"] = doc_mark_place.id
-                                        db.session.commit()
+                                        # print("doc_mark_place数据插入成功")
 
                                         for index, item_time in enumerate(res_time):
-                                            doc_mark_time_tag = DocMarkTimeTag(doc_id=doc.id, word=item_time["word"],
-                                                                               arab_time=item_time["arab_time"],
-                                                                               valid=1)
+                                            doc_mark_time_tag = DocMarkTimeTag(doc_id=doc.id, valid=1)
+                                            if item_time.get("time_type", 0):
+                                                doc_mark_time_tag.time_type = item_time["time_type"]
+                                            if item_time.get("word", ""):
+                                                doc_mark_time_tag.word = item_time["word"]
                                             if item_time.get("format_date", ""):
                                                 doc_mark_time_tag.format_date = item_time["format_date"]
-                                            if item_time.get("format_date_end", ""):
-                                                doc_mark_time_tag.format_date_end = item_time["format_date_end"]
+                                            # if item_time.get("format_date_end", ""):
+                                            #     doc_mark_time_tag.format_date_end = item_time["format_date_end"]
+                                            if item_time.get("arab_time", ""):
+                                                doc_mark_time_tag.arab_time = item_time["arab_time"]
+                                            if item_time.get("word_count", ""):
+                                                word_count_list = list(item_time["word_count"].split(','))
+                                                doc_mark_time_tag.appear_index_in_text = word_count_list
 
                                             db.session.add(doc_mark_time_tag)
+                                            db.session.commit()
                                             item_time["doc_mark_id"] = doc_mark_time_tag.id
-                                        db.session.commit()
+                                        # print("doc_mark_time_tag插入成功")
 
                                         doc.status = 2
                                         db.session.commit()
+
                                         print("yc_res: ", yc_res)
                                     else:
                                         res = fail_res(msg="上传成功，但预处理失败")
