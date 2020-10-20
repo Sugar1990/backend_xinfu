@@ -41,11 +41,11 @@ def get_doc_mark_event_by_id():
                 "event_type_id": doc_mark_event.event_type_id,
                 "create_by": doc_mark_event.create_by,
                 "create_time": doc_mark_event.create_time.strftime(
-                    "%Y--%m--%d %H:%M:%S") if doc_mark_event.create_time else None,
+                    "%Y-%m-%d %H:%M:%S") if doc_mark_event.create_time else None,
                 "update_by": doc_mark_event.update_by,
                 "update_time": doc_mark_event.update_time.strftime(
-                    "%Y--%m--%d %H:%M:%S") if doc_mark_event.update_time else None,
-                "add_time": doc_mark_event.add_time.strftime("%Y--%m--%d %H:%M:%S") if doc_mark_event.add_time else None
+                    "%Y-%m-%d %H:%M:%S") if doc_mark_event.update_time else None,
+                "add_time": doc_mark_event.add_time.strftime("%Y-%m-%d %H:%M:%S") if doc_mark_event.add_time else None
             })
         else:
             res = fail_res(msg="事件数据不存在")
@@ -110,10 +110,10 @@ def get_doc_mark_event_by_doc_id():
             "event_class_id": i.event_class_id,
             "event_type_id": i.event_type_id,
             "create_by": i.create_by,
-            "create_time": i.create_time.strftime("%Y--%m--%d %H:%M:%S") if i.create_time else None,
+            "create_time": i.create_time.strftime("%Y-%m-%d %H:%M:%S") if i.create_time else None,
             "update_by": i.update_by,
-            "update_time": i.update_time.strftime("%Y--%m--%d %H:%M:%S") if i.update_time else None,
-            "add_time": i.add_time.strftime("%Y--%m--%d %H:%M:%S") if i.add_time else None
+            "update_time": i.update_time.strftime("%Y-%m-%d %H:%M:%S") if i.update_time else None,
+            "add_time": i.add_time.strftime("%Y-%m-%d %H:%M:%S") if i.add_time else None
         } for i in doc_mark_event_list])
 
     except Exception as e:
