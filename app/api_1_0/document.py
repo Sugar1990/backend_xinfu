@@ -93,26 +93,26 @@ def upload_doc():
                                 db.session.add(doc)
                                 db.session.commit()
 
-                                # # 抽取id、name、content插入es数据库中
-                                # data_insert_json = [{
-                                #     "id": doc.id,
-                                #     "name": doc.name,
-                                #     "content": doc.content,
-                                #     "create_time": datetime_now.isoformat(),
-                                #     "keywords": doc.keywords
-                                # }]
-                                # an_catalog = Catalog.get_ancestorn_catalog(catalog_id)
-                                # doc_type_id = an_catalog.id if an_catalog else 0
-                                # if doc_type_id:
-                                #     data_insert_json[0]["doc_type"] = doc_type_id
-                                #
-                                # url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
-                                # header = {"Content-Type": "application/json; charset=UTF-8"}
-                                # para = {"data_insert_index": "document",
-                                #         "data_insert_json": data_insert_json}
-                                #
-                                # insert_result = requests.post(url + '/dataInsert', data=json.dumps(para),
-                                #                               headers=header)
+                                # 抽取id、name、content插入es数据库中
+                                data_insert_json = [{
+                                    "id": doc.id,
+                                    "name": doc.name,
+                                    "content": doc.content,
+                                    "create_time": datetime_now.isoformat(),
+                                    "keywords": doc.keywords
+                                }]
+                                an_catalog = Catalog.get_ancestorn_catalog(catalog_id)
+                                doc_type_id = an_catalog.id if an_catalog else 0
+                                if doc_type_id:
+                                    data_insert_json[0]["doc_type"] = doc_type_id
+
+                                url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+                                header = {"Content-Type": "application/json; charset=UTF-8"}
+                                para = {"data_insert_index": "document",
+                                        "data_insert_json": data_insert_json}
+
+                                insert_result = requests.post(url + '/dataInsert', data=json.dumps(para),
+                                                              headers=header)
 
                                 if YC_ROOT_URL:
                                     header = {"Content-Type": "application/json; charset=UTF-8"}
