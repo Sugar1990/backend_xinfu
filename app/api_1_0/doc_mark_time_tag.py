@@ -220,6 +220,8 @@ def delete_doc_mark_time_tag():
         if doc_mark_time_tag:
             doc_mark_time_tag.valid = 0
             res = success_res()
+        else:
+            res = fail_res(msg="文档标记时间信息id不存在!")
     except Exception as e:
         print(str(e))
         db.session.rollback()
