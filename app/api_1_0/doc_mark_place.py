@@ -6,6 +6,7 @@ from ..models import DocMarkPlace
 from .. import db
 from .utils import success_res, fail_res
 
+
 @blue_print.route('/get_doc_mark_place_by_doc_id', methods=['GET'])
 def get_doc_mark_place_by_doc_id():
     try:
@@ -155,7 +156,7 @@ def get_one_doc_mark_place_by_doc_id():
 @blue_print.route('/add_doc_mark_place', methods=['POST'])
 def add_doc_mark_place():
     try:
-        doc_id = request.json.get('doc_id',0)
+        doc_id = request.json.get('doc_id', 0)
         word = request.json.get('word', '')
         type = request.json.get('type', 0)
         place_id = request.json.get('place_id', 0)
@@ -169,20 +170,23 @@ def add_doc_mark_place():
         relation = request.json.get('relation', '')
         create_by = request.json.get('create_by', 0)
         entity_or_sys = request.json.get('entity_or_sys', 0)
-        appear_index_in_text = request.json.get('appear_index_in_text',[])
-        doc_mark_place = DocMarkPlace.query.filter_by(doc_id=doc_id, word=word,type=type,place_id=place_id,
-                                                      direction=direction, place_lon=place_lon, place_lat=place_lat, height=height,
-                                                      unit=unit,dms=dms,distance=distance,relation=relation,create_by=create_by,
-                                                      entity_or_sys=entity_or_sys,appear_index_in_text=appear_index_in_text,valid=1).first()
+        appear_index_in_text = request.json.get('appear_index_in_text', [])
+        doc_mark_place = DocMarkPlace.query.filter_by(doc_id=doc_id, word=word, type=type, place_id=place_id,
+                                                      direction=direction, place_lon=place_lon, place_lat=place_lat,
+                                                      height=height,
+                                                      unit=unit, dms=dms, distance=distance, relation=relation,
+                                                      create_by=create_by,
+                                                      entity_or_sys=entity_or_sys,
+                                                      appear_index_in_text=appear_index_in_text, valid=1).first()
         if doc_mark_place:
             res = fail_res(msg="文档标记地点已存在!")
         else:
-            docMarkPlace = DocMarkPlace(doc_id=doc_id,word=word,type=type, place_id=place_id,
-                                                      direction=direction, place_lon=place_lon, place_lat=place_lat, height=height,
-                                                      unit=unit,dms=dms,distance=distance,relation=relation,create_by=create_by,
-                                                      create_time=datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                                                      appear_index_in_text=appear_index_in_text,
-                                                      entity_or_sys=entity_or_sys,valid=1)
+            docMarkPlace = DocMarkPlace(doc_id=doc_id, word=word, type=type, place_id=place_id,
+                                        direction=direction, place_lon=place_lon, place_lat=place_lat, height=height,
+                                        unit=unit, dms=dms, distance=distance, relation=relation, create_by=create_by,
+                                        create_time=datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                                        appear_index_in_text=appear_index_in_text,
+                                        entity_or_sys=entity_or_sys, valid=1)
             db.session.add(docMarkPlace)
             db.session.commit()
             res = success_res(data={"id": docMarkPlace.id})
@@ -197,7 +201,7 @@ def add_doc_mark_place():
 @blue_print.route('/modify_doc_mark_place', methods=['PUT'])
 def modify_doc_mark_place():
     try:
-        id = request.json.get('id',0)
+        id = request.json.get('id', 0)
         doc_id = request.json.get('doc_id', 0)
         word = request.json.get('word', '')
         type = request.json.get('type', 0)
@@ -217,10 +221,13 @@ def modify_doc_mark_place():
         appear_index_in_text = request.json.get('appear_index_in_text', [])
         doc_mark_place = DocMarkPlace.query.filter_by(id=id, valid=1).first()
         if doc_mark_place:
-            doc_mark_place1 = DocMarkPlace.query.filter_by(doc_id=doc_id,word=word,type=type, place_id=place_id,
-                                                      direction=direction, place_lon=place_lon, place_lat=place_lat, height=height,
-                                                      unit=unit,dms=dms,distance=distance,relation=relation,create_by=create_by,
-                                                      entity_or_sys=entity_or_sys,appear_index_in_text=appear_index_in_text,valid=1).first()
+            doc_mark_place1 = DocMarkPlace.query.filter_by(doc_id=doc_id, word=word, type=type, place_id=place_id,
+                                                           direction=direction, place_lon=place_lon,
+                                                           place_lat=place_lat, height=height,
+                                                           unit=unit, dms=dms, distance=distance, relation=relation,
+                                                           create_by=create_by,
+                                                           entity_or_sys=entity_or_sys,
+                                                           appear_index_in_text=appear_index_in_text, valid=1).first()
             if doc_mark_place1:
                 res = fail_res(msg="文档标记地点已存在")
             else:
@@ -257,7 +264,7 @@ def modify_doc_mark_place():
                 # if update_time:
                 doc_mark_place.update_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 if entity_or_sys:
-                    doc_mark_place.entity_or_sys  = entity_or_sys
+                    doc_mark_place.entity_or_sys = entity_or_sys
                 if appear_index_in_text:
                     doc_mark_place.appear_index_in_text = appear_index_in_text
                 db.session.commit()
@@ -274,15 +281,17 @@ def modify_doc_mark_place():
 @blue_print.route('/delete_doc_mark_place', methods=['POST'])
 def delete_doc_mark_place():
     try:
-        id = request.json.get('id',0)
+        id = request.json.get('id', 0)
         doc_mark_place = DocMarkPlace.query.filter_by(id=id, valid=1).first()
         if doc_mark_place:
             doc_mark_place.valid = 0
+            db.session.commit()
             res = success_res()
+        else:
+            res = fail_res(msg="文档标记地点id不存在!")
     except Exception as e:
         print(str(e))
         db.session.rollback()
         res = fail_res(msg="删除失败！")
 
     return jsonify(res)
-
