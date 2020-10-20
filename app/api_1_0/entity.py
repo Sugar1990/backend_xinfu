@@ -146,7 +146,6 @@ def insert_entity():
             # print(data_insert_json)
             para = {"data_insert_index": "entity", "data_insert_json": data_insert_json}
             search_result = requests.post(url + '/dataInsert', data=json.dumps(para), headers=header)
-            print(search_result.text, flush=True)
 
             # <editor-fold desc="yc insert name & synonyms">
             sync_yc_add_name(name, entity.id, entity.category_id, entity.get_yc_mark_category(), longitude, latitude)
@@ -308,12 +307,16 @@ def delete_entity():
             }
             es_id_para = {"search_index": "entity", "search_json": search_json}
             search_result = requests.post(url + '/searchId', data=json.dumps(es_id_para), headers=header)
+
+            es_id = []
             try:
-                es_id = [search_result.json()['data']['dataList'][0]]
-            except:
-                es_id = []
+                if search_result.json()['data']['dataList']:
+                    es_id = [search_result.json()['data']['dataList'][0]]
+            except Exception as e:
+                print("es /searchId 结果有误", search_result.text, str(e))
             delete_para = {"delete_index": "entity", "id_json": es_id}
             search_result = requests.post(url + '/deletebyId', data=json.dumps(delete_para), headers=header)
+            # print(search_result.text)
 
             # <editor-fold desc="yc del entity">
             sync_yc_del_name(entity.name, entity.id, entity.get_yc_mark_category())
@@ -495,19 +498,22 @@ def sync_yc_add_name(name, entity_id, category_id, mark_category, longitude=None
         if sync and YC_ROOT_URL:
             header = {"Content-Type": "application/json; charset=UTF-8"}
             url = YC_ROOT_URL + "/api/redis/add"
+            item = {
+                "entity_id": entity_id,
+                "name": name,
+                "type": 1,  # 1主体；2别名
+                "category_id": category_id
+            }
+
+            if longitude:
+                item['lon'] = longitude
+            if latitude:
+                item['lat'] = latitude
+
             sync_yc_redis_data = {
-                "entity_data": [{
-                    "entity_id": entity_id,
-                    "name": name,
-                    "type": 1,  # 1主体；2别名
-                    "category_id": category_id
-                }],
+                "entity_data": [item],
                 "mark_category": mark_category
             }
-            if longitude:
-                sync_yc_redis_data["entity_data"]['lon'] = longitude
-            if latitude:
-                sync_yc_redis_data["entity_data"]['lat'] = latitude
             data = json.dumps(sync_yc_redis_data)
             yc_res = requests.post(url=url, data=data, headers=header)
     except Exception as e:
@@ -520,19 +526,24 @@ def sync_yc_add_synonyms(synonyms, entity_id, category_id, mark_category, longit
         if sync and YC_ROOT_URL:
             header = {"Content-Type": "application/json; charset=UTF-8"}
             url = YC_ROOT_URL + "/api/redis/add"
-            sync_yc_redis_data = {
-                "entity_data": [{
+            entity_data = []
+            for synonym in synonyms:
+                item = {
                     "entity_id": entity_id,
                     "name": synonym,
                     "type": 2,  # 1主体；2别名
                     "category_id": category_id
-                } for synonym in synonyms],
+                }
+                if longitude:
+                    item['lon'] = longitude
+                if latitude:
+                    item['lat'] = latitude
+                entity_data.append(item)
+
+            sync_yc_redis_data = {
+                "entity_data": entity_data,
                 "mark_category": mark_category
             }
-            if longitude:
-                sync_yc_redis_data["entity_data"]['lon'] = longitude
-            if latitude:
-                sync_yc_redis_data["entity_data"]['lat'] = latitude
             data = json.dumps(sync_yc_redis_data)
             yc_res = requests.post(url=url, data=data, headers=header)
     except Exception as e:
