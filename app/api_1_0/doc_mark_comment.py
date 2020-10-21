@@ -103,7 +103,6 @@ def add_doc_mark_comment():
                 db.session.commit()
                 res = success_res(data={"id": doc_mark_comment.id})
 
-
     except Exception as e:
         print(str(e))
         res = fail_res()
@@ -158,7 +157,6 @@ def modify_doc_mark_comment():
                 else:
                     res = fail_res(msg="批注数据不存在")
 
-
     except Exception as e:
         print(str(e))
         res = fail_res()
@@ -180,7 +178,6 @@ def delete_doc_mark_comment_by_id():
                 res = fail_res(msg="批注数据不存在")
         else:
             res = fail_res(msg="参数 \"id\" 应是整数类型")
-
 
     except Exception as e:
         print(str(e))

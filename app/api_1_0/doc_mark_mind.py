@@ -61,7 +61,6 @@ def modify_doc_mark_mind():
         else:
             res = fail_res("paramter \"id\" is not int type")
 
-
     except Exception as e:
         print(str(e))
         db.session.rollback()
@@ -114,18 +113,13 @@ def get_doc_mark_mind():
     return jsonify(res)
 
 
-
-def get_ancestorn_doc_mark_mind(id,result=[]):
-     doc_mark_mind_children = DocMarkMind.query.filter_by(parent_id=id, valid=1).all()
-     for item in doc_mark_mind_children:
-         res = {
-             "id": item.id,
-             "name": item.name,
-             "children":[]
-         }
-         get_ancestorn_doc_mark_mind(item.id, res["children"])
-         result.append(res)
-
-
-
-
+def get_ancestorn_doc_mark_mind(id, result=[]):
+    doc_mark_mind_children = DocMarkMind.query.filter_by(parent_id=id, valid=1).all()
+    for item in doc_mark_mind_children:
+        res = {
+            "id": item.id,
+            "name": item.name,
+            "children": []
+        }
+        get_ancestorn_doc_mark_mind(item.id, res["children"])
+        result.append(res)

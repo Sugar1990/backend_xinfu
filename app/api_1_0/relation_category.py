@@ -122,7 +122,6 @@ def delete_relation_category_by_ids():
         else:
             res = fail_res(msg="关系记录不存在")
 
-
     except Exception as e:
         print(str(e))
         db.session.rollback()
@@ -239,7 +238,6 @@ def get_one_relation_category():
                 "target_entity_category_ids": [],
                 "name": ""
             })
-
 
     return jsonify(res)
 

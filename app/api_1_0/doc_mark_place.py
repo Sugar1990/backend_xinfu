@@ -187,8 +187,10 @@ def add_doc_mark_place():
                 res = fail_res(msg="文档标记地点已存在!")
             else:
                 docMarkPlace = DocMarkPlace(doc_id=doc_id, word=word, type=type, place_id=place_id,
-                                            direction=direction, place_lon=place_lon, place_lat=place_lat, height=height,
-                                            unit=unit, dms=dms, distance=distance, relation=relation, create_by=create_by,
+                                            direction=direction, place_lon=place_lon, place_lat=place_lat,
+                                            height=height,
+                                            unit=unit, dms=dms, distance=distance, relation=relation,
+                                            create_by=create_by,
                                             create_time=datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                                             appear_index_in_text=appear_index_in_text,
                                             entity_or_sys=entity_or_sys, valid=1)
@@ -237,7 +239,8 @@ def modify_doc_mark_place():
                                                                unit=unit, dms=dms, distance=distance, relation=relation,
                                                                create_by=create_by,
                                                                entity_or_sys=entity_or_sys,
-                                                               appear_index_in_text=appear_index_in_text, valid=1).first()
+                                                               appear_index_in_text=appear_index_in_text,
+                                                               valid=1).first()
                 if doc_mark_place1:
                     res = fail_res(msg="文档标记地点已存在")
                 else:

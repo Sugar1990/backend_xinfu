@@ -50,7 +50,6 @@ def get_doc_mark_event_by_id():
         else:
             res = fail_res(msg="事件数据不存在")
 
-
     except Exception as e:
         print(str(e))
         res = fail_res({
@@ -271,7 +270,6 @@ def modify_doc_mark_event():
             else:
                 res = fail_res(msg="事件数据不存在")
 
-
     except Exception as e:
         print(str(e))
         res = fail_res()
@@ -293,7 +291,6 @@ def delete_doc_mark_entity_by_id():
                 res = fail_res(msg="事件数据不存在")
         else:
             res = fail_res(msg="参数 \"id\" 应是整数类型")
-
 
     except Exception as e:
         print(str(e))

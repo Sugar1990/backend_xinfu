@@ -19,8 +19,6 @@ def get_event_classes():
                 "id": i.id,
                 "name": i.name
             } for i in event_class]
-
-
     except Exception as e:
         print(str(e))
         res = []
@@ -65,6 +63,7 @@ def add_event_class():
 
     return jsonify(res)
 
+
 @blue_print.route('/modify_event_class', methods=['PUT'])
 def modify_event_class():
     try:
@@ -82,13 +81,12 @@ def modify_event_class():
                 res = success_res()
         else:
             res = fail_res(msg="事件类别id不存在!")
-
-
     except Exception as e:
         print(str(e))
         db.session.rollback()
         res = fail_res(msg="修改失败！")
     return jsonify(res)
+
 
 @blue_print.route('/delete_event_class', methods=['POST'])
 def delete_event_class():

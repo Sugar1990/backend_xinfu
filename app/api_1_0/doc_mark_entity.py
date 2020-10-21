@@ -8,6 +8,7 @@ from .. import db
 from .utils import success_res, fail_res
 import time
 
+
 # doc_mark_entity表中删除了entity_type、entity_type_id字段，添加了appear_index_in_text字段
 
 # 按id查询
@@ -24,9 +25,11 @@ def get_doc_mark_entity_by_id():
                 "entity_id": doc_mark_entity.entity_id,
                 "source": doc_mark_entity.source,
                 "create_by": doc_mark_entity.create_by,
-                "create_time": doc_mark_entity.create_time.strftime("%Y-%m-%d %H:%M:%S") if doc_mark_entity.create_time else None,
+                "create_time": doc_mark_entity.create_time.strftime(
+                    "%Y-%m-%d %H:%M:%S") if doc_mark_entity.create_time else None,
                 "update_by": doc_mark_entity.update_by,
-                "update_time": doc_mark_entity.update_time.strftime("%Y-%m-%d %H:%M:%S") if doc_mark_entity.update_time else None,
+                "update_time": doc_mark_entity.update_time.strftime(
+                    "%Y-%m-%d %H:%M:%S") if doc_mark_entity.update_time else None,
                 "appear_index_in_text": doc_mark_entity.appear_index_in_text
             })
         else:
@@ -108,8 +111,7 @@ def add_doc_mark_entity():
                                                 appear_index_in_text=appear_index_in_text, valid=1)
                 db.session.add(doc_mark_entity)
                 db.session.commit()
-                res = success_res(data={"id":doc_mark_entity.id})
-
+                res = success_res(data={"id": doc_mark_entity.id})
 
     except Exception as e:
         print(str(e))
@@ -133,10 +135,9 @@ def modify_doc_mark_entity():
         update_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         appear_index_in_text = request.json.get("appear_index_in_text", [])
 
-
         if not (isinstance(id, int) and isinstance(doc_id, int) and isinstance(entity_id, int)
                 and isinstance(source, int) and isinstance(create_by, int) and isinstance(update_by, int)):
-            res =fail_res(msg="参数 \"id\"、\"doc_id\"、\"entity_id\"、\"source\"、\"create_by\"、\"update_by\"应是整数类型")
+            res = fail_res(msg="参数 \"id\"、\"doc_id\"、\"entity_id\"、\"source\"、\"create_by\"、\"update_by\"应是整数类型")
 
         else:
             doc_mark_entity_same = DocMarkEntity.query.filter_by(doc_id=doc_id, word=word,
@@ -196,4 +197,3 @@ def delete_doc_mark_entity_by_id():
         res = fail_res()
 
     return jsonify(res)
-

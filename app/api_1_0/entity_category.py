@@ -19,8 +19,6 @@ def get_entity_categories():
             "id": i.id,
             "name": i.name
         } for i in categories]
-
-
     except Exception as e:
 
         print(str(e))
@@ -39,8 +37,6 @@ def get_entity_categories_without_place():
             "id": i.id,
             "name": i.name
         } for i in categories]
-
-
     except Exception as e:
 
         print(str(e))
@@ -211,7 +207,6 @@ def get_entity_category_paginate():
             "data": data,
             "cur_page": pagination.page
         }
-
     except Exception as e:
         print(str(e))
         res = {

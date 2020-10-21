@@ -81,7 +81,6 @@ def batch_del_permission():
         else:
             res = fail_res(msg="权限不存在")
 
-
     except Exception as e:
         print(str(e))
         db.session.rollback()

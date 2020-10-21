@@ -127,7 +127,8 @@ def add_doc_mark_time_tag():
         arab_time = request.json.get('arab_time', '')
         update_by = request.json.get('update_by', 0),
         appear_index_in_text = request.json.get('appear_index_in_text', [])
-        doc_mark_time_tag = DocMarkTimeTag.query.filter_by(doc_id=doc_id, word=word, format_date=format_date,
+        doc_mark_time_tag = DocMarkTimeTag.query.filter_by(doc_id=doc_id, word=word,
+                                                           format_date=format_date,
                                                            format_date_end=format_date_end,
                                                            mark_position=mark_position, time_type=time_type,
                                                            reserve_fields=reserve_fields, arab_time=arab_time,

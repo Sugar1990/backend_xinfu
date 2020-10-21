@@ -133,7 +133,6 @@ def update_customer():
         else:
             res = fail_res(msg="用户不存在")
 
-
     except Exception as e:
         print(str(e))
         db.session.rollback()

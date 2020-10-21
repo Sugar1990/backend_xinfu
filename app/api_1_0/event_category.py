@@ -6,14 +6,15 @@ from ..models import EventCategory
 from .. import db
 from .utils import success_res, fail_res
 
+
 @blue_print.route('/add_event_category', methods=['POST'])
 def add_event_category():
     try:
         name = request.json.get('name')
         event_class_id = request.json.get("event_class_id", 0)
-        event_class_id_find = EventClass.query.filter_by(id=event_class_id,valid=1).all()
+        event_class_id_find = EventClass.query.filter_by(id=event_class_id, valid=1).all()
         if event_class_id_find:
-            event_category = EventCategory.query.filter_by(name=name,event_class_id=event_class_id, valid=1).first()
+            event_category = EventCategory.query.filter_by(name=name, event_class_id=event_class_id, valid=1).first()
             if event_category:
                 res = fail_res(msg="事件类型已存在!")
             else:
@@ -31,39 +32,14 @@ def add_event_category():
     return jsonify(res)
 
 
-
 @blue_print.route('/delete_event_category', methods=['POST'])
 def delete_event_category():
-    event_category_id = request.json.get("id", 0)
+    try:
+        event_category_id = request.json.get("id", 0)
 
-    if not event_category_id:
-        res = fail_res(msg='event_category_id为空')
-    else:
-        catalog_id_frist = EventCategory.query.filter_by(id=event_category_id, valid=1).first()
-
-        if catalog_id_frist and catalog_id_frist.valid:
-            try:
-                catalog_id_frist.valid = 0
-                db.session.commit()
-                res = success_res()
-            except Exception as e:
-                print(str(e))
-                db.session.rollback()
-                res = fail_res()
+        if not event_category_id:
+            res = fail_res(msg='event_category_id为空')
         else:
-            res = success_res()
-
-    return jsonify(res)
-
-
-@blue_print.route('/delete_event_category_by_ids', methods=['POST'])
-def delete_event_category_by_ids():
-    event_category_ids = request.json.get("ids", [])
-
-    if not event_category_ids:
-        res = fail_res(msg='event_category_ids为空')
-    else:
-        for event_category_id in event_category_ids:
             catalog_id_frist = EventCategory.query.filter_by(id=event_category_id, valid=1).first()
 
             if catalog_id_frist and catalog_id_frist.valid:
@@ -77,6 +53,40 @@ def delete_event_category_by_ids():
                     res = fail_res()
             else:
                 res = success_res()
+    except Exception as e:
+        print(str(e))
+        db.session.rollback()
+        res = fail_res()
+
+    return jsonify(res)
+
+
+@blue_print.route('/delete_event_category_by_ids', methods=['POST'])
+def delete_event_category_by_ids():
+    try:
+        event_category_ids = request.json.get("ids", [])
+
+        if not event_category_ids:
+            res = fail_res(msg='event_category_ids为空')
+        else:
+            for event_category_id in event_category_ids:
+                catalog_id_frist = EventCategory.query.filter_by(id=event_category_id, valid=1).first()
+
+                if catalog_id_frist and catalog_id_frist.valid:
+                    try:
+                        catalog_id_frist.valid = 0
+                        db.session.commit()
+                        res = success_res()
+                    except Exception as e:
+                        print(str(e))
+                        db.session.rollback()
+                        res = fail_res()
+                else:
+                    res = success_res()
+    except Exception as e:
+        print(str(e))
+        db.session.rollback()
+        res = fail_res()
 
     return jsonify(res)
 
@@ -90,7 +100,8 @@ def modify_event_category():
 
         event_category_find = EventCategory.query.filter_by(id=event_category_id, valid=1).first()
         if event_category_find:
-            event_category_find1 = EventCategory.query.filter_by(name=event_category_name, event_class_id=event_class_id, valid=1).first()
+            event_category_find1 = EventCategory.query.filter_by(name=event_category_name,
+                                                                 event_class_id=event_class_id, valid=1).first()
             if event_category_find1:
                 res = fail_res(msg="同名实体类型已存在")
             else:
@@ -100,7 +111,6 @@ def modify_event_category():
                 res = success_res()
         else:
             res = fail_res(msg="找不到修改对象")
-
 
     except Exception as e:
         print(str(e))

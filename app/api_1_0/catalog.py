@@ -24,8 +24,8 @@ def insert_catalog():
         if catalog:
             res = fail_res(msg="目录已存在")
         else:
-            catalog = Catalog(name=name, create_by=customer_id, parent_id=catalog_pid
-                              , create_time=datetime.datetime.now())
+            catalog = Catalog(name=name, create_by=customer_id, parent_id=catalog_pid,
+                              create_time=datetime.datetime.now())
             db.session.add(catalog)
             db.session.commit()
             res = success_res()
