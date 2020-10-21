@@ -193,6 +193,18 @@ def upload_doc():
                                         db.session.commit()
 
                                         print("yc_res: ", yc_res)
+
+                                        # <editor-fold desc="调用yc文档预处理接口,eventIds暂时为空列表">
+                                        eventIds = []
+                                        header = {"Content-Type": "application/json; charset=UTF-8"}
+                                        url = YC_ROOT_URL + '/doc/preprocess'
+                                        body = {"docId": doc.id, "eventIds": eventIds}
+                                        data = json.dumps(body)
+                                        yc_res_event = requests.post(url=url, data=data, headers=header)
+
+                                        print("yc_res_event.status_code", yc_res_event.status_code)
+                                        # </editor-fold>
+
                                     else:
                                         res = fail_res(msg="上传成功，但预处理失败")
                                         return res
