@@ -325,7 +325,7 @@ def modify_doc_es_doc_type(doc_ids):
 
 
 # 移动文件到指定目录
-@blue_print.route('/move_doc_to_catalog', methods=['PUT'])
+@blue_print.route('/move_doc_to_catalog', methods=['POST'])
 def move_doc_to_catalog():
     catalog_id = request.json.get('catalog_id', 0)
     doc_id = request.json.get('doc_id', 0)
