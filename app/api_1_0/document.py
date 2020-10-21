@@ -312,6 +312,60 @@ def modify_doc_es_doc_type(doc_ids):
     return res
 
 
+# 移动文件到指定目录
+@blue_print.route('/move_doc_to_catalog', methods=['PUT'])
+def move_doc_to_catalog():
+    catalog_id = request.json.get('catalog_id', 0)
+    doc_id = request.json.get('doc_id', 0)
+
+    try:
+        if not catalog_id:
+            res = fail_res(msg="请移动到已知目录类型下")
+        else:
+            catalog = Catalog.query.filter_by(id=catalog_id).first()
+            document = Document.query.filter_by(id=doc_id).first()
+            if document and catalog:
+                document_same = Document.query.filter(Document.md5 == document.md5, Document.id != doc_id).first()
+                if document_same:
+                    res = fail_res(msg="目标目录已存在相同文档")
+                else:
+                    move_source_docs_to_target_catalog([document], catalog_id)
+                    res = success_res()
+            else:
+                res = fail_res(msg="操作对象不存在")
+    except Exception as e:
+        print(str(e))
+        db.session.rollback()
+        res = fail_res()
+    return jsonify(res)
+
+
+# 移动文件到指定目录
+def move_source_docs_to_target_catalog(source_docs=[], target_catalog_id=0):
+    target_docs = Document.query.filter_by(catalog_id=target_catalog_id).all()
+
+    # 重名：判断和处理重名文件；否则直接移动
+    del_doc_id = []
+    save_target_docs_dict = {i.md5: i for i in target_docs if i.md5 and i.id}
+    for source_doc_item in source_docs:
+        if source_doc_item.md5 in save_target_docs_dict:
+            target_doc_item = save_target_docs_dict[source_doc_item.md5]
+            if target_doc_item.status < 2 and source_doc_item.status > 1:
+                # 目标文件未标注，移动文件已标注，删除目标文件
+                del_doc_id.append(target_doc_item.id)
+                source_doc_item.catalog_id = target_catalog_id
+                modify_doc_es_doc_type([source_doc_item.id])
+                db.session.commit()
+            else:
+                # 目标文件已标注，删除移动文件
+                del_doc_id.append(source_doc_item.id)
+        else:
+            source_doc_item.catalog_id = target_catalog_id
+            modify_doc_es_doc_type([source_doc_item.id])
+            db.session.commit()
+    delete_doc_in_pg_es(del_doc_id)
+
+
 # 获取文档内容
 @blue_print.route('/get_content', methods=['GET'])
 # @swag_from(get_content_dict)
