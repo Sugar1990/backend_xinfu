@@ -9,7 +9,7 @@ from ..models import Catalog, Document, Customer, Permission
 from .. import db
 from .utils import success_res, fail_res
 from ..conf import TAG_TABS
-from .document import delete_doc_in_pg_es, modify_doc_es_doc_type
+from .document import delete_doc_in_pg_es, modify_doc_es_doc_type, move_source_docs_to_target_catalog
 
 
 @blue_print.route('/insert_catalog', methods=['POST'])
@@ -397,28 +397,8 @@ def move_catalog_recursive(source_catalog_id):
 # 移动目录-处理重名目录下文件和子目录
 def move_catalog_same_recursive(source_catalog_id, target_catalog_id):
     source_docs = Document.query.filter_by(catalog_id=source_catalog_id).all()
-    target_docs = Document.query.filter_by(catalog_id=target_catalog_id).all()
-
-    # 处理重名文件
-    del_doc_id = []
-    save_target_docs_dict = {i.md5: i for i in target_docs if i.md5 and i.id}
-    for source_doc_item in source_docs:
-        if source_doc_item.md5 in save_target_docs_dict:
-            target_doc_item = save_target_docs_dict[source_doc_item.md5]
-            if target_doc_item.status < 2 and source_doc_item.status > 1:
-                # 目标文件未标注，移动文件已标注，删除目标文件
-                del_doc_id.append(target_doc_item.id)
-                source_doc_item.catalog_id = target_catalog_id
-                modify_doc_es_doc_type([source_doc_item.id])
-                db.session.commit()
-            else:
-                # 目标文件已标注，删除移动文件
-                del_doc_id.append(source_doc_item.id)
-        else:
-            source_doc_item.catalog_id = target_catalog_id
-            modify_doc_es_doc_type([source_doc_item.id])
-            db.session.commit()
-    delete_doc_in_pg_es(del_doc_id)
+    # 移动文件到指定目录
+    move_source_docs_to_target_catalog(source_docs, target_catalog_id)
 
     # 处理重名目录
     source_catalog_children = Catalog.query.filter_by(parent_id=source_catalog_id).all()
