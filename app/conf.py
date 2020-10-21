@@ -39,7 +39,7 @@ USE_PLACE_SERVER = os.getenv('USE_PLACE_SERVER', 0)
 
 # 雨辰团队接口url, http://192.168.3.75:8096/dev
 YC_ROOT_URL = os.getenv('YC_ROOT_URL', "http://192.168.6.82:8096")
-YC_ROOT_URL = os.getenv('YC_ROOT_URL_PYTHON', "http://192.168.6.82:8099")
+YC_ROOT_URL_PYTHON = os.getenv('YC_ROOT_URL_PYTHON', "http://192.168.6.82:8099")
 # 雨辰团队标注页面
 YC_TAGGING_PAGE_URL = os.getenv('YC_TAGGING_PAGE_URL', "http://192.168.6.82:8098/index")
 

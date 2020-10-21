@@ -17,7 +17,7 @@ from werkzeug.utils import secure_filename
 from . import api_entity as blue_print
 from .utils import success_res, fail_res
 from .. import db
-from ..conf import ES_SERVER_IP, ES_SERVER_PORT, YC_ROOT_URL, PLACE_BASE_NAME, USE_PLACE_SERVER
+from ..conf import ES_SERVER_IP, ES_SERVER_PORT, YC_ROOT_URL, YC_ROOT_URL_PYTHON, PLACE_BASE_NAME, USE_PLACE_SERVER
 from ..models import Entity, EntityCategory, DocMarkPlace, DocMarkEntity
 from .place import get_place_from_base_server
 
@@ -109,6 +109,9 @@ def insert_entity():
             entity = Entity(name=name, category_id=category_id, props=props, synonyms=synonyms, summary=summary,
                             valid=1)
 
+            # es 插入操作
+
+
             longitude, latitude = 0, 0
             # 地名实体获取经纬度
             if EntityCategory.get_category_name(category_id) == PLACE_BASE_NAME:
@@ -121,7 +124,10 @@ def insert_entity():
 
             db.session.add(entity)
             db.session.commit()
+            es_insert_item = {}
 
+            if entity.id:
+                es_insert_item = {"id": entity.id}
             # es 插入操作
             es_insert_item = {'id': entity.id}
             if name:
@@ -500,7 +506,7 @@ def sync_yc_add_name(name, entity_id, category_id, mark_category, longitude=None
         # 雨辰同步
         if sync and YC_ROOT_URL:
             header = {"Content-Type": "application/json; charset=UTF-8"}
-            url = YC_ROOT_URL + "/api/redis/add"
+            url = YC_ROOT_URL_PYTHON + "/api/redis/add"
             item = {
                 "entity_id": entity_id,
                 "name": name,
@@ -528,7 +534,7 @@ def sync_yc_add_synonyms(synonyms, entity_id, category_id, mark_category, longit
         # 雨辰同步
         if sync and YC_ROOT_URL:
             header = {"Content-Type": "application/json; charset=UTF-8"}
-            url = YC_ROOT_URL + "/api/redis/add"
+            url = YC_ROOT_URL_PYTHON + "/api/redis/add"
             entity_data = []
             for synonym in synonyms:
                 item = {
@@ -573,7 +579,7 @@ def sync_yc_update_name(old_name, new_name, entity_id, mark_category, longitude=
             # 雨辰同步
             if sync and YC_ROOT_URL:
                 header = {"Content-Type": "application/json; charset=UTF-8"}
-                url = YC_ROOT_URL + "/api/redis/update"
+                url = YC_ROOT_URL_PYTHON + "/api/redis/update"
                 data = json.dumps(yc_update_data)
                 yc_res = requests.post(url=url, data=data, headers=header)
     except Exception as e:
@@ -599,7 +605,7 @@ def sync_yc_update_category_id(entity_id, old_category_id, new_category_id, mark
                 # 雨辰同步
                 if sync and YC_ROOT_URL:
                     header = {"Content-Type": "application/json; charset=UTF-8"}
-                    url = YC_ROOT_URL + "/api/redis/update"
+                    url = YC_ROOT_URL_PYTHON + "/api/redis/update"
                     data = json.dumps(yc_update_data)
                     yc_res = requests.post(url=url, data=data, headers=header)
     except Exception as e:
@@ -610,7 +616,7 @@ def sync_yc_del_name(name, entity_id, mark_category, sync=1):
     try:
         if sync and YC_ROOT_URL:
             header = {"Content-Type": "application/json; charset=UTF-8"}
-            url = YC_ROOT_URL + "/api/redis/del"
+            url = YC_ROOT_URL_PYTHON + "/api/redis/del"
             data = {"entity_data": [{"name": name,
                                      "entity_id": entity_id}],
                     "mark_category": mark_category}
@@ -624,7 +630,7 @@ def sync_yc_del_synonyms(del_synonyms, entity_id, mark_category, sync=1):
         # 雨辰同步
         if sync and YC_ROOT_URL:
             header = {"Content-Type": "application/json; charset=UTF-8"}
-            url = YC_ROOT_URL + "/api/redis/del"
+            url = YC_ROOT_URL_PYTHON + "/api/redis/del"
             sync_yc_redis_data = {"entity_data": [{"name": i,
                                                    "entity_id": entity_id} for i in del_synonyms],
                                   "mark_category": mark_category}
