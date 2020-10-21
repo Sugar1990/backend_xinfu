@@ -122,7 +122,7 @@ def add_doc_mark_time_tag():
         format_date = request.json.get('format_date', None)
         format_date_end = request.json.get('format_date_end', None)
         mark_position = request.json.get('mark_position', '')
-        time_type = request.json.get('time_type', '')
+        time_type = request.json.get('time_type', 0)
         reserve_fields = request.json.get('reserve_fields', '')
         arab_time = request.json.get('arab_time', '')
         update_by = request.json.get('update_by', 0),
