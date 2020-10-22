@@ -116,7 +116,7 @@ def upload_doc():
 
                                 if YC_ROOT_URL_PYTHON:
                                     header = {"Content-Type": "application/json; charset=UTF-8"}
-                                    url = YC_ROOT_URL + '/api/mark/result'
+                                    url = YC_ROOT_URL_PYTHON + '/api/mark/result'
                                     new_str = '\r\n'.join(doc.content)
                                     body = {"content": new_str}
 
@@ -128,9 +128,9 @@ def upload_doc():
                                         res_entity = yc_res["entity"]
                                         res_place = yc_res["place"]
                                         res_time = yc_res["time"]
-                                        print("res_entity", res_entity)
-                                        print("res_place", res_place)
-                                        print("res_time", res_time)
+                                        # print("res_entity", res_entity)
+                                        # print("res_place", res_place)
+                                        # print("res_time", res_time)
 
                                         for index, item_entity in enumerate(res_entity):
                                             doc_mark_entity = DocMarkEntity(doc_id=doc.id, valid=1)
@@ -206,7 +206,7 @@ def upload_doc():
                                         # </editor-fold>
                                         event_res = {}
                                         event_res['content'] = doc.content
-                                        event_res['result'] = json.loads(yc_res)
+                                        event_res['result'] = yc_res
 
                                         # <editor-fold desc="返回event带解析封装接口">
                                         header = {"Content-Type": "application/json; charset=UTF-8"}
