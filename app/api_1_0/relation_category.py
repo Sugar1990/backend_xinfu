@@ -31,48 +31,55 @@ def add_relation_category():
             # <editor-fold desc="judging if same relation_category exits">
             if name:
                 relation_same = RelationCategory.query.filter_by(relation_name=name, valid=1).all()
+                if relation_same:
+                    for item in relation_same:
+                        source_ids_db = set(item.source_entity_category_ids)
+                        target_ids_db = set(item.target_entity_category_ids)
 
-                for item in relation_same:
-                    source_ids_db = set(item.source_entity_category_ids)
-                    target_ids_db = set(item.target_entity_category_ids)
+                        # 已存在--输入数据与库里已有数据相等或是库里数据的子集
+                        if input_source_ids_set.issubset(
+                                source_ids_db) and input_target_ids_set.issubset(target_ids_db):
+                            res = fail_res(msg="已存在相同关联记录")
+                            return jsonify(res)
 
-                    # 已存在--输入数据与库里已有数据相等或是库里数据的子集
-                    if input_source_ids_set.issubset(
-                            source_ids_db) and input_target_ids_set.issubset(target_ids_db):
-                        res = fail_res(msg="已存在相同关联记录")
-                        return jsonify(res)
+                        # update--源ids相等 and 目标ids不相等  update目标ids  取并集
+                        elif (input_source_ids_set == source_ids_db) and input_target_ids_set != target_ids_db:
+                            target_ids_result = list(input_target_ids_set.union(target_ids_db))
+                            item.target_entity_category_ids = target_ids_result
+                            res = success_res(data={"id": item.id})
+                            break
 
-                    # update--源ids相等 and 目标ids不相等  update目标ids  取并集
-                    elif (input_source_ids_set == source_ids_db) and input_target_ids_set != target_ids_db:
-                        target_ids_result = list(input_target_ids_set.union(target_ids_db))
-                        item.target_entity_category_ids = target_ids_result
-                        res = success_res(data={"id": item.id})
-                        break
+                        # update--目标ids相等 and 源ids不相等  update源ids  取并集
+                        elif (input_source_ids_set != source_ids_db) and input_target_ids_set == target_ids_db:
+                            source_ids_result = list(input_source_ids_set.union(source_ids_db))
+                            item.source_entity_category_ids = source_ids_result
+                            res = success_res(data={"id": item.id})
+                            break
 
-                    # update--目标ids相等 and 源ids不相等  update源ids  取并集
-                    elif (input_source_ids_set != source_ids_db) and input_target_ids_set == target_ids_db:
-                        source_ids_result = list(input_source_ids_set.union(source_ids_db))
-                        item.source_entity_category_ids = source_ids_result
-                        res = success_res(data={"id": item.id})
-                        break
+                        # update--库里已有数据是输入数据的子集
+                        elif source_ids_db.issubset(
+                                input_source_ids_set) and target_ids_db.issubset(input_target_ids_set):
+                            item.source_entity_category_ids = source_entity_category_ids
+                            item.target_entity_category_ids = target_entity_category_ids
+                            res = success_res(data={"id": item.id})
+                            break
 
-                    # update--库里已有数据是输入数据的子集
-                    elif source_ids_db.issubset(
-                            input_source_ids_set) and target_ids_db.issubset(input_target_ids_set):
-                        item.source_entity_category_ids = source_entity_category_ids
-                        item.target_entity_category_ids = target_entity_category_ids
-                        res = success_res(data={"id": item.id})
-                        break
-
-                    # insert--
-                    else:
-                        rc = RelationCategory(source_entity_category_ids=source_entity_category_ids,
-                                              target_entity_category_ids=target_entity_category_ids, relation_name=name,
-                                              valid=1)
-                        db.session.add(rc)
-                        db.session.commit()
-                        res = success_res(data={"id": rc.id})
-                        break
+                        # insert--
+                        else:
+                            rc = RelationCategory(source_entity_category_ids=source_entity_category_ids,
+                                                  target_entity_category_ids=target_entity_category_ids, relation_name=name,
+                                                  valid=1)
+                            db.session.add(rc)
+                            db.session.commit()
+                            res = success_res(data={"id": rc.id})
+                            break
+                else:
+                    rc = RelationCategory(source_entity_category_ids=source_entity_category_ids,
+                                          target_entity_category_ids=target_entity_category_ids, relation_name=name,
+                                          valid=1)
+                    db.session.add(rc)
+                    db.session.commit()
+                    res = success_res(data={"id": rc.id})
 
             else:
                 res = fail_res(msg="关联名称不得为空")

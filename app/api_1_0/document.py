@@ -15,7 +15,7 @@ from . import api_document as blue_print
 from .utils import success_res, fail_res
 from .. import db, lock
 from ..conf import LEXICON_IP, LEXICON_PORT, SUMMARY_IP, SUMMARY_PORT, YC_ROOT_URL, ES_SERVER_IP, ES_SERVER_PORT, \
-    YC_TAGGING_PAGE_URL
+    YC_TAGGING_PAGE_URL,YC_ROOT_URL_PYTHON,EVENT_EXTRACTION_URL
 from ..models import Document, Entity, Customer, Permission, Catalog, DocMarkEntity, DocMarkPlace, DocMarkTimeTag, \
     DocMarkEvent
 from ..serve.word_parse import extract_word_content
@@ -114,7 +114,7 @@ def upload_doc():
                                 insert_result = requests.post(url + '/dataInsert', data=json.dumps(para),
                                                               headers=header)
 
-                                if YC_ROOT_URL:
+                                if YC_ROOT_URL_PYTHON:
                                     header = {"Content-Type": "application/json; charset=UTF-8"}
                                     url = YC_ROOT_URL + '/api/mark/result'
                                     new_str = '\r\n'.join(doc.content)
@@ -204,7 +204,44 @@ def upload_doc():
 
                                         print("yc_res_event.status_code", yc_res_event.status_code)
                                         # </editor-fold>
+                                        event_res = {}
+                                        event_res['content'] = doc.content
+                                        event_res['result'] = json.loads(yc_res)
 
+                                        # <editor-fold desc="返回event带解析封装接口">
+                                        header = {"Content-Type": "application/json; charset=UTF-8"}
+                                        url = EVENT_EXTRACTION_URL + '/event_extraction'
+
+                                        data = json.dumps(event_res)
+                                        event_extraction_res = requests.post(url=url, data=data, headers=header)
+
+                                        print("event_extraction_res.status_code", event_extraction_res.status_code)
+                                        # </editor-fold>
+                                        if event_extraction_res.status_code in (200, 201):
+                                            for item in event_extraction_res.json()["result"]:
+                                                doc_mark_event = DocMarkEvent(doc_id=doc.id, valid=1)
+                                                if item.get("event_address", []):
+                                                    doc_mark_event.event_address = item["event_address"]
+                                                if item.get("event_class_id", 0):
+                                                    doc_mark_event.event_class_id = item["event_class_id"]
+                                                if item.get("event_desc", ""):
+                                                    doc_mark_event.event_desc = item["event_desc"]
+                                                if item.get("event_object", []):
+                                                    doc_mark_event.event_object = item["event_object"]
+                                                if item.get("event_predicate", ""):
+                                                    doc_mark_event.event_predicate = item["event_predicate"]
+                                                if item.get("event_subject", []):
+                                                    doc_mark_event.event_subject = item["event_subject"]
+                                                if item.get("event_time", []):
+                                                    doc_mark_event.event_time = item["event_time"]
+                                                if item.get("title", ""):
+                                                    doc_mark_event.title = item["title"]
+                                                db.session.add(doc_mark_event)
+                                                db.session.commit()
+                                                print(doc_mark_event.id)
+                                        else:
+                                            res = fail_res(msg="调用event_extraction接口失败")
+                                            return res
                                     else:
                                         res = fail_res(msg="上传成功，但预处理失败")
                                         return res
