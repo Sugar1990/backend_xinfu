@@ -15,7 +15,7 @@ from . import api_document as blue_print
 from .utils import success_res, fail_res
 from .. import db, lock
 from ..conf import LEXICON_IP, LEXICON_PORT, SUMMARY_IP, SUMMARY_PORT, YC_ROOT_URL, ES_SERVER_IP, ES_SERVER_PORT, \
-    YC_TAGGING_PAGE_URL,YC_ROOT_URL_PYTHON,EVENT_EXTRACTION_URL
+    YC_TAGGING_PAGE_URL, YC_ROOT_URL_PYTHON, EVENT_EXTRACTION_URL
 from ..models import Document, Entity, Customer, Permission, Catalog, DocMarkEntity, DocMarkPlace, DocMarkTimeTag, \
     DocMarkEvent
 from ..serve.word_parse import extract_word_content
@@ -365,23 +365,22 @@ def modify_doc_es_doc_type(doc_ids):
 @blue_print.route('/move_doc_to_catalog', methods=['POST'])
 def move_doc_to_catalog():
     catalog_id = request.json.get('catalog_id', 0)
-    doc_id = request.json.get('doc_id', 0)
+    doc_ids = request.json.get('doc_ids', [])
 
     try:
-        if not catalog_id:
-            res = fail_res(msg="请移动到已知目录类型下")
+
+        catalog = Catalog.query.filter_by(id=catalog_id).first()
+        if not catalog:
+            res = fail_res(msg="目标目录不存在")
         else:
-            catalog = Catalog.query.filter_by(id=catalog_id).first()
-            document = Document.query.filter_by(id=doc_id).first()
-            if document and catalog:
-                document_same = Document.query.filter(Document.md5 == document.md5, Document.id != doc_id).first()
-                if document_same:
-                    res = fail_res(msg="目标目录已存在相同文档")
-                else:
-                    move_source_docs_to_target_catalog([document], catalog_id)
+            docs = Document.query.filter(Document.id.in_(doc_ids)).all()
+            if docs:
+                for doc in docs:
+                    document_same = Document.query.filter(Document.md5 == doc.md5, Document.id != doc.id).first()
+                    move_source_docs_to_target_catalog([doc], catalog_id)
                     res = success_res()
             else:
-                res = fail_res(msg="操作对象不存在")
+                res = fail_res(msg="移动文档不存在")
     except Exception as e:
         print(str(e))
         db.session.rollback()
