@@ -67,7 +67,8 @@ def add_relation_category():
                         # insert--
                         else:
                             rc = RelationCategory(source_entity_category_ids=source_entity_category_ids,
-                                                  target_entity_category_ids=target_entity_category_ids, relation_name=name,
+                                                  target_entity_category_ids=target_entity_category_ids,
+                                                  relation_name=name,
                                                   valid=1)
                             db.session.add(rc)
                             db.session.commit()
@@ -161,7 +162,8 @@ def modify_relation_category():
                     source_entity_category_ids_set = set(source_id)
                     target_entity_category_ids_set = set(target_id)
 
-                    if (set(source_entity_category_ids).issubset(source_entity_category_ids_set)) and (set(target_entity_category_ids).issubset(target_entity_category_ids_set)):
+                    if (set(source_entity_category_ids).issubset(source_entity_category_ids_set)) and (
+                    set(target_entity_category_ids).issubset(target_entity_category_ids_set)):
                         res_flag = False
                     if not res_flag:
                         break
@@ -240,11 +242,11 @@ def get_one_relation_category():
     except Exception as e:
         print(str(e))
         res = fail_res(data={
-                "id": -1,
-                "source_entity_category_ids": [],
-                "target_entity_category_ids": [],
-                "name": ""
-            })
+            "id": -1,
+            "source_entity_category_ids": [],
+            "target_entity_category_ids": [],
+            "name": ""
+        })
 
     return jsonify(res)
 
@@ -347,4 +349,3 @@ def get_entity_category_tuple():
         res = []
     return jsonify(res)
 '''
-
