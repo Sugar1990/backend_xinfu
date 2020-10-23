@@ -67,9 +67,9 @@ def get_doc_mark_entity_by_doc_id():
             "entity_id": i.entity_id,
             "source": i.source,
             "create_by": i.create_by,
-            "create_time": i.create_time.strftime("%Y--%m--%d %H:%M:%S") if i.create_time else None,
+            "create_time": i.create_time.strftime("%Y-%m-%d %H:%M:%S") if i.create_time else None,
             "update_by": i.create_by,
-            "update_time": i.update_time.strftime("%Y--%m--%d %H:%M:%S") if i.update_time else None,
+            "update_time": i.update_time.strftime("%Y-%m-%d %H:%M:%S") if i.update_time else None,
             "appear_index_in_text": i.appear_index_in_text
         } for i in doc_mark_entity_list])
 
