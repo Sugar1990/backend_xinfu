@@ -132,8 +132,7 @@ def add_doc_mark_time_tag():
                                                            format_date_end=format_date_end,
                                                            mark_position=mark_position, time_type=time_type,
                                                            reserve_fields=reserve_fields, arab_time=arab_time,
-                                                           update_by=update_by,
-                                                           appear_index_in_text=appear_index_in_text, valid=1).first()
+                                                           update_by=update_by, appear_index_in_text=appear_index_in_text, valid=1).first()
         if doc_mark_time_tag:
             res = fail_res(msg="文档标记时间信息已存在!")
         else:
