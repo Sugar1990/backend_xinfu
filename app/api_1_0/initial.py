@@ -55,7 +55,6 @@ def init():
 
     return jsonify(res)
 
-
 @blue_print.route('/pg_insert_es', methods=['GET'])
 # @swag_from(pg_insert_es_dict)
 def pg_insert_es():
@@ -115,7 +114,6 @@ def pg_insert_es():
         res = fail_res()
     return jsonify(res)
 
-
 @blue_print.route('/delete_index', methods=['GET'])
 # @swag_from(delete_index_dict)
 def delete_index():
@@ -134,7 +132,6 @@ def delete_index():
         db.session.rollback()
         res = fail_res()
     return jsonify(res)
-
 
 @blue_print.route('/update_es_doc', methods=['GET'])
 # @swag_from(update_es_doc_dict)
@@ -170,7 +167,6 @@ def update_es_doc():
         print(str(e))
         res = fail_res()
     return res
-
 
 @blue_print.route('/pg_insert_es_test', methods=['GET'])
 def pg_insert_test():
@@ -236,7 +232,7 @@ def entity_update_loaction():
         for entity in entities:
             ent_id = entity .id
             ent_location = Entity.get_location_of_entity(ent_id)
-            # 获得es对应doc
+            # 获得es对应entity
             search_json = {
                 "id": {"type": "id", "value": ent_id}
             }
@@ -247,7 +243,7 @@ def entity_update_loaction():
                 es_id = search_result.json()['data']['dataList'][0]
             except:
                 es_id = ''
-            # 替换name 修改es已有do
+            # 替换name 修改es已有entity
             key_value_json = {'location': ent_location}
             inesert_para = {"update_index": 'entity',
                             "data_update_json": [{es_id: key_value_json}]}
@@ -255,7 +251,9 @@ def entity_update_loaction():
             res = success_res()
     except Exception as e:
         print(str(e))
-        res = fail_res()
+        res = fail_res(str(e))
     return res
+
+
 
 
