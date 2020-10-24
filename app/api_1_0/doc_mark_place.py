@@ -12,7 +12,7 @@ def get_doc_mark_place_by_doc_id():
     try:
         doc_mark_place_doc_id = request.args.get('doc_id', 0, type=int)
         if isinstance(doc_mark_place_doc_id, int):
-            doc_mark_places = DocMarkPlace.query.filter_by(id=doc_mark_place_doc_id, valid=1).all()
+            doc_mark_places = DocMarkPlace.query.filter_by(doc_id=doc_mark_place_doc_id, valid=1).all()
             res = success_res(data=[{
                 "id": doc_mark_place.id,
                 "doc_id": doc_mark_place.doc_id,
@@ -28,9 +28,11 @@ def get_doc_mark_place_by_doc_id():
                 "distance": doc_mark_place.distance,
                 "relation": doc_mark_place.relation,
                 "create_by": doc_mark_place.create_by,
-                "create_time": doc_mark_place.create_time,
+                "create_time": doc_mark_place.create_time.strftime(
+                    "%Y-%m-%d %H:%M:%S") if doc_mark_place.create_time else None,
                 "update_by": doc_mark_place.update_by,
-                "update_time": doc_mark_place.update_time,
+                "update_time": doc_mark_place.update_time.strftime(
+                    "%Y-%m-%d %H:%M:%S") if doc_mark_place.update_time else None,
                 "valid": doc_mark_place.valid,
                 "entity_or_sys": doc_mark_place.entity_or_sys,
                 "appear_index_in_text": doc_mark_place.appear_index_in_text
@@ -88,9 +90,9 @@ def get_one_doc_mark_place_by_id():
             "distance": 0.0,
             "relation": "",
             "create_by": -1,
-            "create_time": "",
+            "create_time": None,
             "update_by": -1,
-            "update_time": "",
+            "update_time": None,
             "valid": -1,
             "entity_or_sys": -1,
             "appear_index_in_text": -1
@@ -103,7 +105,7 @@ def get_one_doc_mark_place_by_doc_id():
     try:
         doc_mark_place_doc_id = request.args.get('doc_id', 0, type=int)
         if isinstance(doc_mark_place_doc_id, int):
-            doc_mark_place = DocMarkPlace.query.filter_by(id=doc_mark_place_doc_id, valid=1).first()
+            doc_mark_place = DocMarkPlace.query.filter_by(doc_id=doc_mark_place_doc_id, valid=1).first()
             res = {
                 "id": doc_mark_place.id,
                 "doc_id": doc_mark_place.doc_id,
@@ -119,9 +121,11 @@ def get_one_doc_mark_place_by_doc_id():
                 "distance": doc_mark_place.distance,
                 "relation": doc_mark_place.relation,
                 "create_by": doc_mark_place.create_by,
-                "create_time": doc_mark_place.create_time,
+                "create_time": doc_mark_place.create_time.strftime(
+                    "%Y-%m-%d %H:%M:%S") if doc_mark_place.create_time else None,
                 "update_by": doc_mark_place.update_by,
-                "update_time": doc_mark_place.update_time,
+                "update_time": doc_mark_place.update_time.strftime(
+                    "%Y-%m-%d %H:%M:%S") if doc_mark_place.update_time else None,
                 "valid": doc_mark_place.valid,
                 "entity_or_sys": doc_mark_place.entity_or_sys,
                 "appear_index_in_text": doc_mark_place.appear_index_in_text
@@ -143,9 +147,9 @@ def get_one_doc_mark_place_by_doc_id():
             "distance": 0.0,
             "relation": "",
             "create_by": -1,
-            "create_time": "",
+            "create_time": None,
             "update_by": -1,
-            "update_time": "",
+            "update_time": None,
             "valid": -1,
             "entity_or_sys": -1,
             "appear_index_in_text": []
@@ -169,6 +173,9 @@ def add_doc_mark_place():
         distance = request.json.get('distance', 0.0)
         relation = request.json.get('relation', '')
         create_by = request.json.get('create_by', 0)
+        create_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        update_by = request.json.get("update_by", 0)
+        update_time = request.json.get("update_time", None)
         entity_or_sys = request.json.get('entity_or_sys', 0)
         appear_index_in_text = request.json.get('appear_index_in_text', [])
         if not isinstance(dms, list):
@@ -178,10 +185,9 @@ def add_doc_mark_place():
         else:
             doc_mark_place = DocMarkPlace.query.filter_by(doc_id=doc_id, word=word, type=type, place_id=place_id,
                                                           direction=direction, place_lon=place_lon, place_lat=place_lat,
-                                                          height=height,
-                                                          unit=unit, dms=dms, distance=distance, relation=relation,
-                                                          create_by=create_by,
-                                                          entity_or_sys=entity_or_sys,
+                                                          height=height, unit=unit, dms=dms, distance=distance,
+                                                          relation=relation, create_by=create_by, create_time=create_time,
+                                                          update_by=update_by, update_time=update_time, entity_or_sys=entity_or_sys,
                                                           appear_index_in_text=appear_index_in_text, valid=1).first()
             if doc_mark_place:
                 res = fail_res(msg="文档标记地点已存在!")
@@ -190,8 +196,8 @@ def add_doc_mark_place():
                                             direction=direction, place_lon=place_lon, place_lat=place_lat,
                                             height=height,
                                             unit=unit, dms=dms, distance=distance, relation=relation,
-                                            create_by=create_by,
-                                            create_time=datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                                            create_by=create_by, create_time=create_time,
+                                            update_by=update_by, update_time=update_time,
                                             appear_index_in_text=appear_index_in_text,
                                             entity_or_sys=entity_or_sys, valid=1)
                 db.session.add(docMarkPlace)
