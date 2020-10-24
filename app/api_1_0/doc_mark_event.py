@@ -155,7 +155,9 @@ def add_doc_mark_event():
                 and isinstance(update_by, int)):
             res = fail_res(msg="参数 \"doc_id\"、 \"customer_id\"、 \"parent_id\"、\"event_class_id\"、"
                                "\"event_type_id\"、\"create_by\"、\"update_by\"应是整数类型")
-
+        elif not (isinstance(event_subject, list) and isinstance(event_object, list) and isinstance(event_time, list)
+                  and isinstance(event_address, list)):
+            res = fail_res(msg="参数event_subject、event_object、event_time和event_address应为list类型")
         else:
             if event_time and event_address:
                 doc_mark_event = DocMarkEvent(event_id=event_id, event_desc=event_desc, event_subject=event_subject,
