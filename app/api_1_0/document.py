@@ -964,7 +964,7 @@ def search_advanced_doc_type():
 
         # 搜索内容无关参数
         customer_id = request.json.get('customer_id', 0)
-        page_size = request.json.get('page_size', 1000)
+        page_size = request.json.get('page_size', 10)
         cur_page = request.json.get('cur_page', 1)
 
         # 其他搜索参数
@@ -996,7 +996,7 @@ def search_advanced_doc_type():
                 if data.get("id", False):
                     doc_ids.append(data["id"])
                 if data.get("doc_type", False):
-                    if data_by_doc_id.get(data["doc_type"], False):
+                    if data_by_doc_id.get(data["doc_type"], False) and data_by_doc_id[data["doc_type"]] <= page_size:
                         data_by_doc_id[data["doc_type"]].append(data)
                     else:
                         data_by_doc_id[data["doc_type"]] = [data]
@@ -1010,6 +1010,7 @@ def search_advanced_doc_type():
             "doc": data_forms,
             "event_list": get_event_list_from_docs(doc_ids),
             "event_list_group_by_entities": get_event_list_from_docs_group_by_entities(doc_ids),
+            "doc_ids": doc_ids
         }
 
         '''
@@ -1170,6 +1171,75 @@ def get_event_list_from_docs_group_by_entities(doc_ids=[]):
         event_list = [sorted(i, key=lambda x: x.get('datetime', '')) for i in event_dict.values()]
     return event_list
 
+
+
+# 高级搜索结果doc_ids 筛选事件
+@blue_print.route('/screen_event_by_time_range', methods=['POST'])
+def get_event_list_by_time_range():
+    doc_ids = request.json.get('doc_ids', [])
+    start_date = request.json.get('start_date', "")
+    end_date = request.json.get('end_date', "")
+    event_list = []
+    if doc_ids:
+        events = DocMarkEvent.query.filter(DocMarkEvent.doc_id.in_(doc_ids)).all()
+        for i in events:
+            if i.event_address and isinstance(i.event_address, list):
+                place_ids = DocMarkPlace.query.with_entities(DocMarkPlace.place_id).filter(
+                    DocMarkPlace.id.in_(i.event_address)).all()
+                if place_ids:
+                    place_ids = [i[0] for i in place_ids]
+                    places = Entity.query.filter(Entity.id.in_(place_ids), Entity.valid == 1).all()
+                    if places:
+                        objects, subjects, form_time = [], [], ""
+
+                        if i.event_object and isinstance(i.event_object, list):
+                            object_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_id).filter(
+                                DocMarkEntity.id.in_(i.event_object)).all()
+                            if object_ids:
+                                object_ids = [i[0] for i in object_ids]
+                                objects = Entity.query.filter(Entity.id.in_(object_ids), Entity.valid == 1).all()
+
+                        if i.event_subject and isinstance(i.event_subject, list):
+                            subject_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_id).filter(
+                                DocMarkEntity.id.in_(i.event_subject)).all()
+                            if subject_ids:
+                                subject_ids = [i[0] for i in subject_ids]
+                                subjects = Entity.query.filter(Entity.id.in_(subject_ids), Entity.valid == 1).all()
+
+                        # subject和object结合，返回给前端
+                        objects.extend(subjects)
+                        if objects:
+                            if i.event_time and isinstance(i.event_time, list):
+                                mark_time_ids = i.event_time
+                                times = DocMarkTimeTag.query.with_entities(DocMarkTimeTag.format_date).filter(
+                                    DocMarkTimeTag.id.in_(mark_time_ids),
+                                    DocMarkTimeTag.time_type.in_(['1', '2'])).all()
+                                if times:
+                                    form_time = times[0]
+                                    try:
+                                        end_time = times[1]
+                                    except:
+                                        print("No_end_time")
+
+
+                            if form_time:
+                                if not start_date - end_time > 0 or end_date - form_time < 0:
+                                    item = {
+                                        "datetime": form_time,
+                                        "place": [{
+                                            "place_lat": place.latitude,
+                                            "place_lon": place.longitude,
+                                            "place_id": place.id,
+                                            # "type": 1,
+                                            "word": place.name,
+                                        } for place in places],
+                                        "title": i.title,
+                                        "object": [i.name for i in objects]
+                                    }
+                                    event_list.append(item)
+        # </editor-fold>
+        event_list = sorted(event_list, key=lambda x: x.get('datetime', ''))
+    return event_list
 
 # 高级搜索分页展示
 @blue_print.route('/search_advanced_pagination', methods=['POST'])
