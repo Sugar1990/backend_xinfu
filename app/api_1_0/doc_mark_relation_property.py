@@ -99,6 +99,9 @@ def add_doc_mark_relation_property():
             valid=1)
         db.session.add(doc_mark_relation_property)
         db.session.commit()
+
+        
+
         res = success_res(data={"id": doc_mark_relation_property.id})
     except Exception as e:
         print(str(e))

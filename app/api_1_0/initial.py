@@ -2,11 +2,15 @@
 from flask import jsonify, request
 import json
 from . import api_initial as blue_print
-from ..models import Customer, EntityCategory, Document, Catalog ,Entity
+from ..models import Customer, EntityCategory, Document, Catalog, Entity
 from .. import db
-from ..conf import ADMIN_NAME, ADMIN_PWD, ASSIS_NAME, ASSIS_PWD, TAG_TABS, PLACE_BASE_NAME, ES_SERVER_IP, ES_SERVER_PORT
+from ..conf import ADMIN_NAME, ADMIN_PWD, ASSIS_NAME, ASSIS_PWD, TAG_TABS, PLACE_BASE_NAME, ES_SERVER_IP, \
+    ES_SERVER_PORT, NEO4J_SERVER_IP, NEO4J_SERVER_PORT
 from .utils import success_res, fail_res
 import requests
+import math
+
+
 # from ..swagger.initial_dict import *
 
 @blue_print.route("/init", methods=['GET'])
@@ -55,6 +59,7 @@ def init():
 
     return jsonify(res)
 
+
 @blue_print.route('/pg_insert_es', methods=['GET'])
 # @swag_from(pg_insert_es_dict)
 def pg_insert_es():
@@ -68,9 +73,9 @@ def pg_insert_es():
                 # "props": "ik",
                 "summary": "ik",
                 "category_id": "id",
-                "latitude":"id",
-                "longitude":"id",
-                "location":"location"
+                "latitude": "id",
+                "longitude": "id",
+                "location": "location"
             }
             pg_dict = {"id": {"col_type": "align", "entity": "id"},
                        "name": {"col_type": "", "entity": "name"},
@@ -114,6 +119,7 @@ def pg_insert_es():
         res = fail_res()
     return jsonify(res)
 
+
 @blue_print.route('/delete_index', methods=['GET'])
 # @swag_from(delete_index_dict)
 def delete_index():
@@ -132,6 +138,7 @@ def delete_index():
         db.session.rollback()
         res = fail_res()
     return jsonify(res)
+
 
 @blue_print.route('/update_es_doc', methods=['GET'])
 # @swag_from(update_es_doc_dict)
@@ -168,6 +175,7 @@ def update_es_doc():
         res = fail_res()
     return res
 
+
 @blue_print.route('/pg_insert_es_test', methods=['GET'])
 def pg_insert_test():
     pg_table = request.args.get('pg_table', '')  # 同步数据为entity或者document
@@ -176,8 +184,8 @@ def pg_insert_test():
         es_mapping_dict = {
             "id": "id",
             "name": "ik_keyword",
-            #"synonyms": "ik",
-            #"props": "ik",
+            # "synonyms": "ik",
+            # "props": "ik",
             "summary": "ik",
             "category_id": "id"
         }
@@ -223,6 +231,7 @@ def pg_insert_test():
     print(search_result, flush=True)
     return success_res()
 
+
 @blue_print.route('/entity_update_loaction', methods=['GET'])
 def entity_update_loaction():
     try:
@@ -230,7 +239,7 @@ def entity_update_loaction():
         url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
         header = {"Content-Type": "application/json; charset=UTF-8"}
         for entity in entities:
-            ent_id = entity .id
+            ent_id = entity.id
             ent_location = Entity.get_location_of_entity(ent_id)
             # 获得es对应entity
             search_json = {
@@ -255,5 +264,30 @@ def entity_update_loaction():
     return res
 
 
-
-
+@blue_print.route('/pg_insert_neo4j', methods=['GET'])
+# @swag_from(pg_insert_es_dict)
+def pg_insert_neo4j():
+    try:
+        root_url = f'http://{NEO4J_SERVER_IP}:{NEO4J_SERVER_PORT}'
+        header = {"Content-Type": "application/json"}
+        serve_url = root_url + "/create_node/init_nodes"
+        entities = Entity.query.with_entities(Entity.id, Entity.name, Entity.category_id).filter_by(valid=1).all()
+        batch_size = 20000
+        for i in range(math.ceil(len(entities) / batch_size)):
+            nodes = [{
+                "id": str(i.id),
+                "name": i.name,
+                "category_id": str(i.category_id)
+            } for i in entities if i.id and i.name and i.category_id][i * batch_size:(i + 1) * batch_size]
+            para = {"label": "Entity", "nodes": nodes}
+            search_result = requests.post(url=serve_url, data=json.dumps(para), headers=header)
+            print(search_result.status_code, flush=True)
+            print(search_result.text, flush=True)
+            if search_result.status_code != 200 or not json.loads(search_result.text).get("code", 0):
+                return fail_res(msg="neo4j serve error: {}".format(json.loads(search_result.text).get("msg", "")))
+        res = success_res()
+    except Exception as e:
+        print(str(e))
+        db.session.rollback()
+        res = fail_res()
+    return jsonify(res)

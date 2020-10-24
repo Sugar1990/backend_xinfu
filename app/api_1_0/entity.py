@@ -20,6 +20,7 @@ from .. import db
 from ..conf import ES_SERVER_IP, ES_SERVER_PORT, YC_ROOT_URL, YC_ROOT_URL_PYTHON, PLACE_BASE_NAME, USE_PLACE_SERVER
 from ..models import Entity, EntityCategory, DocMarkPlace, DocMarkEntity
 from .place import get_place_from_base_server
+from ..serve.neo4j_imp import create_node
 
 
 # -*- coding:utf-8 -*-
@@ -110,8 +111,6 @@ def insert_entity():
                             valid=1)
 
             # es 插入操作
-
-
             longitude, latitude = 0, 0
             # 地名实体获取经纬度
             if EntityCategory.get_category_name(category_id) == PLACE_BASE_NAME:
@@ -161,6 +160,9 @@ def insert_entity():
             sync_yc_add_synonyms(synonyms, entity.id, entity.category_id, entity.get_yc_mark_category(), longitude,
                                  latitude)
             # </editor-fold>
+
+            # neo4j同步
+            # create_node(entity.id, entity.name, entity.category_id)
 
             res = success_res(data={"entity_id": entity.id})
         else:
