@@ -17,8 +17,10 @@ def get_doc_mark_time_tag_by_doc_id():
                 "id": doc_mark_time_tag.id,
                 "doc_id": doc_mark_time_tag.doc_id,
                 "word": doc_mark_time_tag.word,
-                "format_date": doc_mark_time_tag.format_date,
-                "format_date_end": doc_mark_time_tag.format_date_end,
+                "format_date": doc_mark_time_tag.format_date.strftime(
+                    '%Y-%m-%d %H:%M:%S') if doc_mark_time_tag.format_date else None,
+                "format_date_end": doc_mark_time_tag.format_date_end.strftime(
+                    '%Y-%m-%d %H:%M:%S') if doc_mark_time_tag.format_date_end else None,
                 "mark_position": doc_mark_time_tag.mark_position,
                 "time_type": doc_mark_time_tag.time_type,
                 "reserve_fields": doc_mark_time_tag.reserve_fields,
@@ -44,8 +46,10 @@ def get_one_doc_mark_time_tag_by_id():
                 "id": doc_mark_time_tag.id,
                 "doc_id": doc_mark_time_tag.doc_id,
                 "word": doc_mark_time_tag.word,
-                "format_date": doc_mark_time_tag.format_date,
-                "format_date_end": doc_mark_time_tag.format_date_end,
+                "format_date": doc_mark_time_tag.format_date.strftime(
+                    '%Y-%m-%d %H:%M:%S') if doc_mark_time_tag.format_date else None,
+                "format_date_end": doc_mark_time_tag.format_date_end.strftime(
+                    '%Y-%m-%d %H:%M:%S') if doc_mark_time_tag.format_date_end else None,
                 "mark_position": doc_mark_time_tag.mark_position,
                 "time_type": doc_mark_time_tag.time_type,
                 "reserve_fields": doc_mark_time_tag.reserve_fields,
