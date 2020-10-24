@@ -20,7 +20,7 @@ from .. import db
 from ..conf import ES_SERVER_IP, ES_SERVER_PORT, YC_ROOT_URL, YC_ROOT_URL_PYTHON, PLACE_BASE_NAME, USE_PLACE_SERVER
 from ..models import Entity, EntityCategory, DocMarkPlace, DocMarkEntity
 from .place import get_place_from_base_server
-from ..serve.neo4j_imp import create_node
+from ..serve.neo4j_imp import create_node, update_node, delete_node
 
 
 # -*- coding:utf-8 -*-
@@ -274,6 +274,9 @@ def update_entity():
 
             search_result = requests.post(url + '/updatebyId', data=json.dumps(update_para), headers=header)
 
+            # neo4j同步
+            # update_node(entity.id, entity.name, entity.category_id)
+
             res = success_res(msg="修改成功")
         else:
             res = fail_res(msg='实体不存在')
@@ -334,6 +337,10 @@ def delete_entity():
             if entity.synonyms:
                 sync_yc_del_synonyms(entity.synonyms, entity.id, entity.get_yc_mark_category())
             # </editor-fold>
+
+            # neo4j同步
+            # delete_node(entity.id)
+
             res = success_res()
         else:
             res = fail_res(msg="实体不存在")
