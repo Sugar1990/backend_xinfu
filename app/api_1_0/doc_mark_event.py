@@ -157,20 +157,23 @@ def add_doc_mark_event():
                                "\"event_type_id\"、\"create_by\"、\"update_by\"应是整数类型")
 
         else:
-            doc_mark_event = DocMarkEvent(event_id=event_id, event_desc=event_desc, event_subject=event_subject,
-                                          event_predicate=event_predicate, event_object=event_object,
-                                          event_time=event_time,
-                                          event_address=event_address, event_why=event_why, event_result=event_result,
-                                          event_conduct=event_conduct, event_talk=event_talk, event_how=event_how,
-                                          doc_id=doc_id,
-                                          customer_id=customer_id, parent_id=parent_id, title=title,
-                                          event_class_id=event_class_id,
-                                          event_type_id=event_type_id, create_by=create_by, create_time=create_time,
-                                          update_by=update_by, update_time=update_time, add_time=add_time,
-                                          valid=1)
-            db.session.add(doc_mark_event)
-            db.session.commit()
-            res = success_res(data={"id": doc_mark_event.id})
+            if event_time and event_address:
+                doc_mark_event = DocMarkEvent(event_id=event_id, event_desc=event_desc, event_subject=event_subject,
+                                              event_predicate=event_predicate, event_object=event_object,
+                                              event_time=event_time,
+                                              event_address=event_address, event_why=event_why, event_result=event_result,
+                                              event_conduct=event_conduct, event_talk=event_talk, event_how=event_how,
+                                              doc_id=doc_id,
+                                              customer_id=customer_id, parent_id=parent_id, title=title,
+                                              event_class_id=event_class_id,
+                                              event_type_id=event_type_id, create_by=create_by, create_time=create_time,
+                                              update_by=update_by, update_time=update_time, add_time=add_time,
+                                              valid=1)
+                db.session.add(doc_mark_event)
+                db.session.commit()
+                res = success_res(data={"id": doc_mark_event.id})
+            else:
+                res = fail_res(msg="事件时间和地点不能为空")
 
     except Exception as e:
         print(str(e))
