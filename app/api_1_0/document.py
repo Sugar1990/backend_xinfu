@@ -15,7 +15,7 @@ from . import api_document as blue_print
 from .utils import success_res, fail_res
 from .. import db, lock
 from ..conf import LEXICON_IP, LEXICON_PORT, SUMMARY_IP, SUMMARY_PORT, YC_ROOT_URL, ES_SERVER_IP, ES_SERVER_PORT, \
-    YC_TAGGING_PAGE_URL
+    YC_TAGGING_PAGE_URL, YC_ROOT_URL_PYTHON, EVENT_EXTRACTION_URL
 from ..models import Document, Entity, Customer, Permission, Catalog, DocMarkEntity, DocMarkPlace, DocMarkTimeTag, \
     DocMarkEvent
 from ..serve.word_parse import extract_word_content
@@ -114,9 +114,9 @@ def upload_doc():
                                 insert_result = requests.post(url + '/dataInsert', data=json.dumps(para),
                                                               headers=header)
 
-                                if YC_ROOT_URL:
+                                if YC_ROOT_URL_PYTHON:
                                     header = {"Content-Type": "application/json; charset=UTF-8"}
-                                    url = YC_ROOT_URL + '/api/mark/result'
+                                    url = YC_ROOT_URL_PYTHON + '/api/mark/result'
                                     new_str = '\r\n'.join(doc.content)
                                     body = {"content": new_str}
 
@@ -128,9 +128,9 @@ def upload_doc():
                                         res_entity = yc_res["entity"]
                                         res_place = yc_res["place"]
                                         res_time = yc_res["time"]
-                                        print("res_entity", res_entity)
-                                        print("res_place", res_place)
-                                        print("res_time", res_time)
+                                        # print("res_entity", res_entity)
+                                        # print("res_place", res_place)
+                                        # print("res_time", res_time)
 
                                         for index, item_entity in enumerate(res_entity):
                                             doc_mark_entity = DocMarkEntity(doc_id=doc.id, valid=1)
@@ -204,7 +204,44 @@ def upload_doc():
 
                                         print("yc_res_event.status_code", yc_res_event.status_code)
                                         # </editor-fold>
+                                        event_res = {}
+                                        event_res['content'] = doc.content
+                                        event_res['result'] = yc_res
 
+                                        # <editor-fold desc="返回event带解析封装接口">
+                                        header = {"Content-Type": "application/json; charset=UTF-8"}
+                                        url = EVENT_EXTRACTION_URL + '/event_extraction'
+
+                                        data = json.dumps(event_res)
+                                        event_extraction_res = requests.post(url=url, data=data, headers=header)
+
+                                        print("event_extraction_res.status_code", event_extraction_res.status_code)
+                                        # </editor-fold>
+                                        if event_extraction_res.status_code in (200, 201):
+                                            for item in event_extraction_res.json()["result"]:
+                                                doc_mark_event = DocMarkEvent(doc_id=doc.id, valid=1)
+                                                if item.get("event_address", []):
+                                                    doc_mark_event.event_address = item["event_address"]
+                                                if item.get("event_class_id", 0):
+                                                    doc_mark_event.event_class_id = item["event_class_id"]
+                                                if item.get("event_desc", ""):
+                                                    doc_mark_event.event_desc = item["event_desc"]
+                                                if item.get("event_object", []):
+                                                    doc_mark_event.event_object = item["event_object"]
+                                                if item.get("event_predicate", ""):
+                                                    doc_mark_event.event_predicate = item["event_predicate"]
+                                                if item.get("event_subject", []):
+                                                    doc_mark_event.event_subject = item["event_subject"]
+                                                if item.get("event_time", []):
+                                                    doc_mark_event.event_time = item["event_time"]
+                                                if item.get("title", ""):
+                                                    doc_mark_event.title = item["title"]
+                                                db.session.add(doc_mark_event)
+                                                db.session.commit()
+                                                print(doc_mark_event.id)
+                                        else:
+                                            res = fail_res(msg="调用event_extraction接口失败")
+                                            return res
                                     else:
                                         res = fail_res(msg="上传成功，但预处理失败")
                                         return res
@@ -328,23 +365,22 @@ def modify_doc_es_doc_type(doc_ids):
 @blue_print.route('/move_doc_to_catalog', methods=['POST'])
 def move_doc_to_catalog():
     catalog_id = request.json.get('catalog_id', 0)
-    doc_id = request.json.get('doc_id', 0)
+    doc_ids = request.json.get('doc_ids', [])
 
     try:
-        if not catalog_id:
-            res = fail_res(msg="请移动到已知目录类型下")
+
+        catalog = Catalog.query.filter_by(id=catalog_id).first()
+        if not catalog:
+            res = fail_res(msg="目标目录不存在")
         else:
-            catalog = Catalog.query.filter_by(id=catalog_id).first()
-            document = Document.query.filter_by(id=doc_id).first()
-            if document and catalog:
-                document_same = Document.query.filter(Document.md5 == document.md5, Document.id != doc_id).first()
-                if document_same:
-                    res = fail_res(msg="目标目录已存在相同文档")
-                else:
-                    move_source_docs_to_target_catalog([document], catalog_id)
+            docs = Document.query.filter(Document.id.in_(doc_ids)).all()
+            if docs:
+                for doc in docs:
+                    document_same = Document.query.filter(Document.md5 == doc.md5, Document.id != doc.id).first()
+                    move_source_docs_to_target_catalog([doc], catalog_id)
                     res = success_res()
             else:
-                res = fail_res(msg="操作对象不存在")
+                res = fail_res(msg="移动文档不存在")
     except Exception as e:
         print(str(e))
         db.session.rollback()
@@ -943,7 +979,7 @@ def search_advanced_doc_type():
                                  notes=notes, doc_type=doc_type, content=content, notes_content=notes_content)
 
         # 组装ids，和结构化数据
-        ids = []
+        doc_ids = []
         data_by_doc_id = {}
         for data in data_screen:
             if not data["name"]:
@@ -952,7 +988,7 @@ def search_advanced_doc_type():
                     data["name"] = doc.name if doc else ""
             if data["name"]:
                 if data.get("id", False):
-                    ids.append(data["id"])
+                    doc_ids.append(data["id"])
                 if data.get("doc_type", False):
                     if data_by_doc_id.get(data["doc_type"], False):
                         data_by_doc_id[data["doc_type"]].append(data)
@@ -966,8 +1002,8 @@ def search_advanced_doc_type():
 
         res = {
             "doc": data_forms,
-            "event_list": get_event_list_from_docs(),
-            "event_list_group_by_entities": get_event_list_from_docs_group_by_entities(),
+            "event_list": get_event_list_from_docs(doc_ids),
+            "event_list_group_by_entities": get_event_list_from_docs_group_by_entities(doc_ids),
         }
 
         '''
@@ -1002,121 +1038,130 @@ def search_advanced_doc_type():
     return jsonify(res)  # doc:原来格式数据 event_list:事件数据
 
 
-def get_event_list_from_docs():
+def get_event_list_from_docs(doc_ids=[]):
     # <editor-fold desc="construct into event_list from docs order by event_time">
     event_list = []
-    events = DocMarkEvent.query.all()
-    for i in events:
-        if i.event_address and isinstance(i.event_address, list):
-            place_ids = DocMarkPlace.query.with_entities(DocMarkPlace.place_id).filter(
-                DocMarkPlace.id.in_(i.event_address)).all()
-            if place_ids:
-                place_ids = [i[0] for i in place_ids]
-                places = Entity.query.filter(Entity.id.in_(place_ids), Entity.valid == 1).all()
-                if places:
-                    objects, subjects, form_time = [], [], ""
+    if doc_ids:
+        events = DocMarkEvent.query.filter(DocMarkEvent.doc_id.in_(doc_ids)).all()
+        for i in events:
+            if i.event_address and isinstance(i.event_address, list):
+                place_ids = DocMarkPlace.query.with_entities(DocMarkPlace.place_id).filter(
+                    DocMarkPlace.id.in_(i.event_address)).all()
+                if place_ids:
+                    place_ids = [i[0] for i in place_ids]
+                    places = Entity.query.filter(Entity.id.in_(place_ids), Entity.valid == 1).all()
+                    if places:
+                        objects, subjects, form_time = [], [], ""
 
-                    if i.event_object and isinstance(i.event_object, list):
-                        object_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_id).filter(
-                            DocMarkEntity.id.in_(i.event_object)).all()
-                        if object_ids:
-                            object_ids = [i[0] for i in object_ids]
-                            objects = Entity.query.filter(Entity.id.in_(object_ids), Entity.valid == 1).all()
+                        if i.event_object and isinstance(i.event_object, list):
+                            object_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_id).filter(
+                                DocMarkEntity.id.in_(i.event_object)).all()
+                            if object_ids:
+                                object_ids = [i[0] for i in object_ids]
+                                objects = Entity.query.filter(Entity.id.in_(object_ids), Entity.valid == 1).all()
 
-                    if i.event_subject and isinstance(i.event_subject, list):
-                        subject_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_id).filter(
-                            DocMarkEntity.id.in_(i.event_subject)).all()
-                        if subject_ids:
-                            subject_ids = [i[0] for i in subject_ids]
-                            subjects = Entity.query.filter(Entity.id.in_(subject_ids), Entity.valid == 1).all()
+                        if i.event_subject and isinstance(i.event_subject, list):
+                            subject_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_id).filter(
+                                DocMarkEntity.id.in_(i.event_subject)).all()
+                            if subject_ids:
+                                subject_ids = [i[0] for i in subject_ids]
+                                subjects = Entity.query.filter(Entity.id.in_(subject_ids), Entity.valid == 1).all()
 
-                    if i.event_time and isinstance(i.event_time, list):
-                        mark_time_ids = i.event_time
-                        times = DocMarkTimeTag.query.with_entities(DocMarkTimeTag.format_date).filter(
-                            DocMarkTimeTag.id.in_(mark_time_ids), DocMarkTimeTag.time_type.in_(['1', '2'])).all()
-                        if times:
-                            form_time = times[0]
+                        # subject和object结合，返回给前端
+                        objects.extend(subjects)
+                        if objects:
+                            if i.event_time and isinstance(i.event_time, list):
+                                mark_time_ids = i.event_time
+                                times = DocMarkTimeTag.query.with_entities(DocMarkTimeTag.format_date).filter(
+                                    DocMarkTimeTag.id.in_(mark_time_ids),
+                                    DocMarkTimeTag.time_type.in_(['1', '2'])).all()
+                                if times:
+                                    form_time = times[0]
 
-                    if form_time:
-                        item = {
-                            "datetime": form_time,
-                            "subject": [i.name for i in subjects],
-                            "place": [{
-                                "place_lat": place.latitude,
-                                "place_lon": place.longitude,
-                                "place_id": place.id,
-                                # "type": 1,
-                                "word": place.name,
-                            } for place in places],
-                            "title": i.title,
-                            "object": [i.name for i in objects]
-                        }
-                        event_list.append(item)
-    # </editor-fold>
-    event_list = sorted(event_list, key=lambda x: x.get('datetime', ''))
+                            if form_time:
+                                item = {
+                                    "datetime": form_time,
+                                    "place": [{
+                                        "place_lat": place.latitude,
+                                        "place_lon": place.longitude,
+                                        "place_id": place.id,
+                                        # "type": 1,
+                                        "word": place.name,
+                                    } for place in places],
+                                    "title": i.title,
+                                    "object": [i.name for i in objects]
+                                }
+                                event_list.append(item)
+        # </editor-fold>
+        event_list = sorted(event_list, key=lambda x: x.get('datetime', ''))
     return event_list
 
 
-def get_event_list_from_docs_group_by_entities():
+def get_event_list_from_docs_group_by_entities(doc_ids=[]):
     # <editor-fold desc="construct into event_list from docs group by subjects & objects order by event_time">
-    event_dict = {}
-    events = DocMarkEvent.query.all()
-    for i in events:
-        if i.event_address and isinstance(i.event_address, list):
-            place_ids = DocMarkPlace.query.with_entities(DocMarkPlace.place_id).filter(
-                DocMarkPlace.id.in_(i.event_address)).all()
-            if place_ids:
-                place_ids = [i[0] for i in place_ids]
-                places = Entity.query.filter(Entity.id.in_(place_ids), Entity.valid == 1).all()
-                if places:
-                    object_ids, subject_ids = [], []
-                    objects, subjects, form_time = [], [], ""
+    event_list = []
+    if doc_ids:
+        event_dict = {}
+        events = DocMarkEvent.query.filter(DocMarkEvent.doc_id.in_(doc_ids)).all()
+        for i in events:
+            if i.event_address and isinstance(i.event_address, list):
+                place_ids = DocMarkPlace.query.with_entities(DocMarkPlace.place_id).filter(
+                    DocMarkPlace.id.in_(i.event_address)).all()
+                if place_ids:
+                    place_ids = [i[0] for i in place_ids]
+                    places = Entity.query.filter(Entity.id.in_(place_ids), Entity.valid == 1).all()
+                    if places:
+                        object_ids, subject_ids = [], []
+                        objects, subjects, form_time = [], [], ""
 
-                    if i.event_object and isinstance(i.event_object, list):
-                        object_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_id).filter(
-                            DocMarkEntity.id.in_(i.event_object)).all()
-                        if object_ids:
-                            object_ids = [i[0] for i in object_ids]
-                            objects = Entity.query.filter(Entity.id.in_(object_ids), Entity.valid == 1).all()
+                        if i.event_object and isinstance(i.event_object, list):
+                            object_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_id).filter(
+                                DocMarkEntity.id.in_(i.event_object)).all()
+                            if object_ids:
+                                object_ids = [i[0] for i in object_ids]
+                                objects = Entity.query.filter(Entity.id.in_(object_ids), Entity.valid == 1).all()
 
-                    if i.event_subject and isinstance(i.event_subject, list):
-                        subject_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_id).filter(
-                            DocMarkEntity.id.in_(i.event_subject)).all()
-                        if subject_ids:
-                            subject_ids = [i[0] for i in subject_ids]
-                            subjects = Entity.query.filter(Entity.id.in_(subject_ids), Entity.valid == 1).all()
+                        if i.event_subject and isinstance(i.event_subject, list):
+                            subject_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_id).filter(
+                                DocMarkEntity.id.in_(i.event_subject)).all()
+                            if subject_ids:
+                                subject_ids = [i[0] for i in subject_ids]
+                                subjects = Entity.query.filter(Entity.id.in_(subject_ids), Entity.valid == 1).all()
 
-                    if i.event_time and isinstance(i.event_time, list):
-                        mark_time_ids = i.event_time
-                        times = DocMarkTimeTag.query.with_entities(DocMarkTimeTag.format_date).filter(
-                            DocMarkTimeTag.id.in_(mark_time_ids), DocMarkTimeTag.time_type.in_(['1', '2'])).all()
-                        if times:
-                            form_time = times[0]
+                        # subject和object结合，返回给前端
+                        objects.extend(subjects)
+                        if objects:
+                            if i.event_time and isinstance(i.event_time, list):
+                                mark_time_ids = i.event_time
+                                times = DocMarkTimeTag.query.with_entities(DocMarkTimeTag.format_date).filter(
+                                    DocMarkTimeTag.id.in_(mark_time_ids),
+                                    DocMarkTimeTag.time_type.in_(['1', '2'])).all()
+                                if times:
+                                    form_time = times[0]
 
-                    if object_ids + subject_ids and form_time:
-                        # 确立时间线的key值
-                        timeline_key = ",".join([str(i) for i in sorted(list(set(object_ids + subject_ids)))])
+                            if object_ids + subject_ids and form_time:
+                                # 确立时间线的key值
+                                timeline_key = ",".join([str(i) for i in sorted(list(set(object_ids + subject_ids)))])
 
-                        item = {
-                            "datetime": form_time,
-                            "subject": [i.name for i in subjects],
-                            "place": [{
-                                "place_lat": place.latitude,
-                                "place_lon": place.longitude,
-                                "place_id": place.id,
-                                # "type": 1,
-                                "word": place.name,
-                            } for place in places],
-                            "title": i.title,
-                            "object": [i.name for i in objects]
-                        }
+                                item = {
+                                    "datetime": form_time,
+                                    "place": [{
+                                        "place_lat": place.latitude,
+                                        "place_lon": place.longitude,
+                                        "place_id": place.id,
+                                        # "type": 1,
+                                        "word": place.name,
+                                    } for place in places],
+                                    "title": i.title,
+                                    "object": [i.name for i in objects]
+                                }
 
-                        if event_dict.get(timeline_key, []):
-                            event_dict[timeline_key].append(item)
-                        else:
-                            event_dict[timeline_key] = [item]
-    # </editor-fold>
-    event_list = [sorted(i, key=lambda x: x.get('datetime', '')) for i in event_dict.values()]
+                                if event_dict.get(timeline_key, []):
+                                    event_dict[timeline_key].append(item)
+                                else:
+                                    event_dict[timeline_key] = [item]
+        # </editor-fold>
+        event_list = [sorted(i, key=lambda x: x.get('datetime', '')) for i in event_dict.values()]
     return event_list
 
 

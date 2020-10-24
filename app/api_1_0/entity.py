@@ -749,6 +749,7 @@ def get_search_panigation_es(search='', page_size=10, cur_page=1, category_id=0)
                      'synonyms': entity['_source'].get('synonyms', []),
                      'summary': entity['_source'].get('summary', ""),
                      'category': EntityCategory.get_category_name(entity['_source'].get('category_id', 0)),
+                     'category_id': entity['_source'].get('category_id', 0),
                      "longitude": entity['_source'].get('longitude', []),
                      "latitude": entity['_source'].get('latitude', [])
                      } for entity in search_result.json()['data']['dataList']]
