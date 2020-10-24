@@ -3,6 +3,8 @@ import datetime
 import hashlib
 import json
 import os
+import time
+
 import requests
 # from flasgger import swag_from
 from flask import jsonify, request
@@ -93,27 +95,6 @@ def upload_doc():
                                 db.session.add(doc)
                                 db.session.commit()
 
-                                # 抽取id、name、content插入es数据库中
-                                data_insert_json = [{
-                                    "id": doc.id,
-                                    "name": doc.name,
-                                    "content": doc.content,
-                                    "create_time": datetime_now.isoformat(),
-                                    "keywords": doc.keywords
-                                }]
-                                an_catalog = Catalog.get_ancestorn_catalog(catalog_id)
-                                doc_type_id = an_catalog.id if an_catalog else 0
-                                if doc_type_id:
-                                    data_insert_json[0]["doc_type"] = doc_type_id
-
-                                url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
-                                header = {"Content-Type": "application/json; charset=UTF-8"}
-                                para = {"data_insert_index": "document",
-                                        "data_insert_json": data_insert_json}
-
-                                insert_result = requests.post(url + '/dataInsert', data=json.dumps(para),
-                                                              headers=header)
-
                                 if YC_ROOT_URL_PYTHON:
 
                                     header = {"Content-Type": "application/json; charset=UTF-8"}
@@ -123,7 +104,7 @@ def upload_doc():
 
                                     data = json.dumps(body)
                                     yc_res = requests.post(url=url, data=data, headers=header)
-
+                                    print("yc_res.status_code", yc_res.status_code)
                                     if yc_res.status_code in (200, 201):
                                         yc_res = yc_res.json()['data']
                                         res_entity = yc_res["entity"]
@@ -133,12 +114,18 @@ def upload_doc():
                                         # print("res_place", res_place)
                                         # print("res_time", res_time)
 
+                                        data_insert_entity = []
                                         for index, item_entity in enumerate(res_entity):
+                                            entity_json = {}
                                             doc_mark_entity = DocMarkEntity(doc_id=doc.id, valid=1)
                                             if item_entity.get("word", ""):
                                                 doc_mark_entity.word = item_entity["word"]
+                                                entity_json["name"] = item_entity["word"]
                                             if item_entity.get("entity_id", 0):
                                                 doc_mark_entity.entity_id = item_entity["entity_id"]
+                                            if item_entity.get("entity_type_id", 0):
+                                                doc_mark_entity.entity_type_id = item_entity["entity_type_id"]
+                                                entity_json["category_id"] = item_entity["entity_type_id"]
                                             if item_entity.get("word_count", ""):
                                                 word_count_list = list(item_entity["word_count"].split(','))
                                                 doc_mark_entity.appear_index_in_text = word_count_list
@@ -146,20 +133,28 @@ def upload_doc():
                                             db.session.add(doc_mark_entity)
                                             db.session.commit()
                                             item_entity["doc_mark_id"] = doc_mark_entity.id
+                                            data_insert_entity.append(entity_json)
                                         # print("doc_mark_entity数据插入成功")
 
+                                        data_insert_place = []
+                                        data_insert_location = []
                                         for index, item_place in enumerate(res_place):
+                                            place_json = {}
+                                            location_json = {}
                                             doc_mark_place = DocMarkPlace(doc_id=doc.id, valid=1)
                                             if item_place.get("word", ""):
                                                 doc_mark_place.word = item_place["word"]
+                                                place_json["word"] = item_place["word"]
                                             if item_place.get("type", 0):
                                                 doc_mark_place.type = item_place["type"]
                                             if item_place.get("place_id", 0):
                                                 doc_mark_place.place_id = item_place["place_id"]
                                             if item_place.get("place_lon", ""):
                                                 doc_mark_place.place_lon = item_place["place_lon"]
+                                                location_json["lon"] = item_place["place_lon"]
                                             if item_place.get("place_lat", ""):
                                                 doc_mark_place.place_lat = item_place["place_lat"]
+                                                location_json["lat"] = item_place["place_lat"]
                                             if item_place.get("word_count", ""):
                                                 word_count_list = list(item_entity["word_count"].split(','))
                                                 doc_mark_place.appear_index_in_text = word_count_list
@@ -167,9 +162,16 @@ def upload_doc():
                                             db.session.add(doc_mark_place)
                                             db.session.commit()
                                             item_place["doc_mark_id"] = doc_mark_place.id
+
+                                            data_insert_place.append(place_json)
+                                            data_insert_location.append(location_json)
                                         # print("doc_mark_place数据插入成功")
 
+                                        data_insert_date = []
+                                        data_insert_time_range = []
+                                        data_insert_time_period = []
                                         for index, item_time in enumerate(res_time):
+                                            time_range_json = {}
                                             doc_mark_time_tag = DocMarkTimeTag(doc_id=doc.id, valid=1)
                                             if item_time.get("time_type", 0):
                                                 doc_mark_time_tag.time_type = item_time["time_type"]
@@ -177,13 +179,27 @@ def upload_doc():
                                                 doc_mark_time_tag.word = item_time["word"]
                                             if item_time.get("format_date", ""):
                                                 doc_mark_time_tag.format_date = item_time["format_date"]
-                                            # if item_time.get("format_date_end", ""):
-                                            #     doc_mark_time_tag.format_date_end = item_time["format_date_end"]
+                                            if item_time.get("format_date_end", ""):
+                                                doc_mark_time_tag.format_date_end = item_time["format_date_end"]
                                             if item_time.get("arab_time", ""):
                                                 doc_mark_time_tag.arab_time = item_time["arab_time"]
+                                                data_insert_time_period.append(item_time["arab_time"])
                                             if item_time.get("word_count", ""):
                                                 word_count_list = list(item_time["word_count"].split(','))
                                                 doc_mark_time_tag.appear_index_in_text = word_count_list
+                                            if item_time["format_date"] and item_time["format_date_end"]:
+                                                start_time = time.strptime(item_time["format_date"], "%Y-%m-%d %H:%M:%S")
+                                                start_time = int(time.mktime(start_time))
+                                                end_time = time.strptime(item_time["format_date_end"], "%Y-%m-%d %H:%M:%S")
+                                                end_time = int(time.mktime(end_time))
+                                                time_range_json["start_time"] = start_time
+                                                time_range_json["end_time"] = end_time
+                                                data_insert_time_range.append(time_range_json)
+                                            if not item_time["format_date_end"] and item_time["format_date"]:
+                                                start_time = time.strptime(item_time["format_date"], "%Y-%m-%d %H:%M:%S")
+                                                start_time = int(time.mktime(start_time))
+                                                data_insert_date.append(start_time)
+
 
                                             db.session.add(doc_mark_time_tag)
                                             db.session.commit()
@@ -210,12 +226,19 @@ def upload_doc():
                                         print("event_extraction_res.status_code", event_extraction_res.status_code)
 
                                         if event_extraction_res.status_code in (200, 201):
+                                            data_insert_event = []
+
                                             for item in event_extraction_res.json()["result"]:
+                                                event_json = {}
                                                 doc_mark_event = DocMarkEvent(doc_id=doc.id, valid=1)
                                                 if item.get("event_address", []):
                                                     doc_mark_event.event_address = item["event_address"]
                                                 if item.get("event_class_id", 0):
                                                     doc_mark_event.event_class_id = item["event_class_id"]
+                                                    event_json["event_class_id"] = item["event_class_id"]
+                                                if item.get("event_category_id", 0):
+                                                    doc_mark_event.event_type_id = item["event_category_id"]
+                                                    event_json["category_id"] = item["event_category_id"]
                                                 if item.get("event_desc", ""):
                                                     doc_mark_event.event_desc = item["event_desc"]
                                                 if item.get("event_object", []):
@@ -233,6 +256,7 @@ def upload_doc():
                                                 print(doc_mark_event.id)
 
                                                 event_id_list.append(doc_mark_event.id)
+                                                data_insert_event.append(event_json)
                                         else:
                                             res = fail_res(msg="调用event_extraction接口失败")
                                             return res
@@ -251,6 +275,34 @@ def upload_doc():
                                     else:
                                         res = fail_res(msg="上传成功，但预处理失败")
                                         return res
+
+                                # 抽取id、name、content插入es数据库中
+                                data_insert_json = [{
+                                    "id": doc.id,
+                                    "name": doc.name,
+                                    "content": doc.content,
+                                    "create_time": datetime_now.isoformat(),
+                                    "keywords": doc.keywords,
+                                    "date": data_insert_date,
+                                    "time_range": data_insert_time_range,
+                                    "time_period": data_insert_time_period,
+                                    "place": data_insert_place,
+                                    "location": data_insert_location,
+                                    "entities": data_insert_entity,
+                                    "event_categories": data_insert_event
+                                }]
+                                an_catalog = Catalog.get_ancestorn_catalog(catalog_id)
+                                doc_type_id = an_catalog.id if an_catalog else 0
+                                if doc_type_id:
+                                    data_insert_json[0]["doc_type"] = doc_type_id
+
+                                url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+                                header = {"Content-Type": "application/json; charset=UTF-8"}
+                                para = {"data_insert_index": "document",
+                                        "data_insert_json": data_insert_json}
+
+                                insert_result = requests.post(url + '/dataInsert', data=json.dumps(para),
+                                                              headers=header)
 
                                 url = YC_TAGGING_PAGE_URL + "?doc_id={0}&uid={1}".format(doc.id, uid)
                                 doc_power = doc.get_power() if doc else 0
