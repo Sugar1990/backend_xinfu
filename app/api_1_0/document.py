@@ -115,6 +115,7 @@ def upload_doc():
                                                               headers=header)
 
                                 if YC_ROOT_URL_PYTHON:
+
                                     header = {"Content-Type": "application/json; charset=UTF-8"}
                                     url = YC_ROOT_URL_PYTHON + '/api/mark/result'
                                     new_str = '\r\n'.join(doc.content)
@@ -194,21 +195,12 @@ def upload_doc():
 
                                         print("yc_res: ", yc_res)
 
-                                        # <editor-fold desc="调用yc文档预处理接口,eventIds暂时为空列表">
-                                        eventIds = []
-                                        header = {"Content-Type": "application/json; charset=UTF-8"}
-                                        url = YC_ROOT_URL + '/doc/preprocess'
-                                        body = {"docId": doc.id, "eventIds": eventIds}
-                                        data = json.dumps(body)
-                                        yc_res_event = requests.post(url=url, data=data, headers=header)
 
-                                        print("yc_res_event.status_code", yc_res_event.status_code)
-                                        # </editor-fold>
+                                        # <editor-fold desc="返回event带解析封装接口">
+                                        event_id_list = []
                                         event_res = {}
                                         event_res['content'] = doc.content
                                         event_res['result'] = yc_res
-
-                                        # <editor-fold desc="返回event带解析封装接口">
                                         header = {"Content-Type": "application/json; charset=UTF-8"}
                                         url = EVENT_EXTRACTION_URL + '/event_extraction'
 
@@ -216,7 +208,7 @@ def upload_doc():
                                         event_extraction_res = requests.post(url=url, data=data, headers=header)
 
                                         print("event_extraction_res.status_code", event_extraction_res.status_code)
-                                        # </editor-fold>
+
                                         if event_extraction_res.status_code in (200, 201):
                                             for item in event_extraction_res.json()["result"]:
                                                 doc_mark_event = DocMarkEvent(doc_id=doc.id, valid=1)
@@ -239,9 +231,23 @@ def upload_doc():
                                                 db.session.add(doc_mark_event)
                                                 db.session.commit()
                                                 print(doc_mark_event.id)
+
+                                                event_id_list.append(doc_mark_event.id)
                                         else:
                                             res = fail_res(msg="调用event_extraction接口失败")
                                             return res
+                                        # </editor-fold>
+
+                                        # <editor-fold desc="调用yc文档预处理接口,eventIds暂时为空列表">
+                                        eventIds = event_id_list
+                                        header = {"Content-Type": "application/json; charset=UTF-8"}
+                                        url = YC_ROOT_URL + '/doc/preprocess'
+                                        body = {"docId": doc.id, "eventIds": eventIds}
+                                        data = json.dumps(body)
+                                        yc_res_event = requests.post(url=url, data=data, headers=header)
+
+                                        print("yc_res_event.status_code", yc_res_event.status_code)
+                                        # </editor-fold>
                                     else:
                                         res = fail_res(msg="上传成功，但预处理失败")
                                         return res
