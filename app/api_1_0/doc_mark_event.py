@@ -8,6 +8,7 @@ from . import api_doc_mark_event as blue_print
 from ..models import DocMarkEvent, DocMarkTimeTag, DocMarkEntity, DocMarkPlace
 from .. import db
 from .utils import success_res, fail_res
+from .document import get_event_list_from_docs
 
 
 # doc_mark_event表中删除了parent_name字段，保留了parent_id字段
@@ -163,7 +164,8 @@ def add_doc_mark_event():
                 doc_mark_event = DocMarkEvent(event_id=event_id, event_desc=event_desc, event_subject=event_subject,
                                               event_predicate=event_predicate, event_object=event_object,
                                               event_time=event_time,
-                                              event_address=event_address, event_why=event_why, event_result=event_result,
+                                              event_address=event_address, event_why=event_why,
+                                              event_result=event_result,
                                               event_conduct=event_conduct, event_talk=event_talk, event_how=event_how,
                                               doc_id=doc_id,
                                               customer_id=customer_id, parent_id=parent_id, title=title,
@@ -392,4 +394,18 @@ def search_doc_mark_event_by_sources():
             "data": [],
             "cur_page": 1})
 
+    return jsonify(res)
+
+
+# 高级搜索结果doc_ids和时间 筛选事件
+@blue_print.route('/get_events_by_doc_ids_and_time_range', methods=['POST'])
+def get_events_by_doc_ids_and_time_range():
+    try:
+        doc_ids = request.json.get('doc_ids', [])
+        start_date = request.json.get('start_date', '1900-01-01')
+        end_date = request.json.get('end_date', '9999-12-31')
+        res = get_event_list_from_docs(doc_ids, start_date, end_date)
+    except Exception as e:
+        print(str(e))
+        res = []
     return jsonify(res)

@@ -9,7 +9,7 @@ import requests
 # from flasgger import swag_from
 from flask import jsonify, request
 from pypinyin import lazy_pinyin
-from sqlalchemy import or_
+from sqlalchemy import or_, and_
 from werkzeug.utils import secure_filename
 import math
 # from app.swagger.document_dict import *
@@ -188,18 +188,20 @@ def upload_doc():
                                                 word_count_list = list(item_time["word_count"].split(','))
                                                 doc_mark_time_tag.appear_index_in_text = word_count_list
                                             if item_time["format_date"] and item_time["format_date_end"]:
-                                                start_time = time.strptime(item_time["format_date"], "%Y-%m-%d %H:%M:%S")
+                                                start_time = time.strptime(item_time["format_date"],
+                                                                           "%Y-%m-%d %H:%M:%S")
                                                 start_time = int(time.mktime(start_time))
-                                                end_time = time.strptime(item_time["format_date_end"], "%Y-%m-%d %H:%M:%S")
+                                                end_time = time.strptime(item_time["format_date_end"],
+                                                                         "%Y-%m-%d %H:%M:%S")
                                                 end_time = int(time.mktime(end_time))
                                                 time_range_json["start_time"] = start_time
                                                 time_range_json["end_time"] = end_time
                                                 data_insert_time_range.append(time_range_json)
                                             if not item_time["format_date_end"] and item_time["format_date"]:
-                                                start_time = time.strptime(item_time["format_date"], "%Y-%m-%d %H:%M:%S")
+                                                start_time = time.strptime(item_time["format_date"],
+                                                                           "%Y-%m-%d %H:%M:%S")
                                                 start_time = int(time.mktime(start_time))
                                                 data_insert_date.append(start_time)
-
 
                                             db.session.add(doc_mark_time_tag)
                                             db.session.commit()
@@ -210,7 +212,6 @@ def upload_doc():
                                         db.session.commit()
 
                                         print("yc_res: ", yc_res)
-
 
                                         # <editor-fold desc="返回event带解析封装接口">
                                         event_id_list = []
@@ -1097,7 +1098,7 @@ def search_advanced_doc_type():
     return jsonify(res)  # doc:原来格式数据 event_list:事件数据
 
 
-def get_event_list_from_docs(doc_ids=[]):
+def get_event_list_from_docs(doc_ids=[], start_date='1900-01-01', end_date='9999-12-31'):
     # <editor-fold desc="construct into event_list from docs order by event_time">
     event_list = []
     if doc_ids:
@@ -1133,24 +1134,26 @@ def get_event_list_from_docs(doc_ids=[]):
                                 mark_time_ids = i.event_time
                                 times = DocMarkTimeTag.query.with_entities(DocMarkTimeTag.format_date).filter(
                                     DocMarkTimeTag.id.in_(mark_time_ids),
-                                    DocMarkTimeTag.time_type.in_(['1', '2'])).all()
-                                if times:
-                                    form_time = times[0]
-
-                            if form_time:
-                                item = {
-                                    "datetime": form_time,
-                                    "place": [{
-                                        "place_lat": place.latitude,
-                                        "place_lon": place.longitude,
-                                        "place_id": place.id,
-                                        # "type": 1,
-                                        "word": place.name,
-                                    } for place in places],
-                                    "title": i.title,
-                                    "object": [i.name for i in objects]
-                                }
-                                event_list.append(item)
+                                    or_(and_(DocMarkTimeTag.format_date.between(start_date, end_date),
+                                             DocMarkTimeTag.time_type == 1),
+                                        and_(DocMarkTimeTag.format_date > start_date,
+                                             DocMarkTimeTag.format_date_end < end_date,
+                                             DocMarkTimeTag.time_type == 2))
+                                ).all()
+                                for time_tag in times:
+                                    item = {
+                                        "datetime": time_tag.format_date,
+                                        "place": [{
+                                            "place_lat": place.latitude,
+                                            "place_lon": place.longitude,
+                                            "place_id": place.id,
+                                            # "type": 1,
+                                            "word": place.name,
+                                        } for place in places],
+                                        "title": i.title,
+                                        "object": [i.name for i in objects]
+                                    }
+                                    event_list.append(item)
         # </editor-fold>
         event_list = sorted(event_list, key=lambda x: x.get('datetime', ''))
     return event_list
@@ -1224,7 +1227,6 @@ def get_event_list_from_docs_group_by_entities(doc_ids=[]):
     return event_list
 
 
-
 # 高级搜索结果doc_ids 筛选事件
 @blue_print.route('/screen_event_by_time_range', methods=['POST'])
 def get_event_list_by_time_range():
@@ -1273,7 +1275,6 @@ def get_event_list_by_time_range():
                                     except:
                                         print("No_end_time")
 
-
                             if form_time:
                                 if not start_date - end_time > 0 or end_date - form_time < 0:
                                     item = {
@@ -1292,6 +1293,7 @@ def get_event_list_by_time_range():
         # </editor-fold>
         event_list = sorted(event_list, key=lambda x: x.get('datetime', ''))
     return event_list
+
 
 # 高级搜索分页展示
 @blue_print.route('/search_advanced_pagination', methods=['POST'])
