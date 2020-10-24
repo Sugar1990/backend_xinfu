@@ -22,6 +22,16 @@ class Entity(db.Model):
         conf = EntityCategory.query.filter_by(id=self.category_id).first()
         return conf.name if conf else ""
 
+    @staticmethod
+    def get_location_of_entity(entity_id):
+        entity = Entity.query.filter_by(id=entity_id).first()
+        if entity:
+            if entity.longitude and entity.longitude:
+                return {"lon": float(format(entity.longitude,".5f")), "lat": float(format(entity.latitude,".5f"))}
+            else:
+                return {}
+        else:
+            return {}
     def get_yc_mark_category(self):
         mark_category = "ner"
         if self.category_id == EntityCategory.get_category_id(PLACE_BASE_NAME):
