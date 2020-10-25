@@ -99,6 +99,9 @@ def insert_entity():
         # if category.name == PLACE_BASE_NAME:
         #     res = fail_res(msg="地名库由专业团队维护,不能添加！")
         #     return jsonify(res)
+        if not name:
+            res = fail_res(msg="实体名称不能为空，添加失败！")
+            return jsonify(res)
 
         entity = Entity.query.filter(Entity.name == name, Entity.valid == 1,
                                      Entity.category_id == category_id).first()
@@ -185,6 +188,15 @@ def update_entity():
         synonyms = request.json.get('synonyms', [])
         summary = request.json.get('summary', '')
         sync = request.json.get('sync', 1)
+
+        category = EntityCategory.query.filter_by(id=category_id, valid=1).first()
+        if not category:
+            res = fail_res(msg="实体类型不存在，修改失败！")
+            return jsonify(res)
+
+        if not name:
+            res = fail_res(msg="实体名称不能为空，修改失败！")
+            return jsonify(res)
 
         # if category_id == EntityCategory.get_category_id(PLACE_BASE_NAME):
         #     res = fail_res(msg="地名库由专业团队维护,不能修改！")
