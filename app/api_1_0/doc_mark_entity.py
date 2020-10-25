@@ -30,6 +30,7 @@ def get_doc_mark_entity_by_id():
                 "update_by": doc_mark_entity.update_by,
                 "update_time": doc_mark_entity.update_time.strftime(
                     "%Y-%m-%d %H:%M:%S") if doc_mark_entity.update_time else None,
+                "entity_type_id": doc_mark_entity.entity_type_id,
                 "appear_index_in_text": doc_mark_entity.appear_index_in_text
             })
         else:
@@ -47,6 +48,7 @@ def get_doc_mark_entity_by_id():
             "create_time": None,
             "update_by": -1,
             "update_time": None,
+            "entity_type_id": -1,
             "appear_index_in_text": []
         })
 
@@ -70,6 +72,7 @@ def get_doc_mark_entity_by_doc_id():
             "create_time": i.create_time.strftime("%Y-%m-%d %H:%M:%S") if i.create_time else None,
             "update_by": i.create_by,
             "update_time": i.update_time.strftime("%Y-%m-%d %H:%M:%S") if i.update_time else None,
+            "entity_type_id": i.entity_type_id,
             "appear_index_in_text": i.appear_index_in_text
         } for i in doc_mark_entity_list])
 
@@ -92,12 +95,13 @@ def add_doc_mark_entity():
         create_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         update_by = request.json.get("update_by", 0)
         update_time = request.json.get("update_time", None)
+        entity_type_id = request.json.get("entity_type_id", 0)
         appear_index_in_text = request.json.get("appear_index_in_text", [])
 
         if not (isinstance(doc_id, int) and isinstance(entity_id, int) and isinstance(source, int)
-                and isinstance(create_by, int) and isinstance(update_by, int)):
+                and isinstance(create_by, int) and isinstance(update_by, int) and isinstance(entity_type_id, int)):
             res = fail_res(msg="参数 \"doc_id\"、 \"entity_id\"、\"source\"、\"create_by\"、"
-                               "\"update_by\"应是整数类型")
+                               "\"update_by\"和\"entity_type_id\"应是整数类型")
 
         else:
             doc_mark_entity_same = DocMarkEntity.query.filter_by(doc_id=doc_id, word=word,
@@ -108,13 +112,15 @@ def add_doc_mark_entity():
                 doc_mark_entity = DocMarkEntity(doc_id=doc_id, word=word, entity_id=entity_id, source=source,
                                                 create_by=create_by, create_time=create_time,
                                                 update_by=update_by, update_time=update_time,
-                                                appear_index_in_text=appear_index_in_text, valid=1)
+                                                entity_type_id=entity_type_id, appear_index_in_text=appear_index_in_text,
+                                                valid=1)
                 db.session.add(doc_mark_entity)
                 db.session.commit()
                 res = success_res(data={"id": doc_mark_entity.id})
 
     except Exception as e:
         print(str(e))
+        db.session.rollback()
         res = fail_res()
 
     return jsonify(res)
@@ -133,11 +139,13 @@ def modify_doc_mark_entity():
         create_time = request.json.get("create_time", None)
         update_by = request.json.get("update_by", 0)
         update_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+        entity_type_id = request.json.get("entity_type_id", 0)
         appear_index_in_text = request.json.get("appear_index_in_text", [])
 
         if not (isinstance(id, int) and isinstance(doc_id, int) and isinstance(entity_id, int)
-                and isinstance(source, int) and isinstance(create_by, int) and isinstance(update_by, int)):
-            res = fail_res(msg="参数 \"id\"、\"doc_id\"、\"entity_id\"、\"source\"、\"create_by\"、\"update_by\"应是整数类型")
+                and isinstance(source, int) and isinstance(create_by, int) and isinstance(update_by, int)
+                and isinstance(entity_type_id, 0)):
+            res = fail_res(msg="参数 \"id\"、\"doc_id\"、\"entity_id\"、\"source\"、\"create_by\"、\"update_by\"和\"entity_type_id\"应是整数类型")
 
         else:
             doc_mark_entity_same = DocMarkEntity.query.filter_by(doc_id=doc_id, word=word,
@@ -163,6 +171,8 @@ def modify_doc_mark_entity():
                         doc_mark_entity.update_by = update_by
                     if update_time:
                         doc_mark_entity.update_time = update_time
+                    if entity_type_id:
+                        doc_mark_entity.entity_type_id = entity_type_id
                     if appear_index_in_text:
                         doc_mark_entity.appear_index_in_text = appear_index_in_text
                     db.session.commit()
@@ -172,6 +182,7 @@ def modify_doc_mark_entity():
 
     except Exception as e:
         print(str(e))
+        db.session.rollback()
         res = fail_res()
 
     return jsonify(res)
@@ -194,6 +205,7 @@ def delete_doc_mark_entity_by_id():
 
     except Exception as e:
         print(str(e))
+        db.session.rollback()
         res = fail_res()
 
     return jsonify(res)
