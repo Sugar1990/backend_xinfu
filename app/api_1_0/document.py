@@ -124,7 +124,6 @@ def upload_doc():
                                             if item_entity.get("entity_id", 0):
                                                 doc_mark_entity.entity_id = item_entity["entity_id"]
                                             if item_entity.get("entity_type_id", 0):
-                                                doc_mark_entity.entity_type_id = item_entity["entity_type_id"]
                                                 entity_json["category_id"] = item_entity["entity_type_id"]
                                             if item_entity.get("word_count", ""):
                                                 word_count_list = list(item_entity["word_count"].split(','))
