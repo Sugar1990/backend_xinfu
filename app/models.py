@@ -23,6 +23,11 @@ class Entity(db.Model):
         return conf.name if conf else ""
 
     @staticmethod
+    def get_category_id(entity_id):
+        conf = Entity.query.filter_by(id=entity_id).first()
+        return conf.category_id if conf else -1
+
+    @staticmethod
     def get_location_of_entity(entity_id):
         entity = Entity.query.filter_by(id=entity_id).first()
         if entity:
@@ -309,9 +314,6 @@ class DocMarkEntity(db.Model):
     create_time = db.Column(db.TIMESTAMP)
     update_by = db.Column(db.Integer)
     update_time = db.Column(db.TIMESTAMP)
-    # paragraph_index = db.Column(db.Integer)
-    # appear_text = db.Column(db.String)
-    entity_type_id = db.Column(db.Integer)
     appear_index_in_text = db.Column(db.JSON)
     valid = db.Column(db.Integer)
 
