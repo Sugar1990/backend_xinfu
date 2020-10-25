@@ -6,7 +6,7 @@
 
 from flask import jsonify, request
 from . import api_doc_mark_relation_property as blue_print
-from ..models import DocMarkRelationProperty
+from ..models import DocMarkRelationProperty, Entity
 from .. import db
 from .utils import success_res, fail_res
 
@@ -95,21 +95,26 @@ def add_doc_mark_relation_property():
         end_type = request.json.get('end_type', '')
         source_entity_id = request.json.get("source_entity_id", 0)
         target_entity_id = request.json.get("target_entity_id", 0)
-        doc_mark_relation_property = DocMarkRelationProperty(
-            doc_id=doc_id,
-            nid=nid,
-            relation_id=relation_id,
-            relation_name=relation_name,
-            start_time=start_time,
-            start_type=start_type,
-            end_time=end_time,
-            end_type=end_type,
-            source_entity_id=source_entity_id,
-            target_entity_id=target_entity_id,
-            valid=1)
-        db.session.add(doc_mark_relation_property)
-        db.session.commit()
-        res = success_res(data={"id": doc_mark_relation_property.id})
+        source_entity = Entity.query.filter_by(id=source_entity_id, valid=1).first()
+        target_entity = Entity.query.filter_by(id=target_entity_id, valid=1).first()
+        if source_entity and target_entity:
+            doc_mark_relation_property = DocMarkRelationProperty(
+                doc_id=doc_id,
+                nid=nid,
+                relation_id=relation_id,
+                relation_name=relation_name,
+                start_time=start_time,
+                start_type=start_type,
+                end_time=end_time,
+                end_type=end_type,
+                source_entity_id=source_entity_id,
+                target_entity_id=target_entity_id,
+                valid=1)
+            db.session.add(doc_mark_relation_property)
+            db.session.commit()
+            res = success_res(data={"id": doc_mark_relation_property.id})
+        else:
+            res = fail_res(msg="关联实体不存在")
     except Exception as e:
         print(str(e))
         db.session.rollback()
@@ -132,36 +137,42 @@ def modify_doc_mark_relation_property():
         end_type = request.json.get('end_type', '')
         source_entity_id = request.json.get("source_entity_id", 0)
         target_entity_id = request.json.get("target_entity_id", 0)
-        if isinstance(doc_mark_relation_property_id, int):
-            doc_mark_place_expand = DocMarkRelationProperty.query.filter_by(id=doc_mark_relation_property_id,
-                                                                            valid=1).first()
-            if doc_mark_place_expand:
-                if doc_id:
-                    doc_mark_place_expand.doc_id = doc_id
-                if nid:
-                    doc_mark_place_expand.nid = nid
-                if relation_id:
-                    doc_mark_place_expand.relation_id = relation_id
-                if relation_name:
-                    doc_mark_place_expand.relation_name = relation_name
-                if start_time:
-                    doc_mark_place_expand.start_time = start_time
-                if start_type:
-                    doc_mark_place_expand.start_type = start_type
-                if end_time:
-                    doc_mark_place_expand.end_time = end_time
-                if end_type:
-                    doc_mark_place_expand.end_type = end_type
-                if source_entity_id:
-                    doc_mark_place_expand.source_entity_id = source_entity_id
-                if target_entity_id:
-                    doc_mark_place_expand.source_entity_id = target_entity_id
-                db.session.commit()
-                res = success_res()
+
+        source_entity = Entity.query.filter_by(id=source_entity_id, valid=1).first()
+        target_entity = Entity.query.filter_by(id=target_entity_id, valid=1).first()
+        if source_entity and target_entity:
+            if isinstance(doc_mark_relation_property_id, int):
+                doc_mark_place_expand = DocMarkRelationProperty.query.filter_by(id=doc_mark_relation_property_id,
+                                                                                valid=1).first()
+                if doc_mark_place_expand:
+                    if doc_id:
+                        doc_mark_place_expand.doc_id = doc_id
+                    if nid:
+                        doc_mark_place_expand.nid = nid
+                    if relation_id:
+                        doc_mark_place_expand.relation_id = relation_id
+                    if relation_name:
+                        doc_mark_place_expand.relation_name = relation_name
+                    if start_time:
+                        doc_mark_place_expand.start_time = start_time
+                    if start_type:
+                        doc_mark_place_expand.start_type = start_type
+                    if end_time:
+                        doc_mark_place_expand.end_time = end_time
+                    if end_type:
+                        doc_mark_place_expand.end_type = end_type
+                    if source_entity_id:
+                        doc_mark_place_expand.source_entity_id = source_entity_id
+                    if target_entity_id:
+                        doc_mark_place_expand.source_entity_id = target_entity_id
+                    db.session.commit()
+                    res = success_res()
+                else:
+                    res = fail_res(msg="id不存在!")
             else:
-                res = fail_res(msg="id不存在!")
+                res = fail_res("paramter \"id\" is not int type")
         else:
-            res = fail_res("paramter \"id\" is not int type")
+            res = fail_res(msg="关联实体不存在")
     except Exception as e:
         print(str(e))
         db.session.rollback()
