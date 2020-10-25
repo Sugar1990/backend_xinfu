@@ -3,7 +3,7 @@ from flask import jsonify, request
 from sqlalchemy import or_, and_
 
 from . import api_doc_mark_entity as blue_print
-from ..models import DocMarkEntity
+from ..models import DocMarkEntity, Entity
 from .. import db
 from .utils import success_res, fail_res
 import time
@@ -30,6 +30,7 @@ def get_doc_mark_entity_by_id():
                 "update_by": doc_mark_entity.update_by,
                 "update_time": doc_mark_entity.update_time.strftime(
                     "%Y-%m-%d %H:%M:%S") if doc_mark_entity.update_time else None,
+                "entity_type_id": Entity.get_category_id(doc_mark_entity.entity_id),
                 "appear_index_in_text": doc_mark_entity.appear_index_in_text
             })
         else:
@@ -47,6 +48,7 @@ def get_doc_mark_entity_by_id():
             "create_time": None,
             "update_by": -1,
             "update_time": None,
+            "entity_type_id": -1,
             "appear_index_in_text": []
         })
 
@@ -70,6 +72,7 @@ def get_doc_mark_entity_by_doc_id():
             "create_time": i.create_time.strftime("%Y-%m-%d %H:%M:%S") if i.create_time else None,
             "update_by": i.create_by,
             "update_time": i.update_time.strftime("%Y-%m-%d %H:%M:%S") if i.update_time else None,
+            "entity_type_id": Entity.get_category_id(i.entity_id),
             "appear_index_in_text": i.appear_index_in_text
         } for i in doc_mark_entity_list])
 
@@ -108,13 +111,15 @@ def add_doc_mark_entity():
                 doc_mark_entity = DocMarkEntity(doc_id=doc_id, word=word, entity_id=entity_id, source=source,
                                                 create_by=create_by, create_time=create_time,
                                                 update_by=update_by, update_time=update_time,
-                                                appear_index_in_text=appear_index_in_text, valid=1)
+                                                appear_index_in_text=appear_index_in_text,
+                                                valid=1)
                 db.session.add(doc_mark_entity)
                 db.session.commit()
                 res = success_res(data={"id": doc_mark_entity.id})
 
     except Exception as e:
         print(str(e))
+        db.session.rollback()
         res = fail_res()
 
     return jsonify(res)
@@ -172,6 +177,7 @@ def modify_doc_mark_entity():
 
     except Exception as e:
         print(str(e))
+        db.session.rollback()
         res = fail_res()
 
     return jsonify(res)
@@ -194,6 +200,7 @@ def delete_doc_mark_entity_by_id():
 
     except Exception as e:
         print(str(e))
+        db.session.rollback()
         res = fail_res()
 
     return jsonify(res)

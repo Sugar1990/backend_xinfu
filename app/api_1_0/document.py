@@ -137,34 +137,31 @@ def upload_doc():
                                         # print("doc_mark_entity数据插入成功")
 
                                         data_insert_place = []
-                                        data_insert_location = []
+                                        # data_insert_location = []
                                         for index, item_place in enumerate(res_place):
-                                            place_json = {}
-                                            location_json = {}
+                                            # location_json = {}
                                             doc_mark_place = DocMarkPlace(doc_id=doc.id, valid=1)
                                             if item_place.get("word", ""):
                                                 doc_mark_place.word = item_place["word"]
-                                                place_json["word"] = item_place["word"]
+                                                data_insert_place.append(item_place["word"])
                                             if item_place.get("type", 0):
                                                 doc_mark_place.type = item_place["type"]
                                             if item_place.get("place_id", 0):
                                                 doc_mark_place.place_id = item_place["place_id"]
                                             if item_place.get("place_lon", ""):
                                                 doc_mark_place.place_lon = item_place["place_lon"]
-                                                location_json["lon"] = item_place["place_lon"]
+                                                # location_json["lon"] = item_place["place_lon"]
                                             if item_place.get("place_lat", ""):
                                                 doc_mark_place.place_lat = item_place["place_lat"]
-                                                location_json["lat"] = item_place["place_lat"]
+                                                # location_json["lat"] = item_place["place_lat"]
                                             if item_place.get("word_count", ""):
-                                                word_count_list = list(item_entity["word_count"].split(','))
+                                                word_count_list = list(item_place["word_count"].split(','))
                                                 doc_mark_place.appear_index_in_text = word_count_list
 
                                             db.session.add(doc_mark_place)
                                             db.session.commit()
                                             item_place["doc_mark_id"] = doc_mark_place.id
-
-                                            data_insert_place.append(place_json)
-                                            data_insert_location.append(location_json)
+                                            # data_insert_location.append(location_json)
                                         # print("doc_mark_place数据插入成功")
 
                                         data_insert_date = []
@@ -187,7 +184,7 @@ def upload_doc():
                                             if item_time.get("word_count", ""):
                                                 word_count_list = list(item_time["word_count"].split(','))
                                                 doc_mark_time_tag.appear_index_in_text = word_count_list
-                                            if item_time["format_date"] and item_time["format_date_end"]:
+                                            if item_time.get("format_date", "") and item_time.get("format_date_end", ""):
                                                 start_time = time.strptime(item_time["format_date"],
                                                                            "%Y-%m-%d %H:%M:%S")
                                                 start_time = int(time.mktime(start_time))
@@ -197,7 +194,7 @@ def upload_doc():
                                                 time_range_json["start_time"] = start_time
                                                 time_range_json["end_time"] = end_time
                                                 data_insert_time_range.append(time_range_json)
-                                            if not item_time["format_date_end"] and item_time["format_date"]:
+                                            if not item_time.get("format_date_end","") and item_time.get("format_date", ""):
                                                 start_time = time.strptime(item_time["format_date"],
                                                                            "%Y-%m-%d %H:%M:%S")
                                                 start_time = int(time.mktime(start_time))
@@ -288,7 +285,7 @@ def upload_doc():
                                     "time_range": data_insert_time_range,
                                     "time_period": data_insert_time_period,
                                     "place": data_insert_place,
-                                    "location": data_insert_location,
+                                    # "location": data_insert_location,
                                     "entities": data_insert_entity,
                                     "event_categories": data_insert_event
                                 }]
