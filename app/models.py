@@ -311,6 +311,7 @@ class DocMarkEntity(db.Model):
     update_time = db.Column(db.TIMESTAMP)
     # paragraph_index = db.Column(db.Integer)
     # appear_text = db.Column(db.String)
+    entity_type_id = db.Column(db.Integer)
     appear_index_in_text = db.Column(db.JSON)
     valid = db.Column(db.Integer)
 
@@ -412,6 +413,8 @@ class DocMarkRelationProperty(db.Model):
     start_type = db.Column(db.Text)
     end_time = db.Column(db.DateTime)
     end_type = db.Column(db.Text)
+    source_entity_id = db.Column(db.Integer)
+    target_entity_id = db.Column(db.Integer)
     valid = db.Column(db.Integer)
 
     def __repr__(self):
