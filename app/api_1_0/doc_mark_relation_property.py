@@ -5,8 +5,10 @@
 # @Time : 2020/10/12 16:20
 
 from flask import jsonify, request
+from sqlalchemy import or_
+
 from . import api_doc_mark_relation_property as blue_print
-from ..models import DocMarkRelationProperty
+from ..models import DocMarkRelationProperty, Entity
 from .. import db
 from .utils import success_res, fail_res
 
@@ -100,8 +102,6 @@ def add_doc_mark_relation_property():
         db.session.add(doc_mark_relation_property)
         db.session.commit()
 
-        
-
         res = success_res(data={"id": doc_mark_relation_property.id})
     except Exception as e:
         print(str(e))
@@ -174,5 +174,55 @@ def delete_doc_mark_relation_property():
         print(str(e))
         db.session.rollback()
         res = fail_res(msg="删除失败！")
+
+    return jsonify(res)
+
+
+@blue_print.route('/get_graph_by_entity_id', methods=['GET'])
+def get_graph_by_entity_id():
+    try:
+        center_entity_id = request.args.get("id", 0, type=int)
+        nodes, edges, exist_entity_ids = [], [], []
+        if isinstance(center_entity_id, int):
+            center_entity = Entity.query.filter_by(id=center_entity_id, valid=1).first()
+            if center_entity:
+                nodes.append({"id": str(center_entity.id),
+                              "label": center_entity.name})
+                exist_entity_ids.append(center_entity_id)
+
+                # 入关系
+                relations = DocMarkRelationProperty.query.filter_by(target_entity_id=center_entity_id, valid=1).all()
+                for e in relations:
+                    if e.source_entity_id not in exist_entity_ids:
+                        entity = Entity.query.filter_by(id=e.source_entity_id, valid=1).first()
+                        if entity:
+                            exist_entity_ids.append(entity.id)
+                            nodes.append({"id": str(entity.id),
+                                          "label": entity.name})
+                            edges.append({"source": str(entity.id),
+                                          "target": str(center_entity_id),
+                                          "label": e.relation_name})
+                # 出关系
+                relations = DocMarkRelationProperty.query.filter_by(source_entity_id=center_entity_id, valid=1).all()
+                for e in relations:
+                    if e.source_entity_id not in exist_entity_ids:
+                        entity = Entity.query.filter_by(id=e.target_entity_id, valid=1).first()
+                        if entity:
+                            exist_entity_ids.append(entity.id)
+                            nodes.append({"id": str(entity.id),
+                                          "label": entity.name})
+                            edges.append({"source": str(entity.id),
+                                          "target": str(center_entity_id),
+                                          "label": e.relation_name})
+                res = success_res(data={"nodes": nodes, "edges": edges})
+            else:
+                res = fail_res(msg="中心实体不存在",
+                               data={"nodes": [], "edges": []})
+        else:
+            res = fail_res(msg="paramter \"id\" is not int type",
+                           data={"nodes": [], "edges": []})
+    except Exception as e:
+        print(str(e))
+        res = fail_res(data={"nodes": [], "edges": []})
 
     return jsonify(res)

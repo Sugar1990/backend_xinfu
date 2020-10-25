@@ -65,7 +65,9 @@ def get_all():
             'synonyms': item.synonyms if item.synonyms else [],
             "summary": item.summary,
             'category': item.category_name(),
-            'category_id': item.category_id
+            'category_id': item.category_id,
+            'longitude': item.longitude,
+            'latitude': item.latitude
         } for item in pagination.items]
         total_count = pagination.total
         page_count = pagination.pages

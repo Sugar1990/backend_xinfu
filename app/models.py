@@ -413,6 +413,8 @@ class DocMarkRelationProperty(db.Model):
     end_time = db.Column(db.DateTime)
     end_type = db.Column(db.Text)
     valid = db.Column(db.Integer)
+    source_entity_id = db.Column(db.Integer)
+    target_entity_id = db.Column(db.Integer)
 
     def __repr__(self):
         return '<DocMarkRelationProperty %r>' % self.id
