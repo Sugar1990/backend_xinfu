@@ -350,6 +350,32 @@ class DocMarkEvent(db.Model):
     add_time = db.Column(db.TIMESTAMP)
     valid = db.Column(db.Integer)
 
+    def get_subject_entity_names(self):
+        subject_entity_names = []
+        if self.event_subject:
+            doc_mark_entities = DocMarkEntity.query.filter(DocMarkEntity.id.in_(self.event_subject)).all()
+            doc_mark_entities_entity_ids=[i.entity_id for i in doc_mark_entities]
+            if doc_mark_entities_entity_ids:
+                entities = Entity.query.filter(Entity.id.in_(doc_mark_entities_entity_ids)).all()
+                subject_entity_names = [i.name for i in entities]
+        return subject_entity_names
+
+    def get_object_entity_names(self):
+        object_entity_names = []
+        if self.event_object:
+            doc_mark_entities = DocMarkEntity.query.filter(DocMarkEntity.id.in_(self.event_object)).all()
+            doc_mark_entities_entity_ids = [i.entity_id for i in doc_mark_entities]
+            if doc_mark_entities_entity_ids:
+                entities = Entity.query.filter(Entity.id.in_(doc_mark_entities_entity_ids)).all()
+                object_entity_names = [i.name for i in entities]
+        return object_entity_names
+
+    def get_places(self):
+        places = []
+        if self.event_address:
+            places = DocMarkPlace.query.filter(DocMarkPlace.id.in_(self.event_address)).all()
+        return places
+
     def __repr__(self):
         return '<DocMarkEvent %r>' % self.title
 

@@ -123,6 +123,9 @@ def get_doc_mark_event_by_doc_id():
     return jsonify(res)
 
 
+
+
+
 # add
 @blue_print.route('/add_doc_mark_event', methods=['POST'])
 def add_doc_mark_event():
@@ -408,4 +411,44 @@ def get_events_by_doc_ids_and_time_range():
     except Exception as e:
         print(str(e))
         res = []
+    return jsonify(res)
+
+
+@blue_print.route('/get_doc_events_to_earth', methods=['GET'])
+# @swag_from(get_doc_events_dict)
+def get_doc_events_to_earth():
+    try:
+        doc_id = request.args.get("doc_id", 0, type=int)
+        doc_mark_event_list = DocMarkEvent.query.filter_by(doc_id=doc_id, valid=1).all()
+
+        result = []
+        data = {}
+        for doc_mark_event in doc_mark_event_list:
+            places = doc_mark_event.get_places()
+            place_list = [
+                {
+                    "type": i.type,
+                    "word": i.word,
+                    "placeId": i.place_id,
+                    "placeLon": i.place_lon,
+                    "placeLat": i.place_lat
+                } for i in places]
+            datetime = []
+            if doc_mark_event.event_time:
+                time_tag = DocMarkTimeTag.query.filter(DocMarkTimeTag.id.in_(doc_mark_event.event_time)).first()
+                if time_tag:
+                    datetime.append(time_tag.format_date)
+            data = {
+                "title": doc_mark_event.title,
+                "subject": doc_mark_event.get_subject_entity_names(),
+                "object": doc_mark_event.get_object_entity_names(),
+                "datetime": datetime,
+                "place": place_list}
+        result.append(data)
+        res = success_res(data=result)
+
+    except Exception as e:
+        print(str(e))
+        res = fail_res(data=[])
+
     return jsonify(res)

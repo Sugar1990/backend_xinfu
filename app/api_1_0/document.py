@@ -110,6 +110,7 @@ def upload_doc():
                                         res_entity = yc_res["entity"]
                                         res_place = yc_res["place"]
                                         res_time = yc_res["time"]
+                                        res_concept = yc_res["concept"]
                                         # print("res_entity", res_entity)
                                         # print("res_place", res_place)
                                         # print("res_time", res_time)
@@ -134,6 +135,25 @@ def upload_doc():
                                             item_entity["doc_mark_id"] = doc_mark_entity.id
                                             data_insert_entity.append(entity_json)
                                         # print("doc_mark_entity数据插入成功")
+
+                                        for index, item_entity in enumerate(res_concept):
+                                            entity_json = {}
+                                            doc_mark_entity = DocMarkEntity(doc_id=doc.id, valid=1)
+                                            if item_entity.get("word", ""):
+                                                doc_mark_entity.word = item_entity["word"]
+                                                entity_json["name"] = item_entity["word"]
+                                            if item_entity.get("concept_id", 0):
+                                                doc_mark_entity.entity_id = item_entity["concept_id"]
+                                            if item_entity.get("concept_type_id", 0):
+                                                entity_json["category_id"] = item_entity["concept_type_id"]
+                                            if item_entity.get("word_count", ""):
+                                                word_count_list = list(item_entity["word_count"].split(','))
+                                                doc_mark_entity.appear_index_in_text = word_count_list
+
+                                            db.session.add(doc_mark_entity)
+                                            db.session.commit()
+                                            item_entity["doc_mark_id"] = doc_mark_entity.id
+                                            data_insert_entity.append(entity_json)
 
                                         data_insert_place = []
                                         # data_insert_location = []
