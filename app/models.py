@@ -1,6 +1,6 @@
 import os
 from sqlalchemy.dialects.postgresql import JSONB
-
+import re
 from . import db
 from .conf import PLACE_BASE_NAME
 
@@ -37,6 +37,18 @@ class Entity(db.Model):
                 return {}
         else:
             return {}
+
+    @staticmethod
+    def get_location_of_entity_name(entity_name):
+        entity = Entity.query.filter_by(name=entity_name).first()
+        if entity:
+            if entity.longitude and entity.longitude:
+                return {"lon": float(format(entity.longitude,".5f")), "lat": float(format(entity.latitude,".5f"))}
+            else:
+                return {}
+        else:
+            return {}
+
     def get_yc_mark_category(self):
         mark_category = "ner"
         if self.category_id == EntityCategory.get_category_id(PLACE_BASE_NAME):
@@ -462,3 +474,49 @@ class DocMarkMind(db.Model):
 
     def __repr__(self):
         return '<DocMarkMind %r>' % self.id
+
+
+
+
+class Es_controller():
+    # def __init__(self):
+    #     Es_controller =
+    def dfm_to_location(self,deggrees):
+        lon = deggrees["lon"]
+        lat = deggrees["lat"]
+        lon_num  =  self.dfm_convert(lon['degree'],lon["minute"],lon["second"])
+        lat_num  =  self.dfm_convert(lat['degree'],lat["minute"],lat["second"])
+        return {"lon":lon_num , "lat": lat_num}
+
+    @staticmethod
+    def dfm_convert(du,fen,miao):
+        out_location = int(du) + int(fen)/60 + int(miao)/3600
+        return float(format(out_location,".5f"))
+
+    @staticmethod
+    def hight_convert(hight):
+        dict_of_hight = {
+            "千米":1000,
+            "米":1,
+            "公里":1000,
+            "海里":1852,
+            "里":500,
+            "丈":3.333,
+            "码":0.914,
+            "英里":1609.344
+        }
+        str_num_hight = re.findall('(\d+)',hight)[0]
+        num_hight = int(str_num_hight)
+        unit_hight =hight.split(str_num_hight)[1]
+        return num_hight * dict_of_hight.get(unit_hight,0)
+
+    @staticmethod
+    def place_convert(place_name):
+        location_output = Entity.get_location_of_entity_name(place_name)
+        return location_output
+
+
+
+# Es_controller.hight_convert('100千米')
+#
+# Es_controller.dfm_convert(12,11,11)
