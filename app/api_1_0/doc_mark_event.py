@@ -430,7 +430,8 @@ def get_doc_events_to_earth():
             if place_list:
                 datetime = ""
                 if doc_mark_event.event_time:
-                    time_tag = DocMarkTimeTag.query.filter(DocMarkTimeTag.id.in_(doc_mark_event.event_time)).first()
+                    time_tag = DocMarkTimeTag.query.filter(DocMarkTimeTag.id.in_(doc_mark_event.event_time),
+                                                           DocMarkTimeTag.time_type.in_(['1', '2'])).first()
                     if time_tag:
                         datetime = time_tag.format_date.strftime("%Y-%m-%d %H:%M:%S")
                 if datetime:
