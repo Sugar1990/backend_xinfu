@@ -123,9 +123,6 @@ def get_doc_mark_event_by_doc_id():
     return jsonify(res)
 
 
-
-
-
 # add
 @blue_print.route('/add_doc_mark_event', methods=['POST'])
 def add_doc_mark_event():
@@ -422,29 +419,29 @@ def get_doc_events_to_earth():
         doc_mark_event_list = DocMarkEvent.query.filter_by(doc_id=doc_id, valid=1).all()
 
         result = []
-        data = {}
         for doc_mark_event in doc_mark_event_list:
             places = doc_mark_event.get_places()
-            place_list = [
-                {
-                    "word": i.word,
-                    "place_id": i.place_id,
-                    "place_lon": i.place_lon,
-                    "place_lat": i.place_lat
-                } for i in places]
-            datetime = ""
-            if doc_mark_event.event_time:
-                time_tag = DocMarkTimeTag.query.filter(DocMarkTimeTag.id.in_(doc_mark_event.event_time)).first()
-                if time_tag:
-                    datetime =time_tag.format_date.strftime("%Y-%m-%d %H:%M:%S")
-            object_list = doc_mark_event.get_object_entity_names()
-            object_list.extend(doc_mark_event.get_subject_entity_names())
-            data = {
-                "title": doc_mark_event.title,
-                "object": object_list,
-                "datetime": datetime,
-                "place": place_list}
-        result.append(data)
+            place_list = [{
+                "word": i.word,
+                "place_id": i.place_id,
+                "place_lon": i.place_lon,
+                "place_lat": i.place_lat
+            } for i in places if i.place_lon and i.place_lat]
+            if place_list:
+                datetime = ""
+                if doc_mark_event.event_time:
+                    time_tag = DocMarkTimeTag.query.filter(DocMarkTimeTag.id.in_(doc_mark_event.event_time)).first()
+                    if time_tag:
+                        datetime = time_tag.format_date.strftime("%Y-%m-%d %H:%M:%S")
+                if datetime:
+                    object_list = doc_mark_event.get_object_entity_names()
+                    object_list.extend(doc_mark_event.get_subject_entity_names())
+                    if object_list:
+                        result.append({
+                            "title": doc_mark_event.title,
+                            "object": object_list,
+                            "datetime": datetime,
+                            "place": place_list})
         res = success_res(data=result)
 
     except Exception as e:
