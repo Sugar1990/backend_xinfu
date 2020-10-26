@@ -427,21 +427,21 @@ def get_doc_events_to_earth():
             places = doc_mark_event.get_places()
             place_list = [
                 {
-                    "type": i.type,
                     "word": i.word,
-                    "placeId": i.place_id,
-                    "placeLon": i.place_lon,
-                    "placeLat": i.place_lat
+                    "place_id": i.place_id,
+                    "place_lon": i.place_lon,
+                    "place_lat": i.place_lat
                 } for i in places]
-            datetime = []
+            datetime = ""
             if doc_mark_event.event_time:
                 time_tag = DocMarkTimeTag.query.filter(DocMarkTimeTag.id.in_(doc_mark_event.event_time)).first()
                 if time_tag:
-                    datetime.append(time_tag.format_date)
+                    datetime =time_tag.format_date.strftime("%Y-%m-%d %H:%M:%S")
+            object_list = doc_mark_event.get_object_entity_names()
+            object_list.extend(doc_mark_event.get_subject_entity_names())
             data = {
                 "title": doc_mark_event.title,
-                "subject": doc_mark_event.get_subject_entity_names(),
-                "object": doc_mark_event.get_object_entity_names(),
+                "object": object_list,
                 "datetime": datetime,
                 "place": place_list}
         result.append(data)
