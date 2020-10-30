@@ -243,3 +243,28 @@ def batch_del_customer():
         res = fail_res(msg="批量删除失败")
 
     return jsonify(res)
+
+
+@blue_print.route('/get_custom_info', methods=['POST'])
+def query_by_ids():
+    uid_list = request.json.get('ids', [])
+    try:
+        data = []
+        for uid in uid_list:
+            customer = Customer.query.filter_by(id=uid, valid=1).first()
+            res = {
+                "id": customer.id,
+                "username": customer.username,
+                "permission_id": customer.permission_id
+            }
+            data.append(res)
+    except:
+        db.session.rollback()
+        result = {"data": [],
+                  "code": 0,
+                  "msg": ""}
+        return jsonify(result)
+    result = {"data": data,
+            "code": 0,
+            "msg": ""}
+    return jsonify(result)
