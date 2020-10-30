@@ -252,7 +252,6 @@ def query_by_ids():
         data = []
         for uid in uid_list:
             customer = Customer.query.filter_by(id=uid, valid=1).first()
-            permission = permission.query.filter_by(id=uid, valid=1).first()
             res = {
                 "id": customer.id,
                 "username": customer.username,
