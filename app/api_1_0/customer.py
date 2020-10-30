@@ -5,7 +5,7 @@ import hashlib
 import datetime
 
 from . import api_customer as blue_print
-from ..models import Customer
+from ..models import Customer,Permission
 from .. import db
 from .utils import success_res, fail_res
 from ..conf import ADMIN_ROLE_POWER, ASSIS_ROLE_POWER, ADMIN_NAME, ASSIS_NAME
@@ -56,7 +56,7 @@ def verify_token():
                     role = 1
                 elif customer.get_power() == ASSIS_ROLE_POWER:
                     role = 2
-                res = success_res(data={"uid": customer.id, "uname": customer.username, "role": role})
+                res = success_res(data={"uid": customer.id, "uname": customer.username, "role": role, "permission_power" : Permission.get_power(customer.permission_id)})
             else:
                 res = fail_res(msg="验证失败")
     except Exception as e:
@@ -252,10 +252,12 @@ def query_by_ids():
         data = []
         for uid in uid_list:
             customer = Customer.query.filter_by(id=uid, valid=1).first()
+            permission = permission.query.filter_by(id=uid, valid=1).first()
             res = {
                 "id": customer.id,
                 "username": customer.username,
-                "permission_id": customer.permission_id
+                "permission_id": customer.permission_id,
+                "permission_power": Permission.get_power(customer.permission_id)
             }
             data.append(res)
     except:
