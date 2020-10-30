@@ -1167,7 +1167,8 @@ def get_event_list_from_docs(doc_ids=[], start_date='1900-01-01', end_date='9999
                                             "word": place.name,
                                         } for place in places],
                                         "title": i.title,
-                                        "object": [i.name for i in objects]
+                                        "object": [i.name for i in objects],
+                                        "event_id": i.id
                                     }
                                     event_list.append(item)
         # </editor-fold>
@@ -1231,7 +1232,8 @@ def get_event_list_from_docs_group_by_entities(doc_ids=[]):
                                         "word": place.name,
                                     } for place in places],
                                     "title": i.title,
-                                    "object": [i.name for i in objects]
+                                    "object": [i.name for i in objects],
+                                    "event_id": i.id
                                 }
 
                                 if event_dict.get(timeline_key, []):
