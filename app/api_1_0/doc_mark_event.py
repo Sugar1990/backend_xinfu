@@ -596,7 +596,6 @@ def dfm_convert(du, fen, miao):
     return float(format(out_location, ".5f"))
 
 
-
 @blue_print.route('/get_during_time_event', methods=['POST'])
 # @swag_from(get_doc_events_dict)
 def get_during_time_event():
@@ -621,66 +620,43 @@ def get_during_time_event():
         doc_mark_time_tag_ids_set = set(doc_mark_time_tag_ids)
         doc_mark_events = DocMarkEvent.query.filter(DocMarkEvent.valid == 1).order_by(
             DocMarkEvent.create_time.desc()).all()
-        result = {}
-        entities = []
+        event_list = []
         for doc_mark_event in doc_mark_events:
             if set(doc_mark_event.event_time) & doc_mark_time_tag_ids_set:
-                for item in doc_mark_event.event_subject:
-                    if item in entities:
-                        temp = get_json(doc_mark_event)
-                        result[item].append(temp)
-                    else:
-                        entities.append(item)
-                        temp = []
-                        temp.append(get_json(doc_mark_event))
-                        result[item] = temp
-                for item in doc_mark_event.event_object:
-                    if item in entities:
-                        temp = get_json(doc_mark_event)
-                        result[item].append(temp)
-                    else:
-                        entities.append(item)
-                        temp = []
-                        temp.append(get_json(doc_mark_event))
-                        result[item] = temp
+                time_id = list(set(doc_mark_event.event_time) & doc_mark_time_tag_ids_set)[0]
+                datetime = DocMarkTimeTag.query.filter_by(id=time_id, valid=1).first().format_date
+                event_id = doc_mark_event.id
+                place = []
+                for item in doc_mark_event.event_address:
+                    temp = {}
+                    doc_mark_place = DocMarkPlace.query.filter_by(id=item, valid=1).first()
+                    temp["word"] = doc_mark_place.word
+                    temp["place_id"] = doc_mark_place.place_id
+                    entity = Entity.query.filter_by(id=doc_mark_place.place_id, valid=1).first()
+                    temp["place_lon"] = entity.longitude
+                    temp["place_lat"] = entity.latitude
+                    place.append(temp)
+                title = doc_mark_event.title
+                subject_object = doc_mark_event.event_subject
+                if doc_mark_event.event_object:
+                    subject_object.extend(doc_mark_event.event_object)
+                object = []
+                for item in subject_object:
+                    doc_mark_entity = DocMarkEntity.query.filter_by(id=item, valid=1).first()
+                    if doc_mark_entity:
+                        object.append(doc_mark_entity.word)
+                event = {
+                    "event_id": event_id,
+                    "datetime": datetime,
+                    "place": place,
+                    "title": title,
+                    "object": object
+                }
+                event_list.append(event)
             else:
                 pass
-        print(result)
-        res = success_res(data=result)
+        res = success_res(data=event_list)
     except Exception as e:
         print(str(e))
         res = fail_res(data={})
     return jsonify(res)
-
-
-def get_json(doc_mark_event):
-    temp = {
-        "id": doc_mark_event.id,
-        "event_id": doc_mark_event.event_id,
-        "event_desc": doc_mark_event.event_desc,
-        "event_subject": doc_mark_event.event_subject,
-        "event_predicate": doc_mark_event.event_predicate,
-        "event_object": doc_mark_event.event_object,
-        "event_time": doc_mark_event.event_time,
-        "event_address": doc_mark_event.event_address,
-        "event_why": doc_mark_event.event_why,
-        "event_result": doc_mark_event.event_result,
-        "event_conduct": doc_mark_event.event_conduct,
-        "event_talk": doc_mark_event.event_talk,
-        "event_how": doc_mark_event.event_how,
-        "doc_id": doc_mark_event.doc_id,
-        "customer_id": doc_mark_event.customer_id,
-        "parent_id": doc_mark_event.parent_id,
-        "title": doc_mark_event.title,
-        "event_class_id": doc_mark_event.event_class_id,
-        "event_type_id": doc_mark_event.event_type_id,
-        "create_by": doc_mark_event.create_by,
-        "create_time": doc_mark_event.create_time.strftime(
-            "%Y-%m-%d %H:%M:%S") if doc_mark_event.create_time else None,
-        "update_by": doc_mark_event.update_by,
-        "update_time": doc_mark_event.update_time.strftime(
-            "%Y-%m-%d %H:%M:%S") if doc_mark_event.update_time else None,
-        "add_time": doc_mark_event.add_time.strftime(
-            "%Y-%m-%d %H:%M:%S") if doc_mark_event.add_time else None
-    }
-    return temp
