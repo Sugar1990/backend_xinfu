@@ -1,15 +1,17 @@
 # -*- coding: UTF-8 -*-
+import datetime
 import time
 
 from flask import jsonify, request
 from sqlalchemy import or_, and_
+from sqlalchemy.dialects.postgresql import Any
 
 from . import api_doc_mark_event as blue_print
-from ..models import DocMarkEvent, DocMarkTimeTag, DocMarkEntity, DocMarkPlace
+from ..models import DocMarkEvent, DocMarkTimeTag, DocMarkEntity, DocMarkPlace, Entity, EventCategory
 from .. import db
 from .utils import success_res, fail_res
 from .document import get_event_list_from_docs
-
+from ..conf import ES_SERVER_IP, ES_SERVER_PORT
 
 # doc_mark_event表中删除了parent_name字段，保留了parent_id字段
 
@@ -449,4 +451,212 @@ def get_doc_events_to_earth():
         print(str(e))
         res = fail_res(data=[])
 
+    return jsonify(res)
+
+
+@blue_print.route('/get_advanced_search_of_events', methods=['POST'])
+def get_advanced_search_of_events():
+    try:
+        dates = request.json.get('dates', {})
+        time_tag_ids = []
+        if dates.get("date_type", False):
+            date_type = dates.get("date_type", "")
+            date_value = dates.get("value", None)
+            if date_type == "time_range":
+                time_range = date_value
+                start_time = time_range.get("start_time", None)
+                end_time = time_range.get("end_time", None)
+
+                if start_time and end_time:
+                    doc_mark_time_tag = DocMarkTimeTag.query.filter_by(format_date=start_time, format_date_end=end_time,
+                                                                       time_type=2, valid=1).first()
+                    # doc_mark_time_tags = DocMarkTimeTag.query.filter_by(format_date=start_time, format_date_end=end_time,
+                    #                                                    time_type=2, valid=1).all()
+                    # time_tag_ids = [i.id for i in doc_mark_time_tags]
+                    time_tag_ids.append(doc_mark_time_tag.id)
+                    print(time_tag_ids)
+
+        places = request.json.get('places', {})
+        doc_mark_place_ids = []
+        if places.get("place_type", False):
+            place_type = places.get("place_type", "")
+            place_value = places.get("value", None)
+            if place_type == "place":
+                place = place_value
+                entity = Entity.query.filter_by(name=place, category_id=8, valid=1).first()
+                # doc_mark_places = DocMarkPlace.query.filter_by(place_id=entity.id, valid=1).all()
+                # doc_mark_place_ids = [i.id for i in doc_mark_places]
+                doc_mark_places = DocMarkPlace.query.filter_by(place_id=entity.id, valid=1).first()
+                if doc_mark_places:
+                    doc_mark_place_ids.append(doc_mark_places.id)
+                print(len(doc_mark_place_ids))
+                print([i for i in doc_mark_place_ids])
+            elif place_type == "degrees":
+                degrees = place_value
+                if degrees.get("lon", None) and degrees.get("lat", None):
+                    lon = degrees["lon"]
+                    lat = degrees["lat"]
+                    if lon.get("degrees",0) and lon.get("direction", 0) and lon.get("distance", 0) and lat.get("degrees",0) and lat.get("direction", 0) and lat.get("distance", 0):
+                        lon = dfm_convert(lon.get("degrees"), lon.get("direction"), lon.get("distance", 0))
+                        lat = dfm_convert(lat.get("degrees"), lat.get("direction"), lat.get("distance", 0))
+                        entity = Entity.query.filter_by(longitude=lon, latitude=lat, category_id=8, valid=1).first()
+                        # doc_mark_places = DocMarkPlace.query.filter_by(place_id=entity.id, valid=1).all()
+                        # doc_mark_place_ids = [i.id for i in doc_mark_places]
+                        if entity:
+                            doc_mark_places = DocMarkPlace.query.filter_by(place_id=entity.id, valid=1).first()
+                            if doc_mark_places:
+                                doc_mark_place_ids.append(doc_mark_places.id)
+
+            elif place_type == 'location':
+                location = place_value
+                if location.get("lon", None) and location.get("lat", None):
+                    lon = location["lon"]
+                    lat = location["lat"]
+                    entity = Entity.query.filter_by(longitude=lon, latitude=lat, category_id=8, valid=1).first()
+                    # doc_mark_places = DocMarkPlace.query.filter_by(place_id=entity.id, valid=1).all()
+                    # doc_mark_place_ids = [i.id for i in doc_mark_places]
+                    if entity:
+                        doc_mark_places = DocMarkPlace.query.filter_by(place_id=entity.id, valid=1).first()
+                        if doc_mark_places:
+                            doc_mark_place_ids.append(doc_mark_places.id)
+
+        object = request.json.get("object", {})
+        doc_mark_entity_ids = []
+        if object.get("category_id", 0) and object.get("entity", ""):
+            category_id = object["category_id"]
+            entity = object["entity"]
+            entity_db = Entity.query.filter_by(category_id=category_id, name=entity, valid=1).first()
+            # doc_mark_entity = DocMarkEntity.query.filter_by(entity_id=entity_db.id, valid=1).all()
+            # doc_mark_entity_ids = [i.id for i in doc_mark_entity]
+            if entity_db:
+                doc_mark_entity = DocMarkEntity.query.filter_by(entity_id=entity_db.id, valid=1).first()
+                if doc_mark_entity:
+                    doc_mark_entity_ids.append(doc_mark_entity.id)
+                    print(doc_mark_entity_ids)
+
+        event = request.json.get("event", {})
+        # if event.get("event_class", 0):
+        #     event_class = event["event_class"]
+        # if event.get("event_type", 0):
+        #     event_category = event["event_type"]
+
+
+        # filter条件应是前后两个list求交集..，暂时限制time_tag_ids等只有一个元素
+        conditions = [DocMarkEvent.valid == 1]
+        if time_tag_ids:
+            conditions.append(DocMarkEvent.event_time.op('@>')(time_tag_ids))
+        if doc_mark_place_ids:
+            conditions.append(DocMarkEvent.event_address.op('@>')(doc_mark_place_ids))
+        if doc_mark_entity_ids:
+            conditions.append(or_(DocMarkEvent.event_subject.op('@>')(doc_mark_entity_ids), DocMarkEvent.event_object.op('@>')(doc_mark_entity_ids)))
+        if event.get("event_class", 0):
+            conditions.append(DocMarkEvent.event_class_id == event.get("event_class"))
+        if event.get("event_type", 0):
+            conditions.append(DocMarkEvent.event_type_id == event.get("event_type"))
+
+        conditions = tuple(conditions)
+        doc_mark_events = DocMarkEvent.query.filter(and_(*conditions)).all()
+
+        res = success_res(data=[{
+            "id": i.id,
+            "event_id": i.event_id,
+            "event_desc": i.event_desc,
+            "event_subject": i.event_subject,
+            "event_predicate": i.event_predicate,
+            "event_object": i.event_object,
+            "event_time": i.event_time,
+            "event_address": i.event_address,
+            "event_why": i.event_why,
+            "event_result": i.event_result,
+            "event_conduct": i.event_conduct,
+            "event_talk": i.event_talk,
+            "event_how": i.event_how,
+            "doc_id": i.doc_id,
+            "customer_id": i.customer_id,
+            "parent_id": i.parent_id,
+            "title": i.title,
+            "event_class_id": i.event_class_id,
+            "event_type_id": i.event_type_id,
+            "create_by": i.create_by,
+            "create_time": i.create_time.strftime("%Y-%m-%d %H:%M:%S") if i.create_time else None,
+            "update_by": i.update_by,
+            "update_time": i.update_time.strftime("%Y-%m-%d %H:%M:%S") if i.update_time else None,
+            "add_time": i.add_time.strftime("%Y-%m-%d %H:%M:%S") if i.add_time else None
+        } for i in doc_mark_events])
+
+    except Exception as e:
+        print(str(e))
+        res = fail_res(data=[])
+
+    return jsonify(res)
+
+
+def dfm_convert(du, fen, miao):
+    out_location = int(du) + int(fen) / 60 + int(miao) / 3600
+    return float(format(out_location, ".5f"))
+
+
+@blue_print.route('/get_during_time_event', methods=['POST'])
+# @swag_from(get_doc_events_dict)
+def get_during_time_event():
+    try:
+        start_date = request.json.get('start_date', '1900-01-01')
+        end_date = request.json.get('end_date', '9999-01-01')
+        doc_mark_time_tags = DocMarkTimeTag.query.filter(
+            and_(DocMarkTimeTag.valid == 1, DocMarkTimeTag.time_type.in_(['1', '2']))).all()
+        doc_mark_time_tag_ids = []
+
+        for doc_mark_time_tag in doc_mark_time_tags:
+            if doc_mark_time_tag.time_type == 1 and doc_mark_time_tag.format_date.strftime(
+                    '%Y-%m-%d %H:%M:%S') >= start_date:
+                doc_mark_time_tag_ids.append(doc_mark_time_tag.id)
+
+            elif doc_mark_time_tag.time_type == 2 and not (
+                    end_date < doc_mark_time_tag.format_date.strftime(
+                '%Y-%m-%d %H:%M:%S') or start_date > doc_mark_time_tag.format_date_end.strftime('%Y-%m-%d %H:%M:%S')):
+                doc_mark_time_tag_ids.append(doc_mark_time_tag.id)
+            else:
+                pass
+        doc_mark_time_tag_ids_set = set(doc_mark_time_tag_ids)
+        doc_mark_events = DocMarkEvent.query.filter(DocMarkEvent.valid == 1).order_by(
+            DocMarkEvent.create_time.desc()).all()
+        event_list = []
+        for doc_mark_event in doc_mark_events:
+            if set(doc_mark_event.event_time) & doc_mark_time_tag_ids_set:
+                time_id = list(set(doc_mark_event.event_time) & doc_mark_time_tag_ids_set)[0]
+                datetime = DocMarkTimeTag.query.filter_by(id=time_id, valid=1).first().format_date
+                event_id = doc_mark_event.id
+                place = []
+                for item in doc_mark_event.event_address:
+                    temp = {}
+                    doc_mark_place = DocMarkPlace.query.filter_by(id=item, valid=1).first()
+                    temp["word"] = doc_mark_place.word
+                    temp["place_id"] = doc_mark_place.place_id
+                    entity = Entity.query.filter_by(id=doc_mark_place.place_id, valid=1).first()
+                    temp["place_lon"] = entity.longitude
+                    temp["place_lat"] = entity.latitude
+                    place.append(temp)
+                title = doc_mark_event.title
+                subject_object = doc_mark_event.event_subject
+                if doc_mark_event.event_object:
+                    subject_object.extend(doc_mark_event.event_object)
+                object = []
+                for item in subject_object:
+                    doc_mark_entity = DocMarkEntity.query.filter_by(id=item, valid=1).first()
+                    if doc_mark_entity:
+                        object.append(doc_mark_entity.word)
+                event = {
+                    "event_id": event_id,
+                    "datetime": datetime,
+                    "place": place,
+                    "title": title,
+                    "object": object
+                }
+                event_list.append(event)
+            else:
+                pass
+        res = success_res(data=event_list)
+    except Exception as e:
+        print(str(e))
+        res = fail_res(data={})
     return jsonify(res)
