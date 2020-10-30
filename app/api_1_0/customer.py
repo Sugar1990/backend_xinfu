@@ -1,14 +1,15 @@
 # -*- coding: UTF-8 -*-
-from flask import jsonify, request
-from sqlalchemy import not_, and_, or_
-import hashlib
 import datetime
+import hashlib
+
+from flask import jsonify, request
+from sqlalchemy import not_, and_
 
 from . import api_customer as blue_print
-from ..models import Customer,Permission
-from .. import db
 from .utils import success_res, fail_res
+from .. import db
 from ..conf import ADMIN_ROLE_POWER, ASSIS_ROLE_POWER, ADMIN_NAME, ASSIS_NAME
+from ..models import Customer, Permission
 
 
 # 修改时，如果找不到是报错
@@ -56,7 +57,8 @@ def verify_token():
                     role = 1
                 elif customer.get_power() == ASSIS_ROLE_POWER:
                     role = 2
-                res = success_res(data={"uid": customer.id, "uname": customer.username, "role": role, "permission_power" : Permission.get_power(customer.permission_id)})
+                res = success_res(data={"uid": customer.id, "uname": customer.username, "role": role,
+                                        "permission_power": Permission.get_power(customer.permission_id)})
             else:
                 res = fail_res(msg="验证失败")
     except Exception as e:
@@ -266,6 +268,6 @@ def query_by_ids():
                   "msg": ""}
         return jsonify(result)
     result = {"data": data,
-            "code": 0,
-            "msg": ""}
+              "code": 0,
+              "msg": ""}
     return jsonify(result)
