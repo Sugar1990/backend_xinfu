@@ -166,7 +166,9 @@ def query_by_id():
         res = {
             "id": customer.id,
             "username": customer.username,
-            "permission_id": customer.permission_id
+            "permission_id": customer.permission_id,
+            "permission_power": Permission.get_power(customer.permission_id),
+
         }
     except Exception as e:
         print(str(e))
