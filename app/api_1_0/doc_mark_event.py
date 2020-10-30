@@ -1,4 +1,5 @@
 # -*- coding: UTF-8 -*-
+import datetime
 import time
 
 from flask import jsonify, request
@@ -594,3 +595,92 @@ def dfm_convert(du, fen, miao):
     out_location = int(du) + int(fen) / 60 + int(miao) / 3600
     return float(format(out_location, ".5f"))
 
+
+
+@blue_print.route('/get_during_time_event', methods=['POST'])
+# @swag_from(get_doc_events_dict)
+def get_during_time_event():
+    try:
+        start_date = request.json.get('start_date', '1900-01-01')
+        end_date = request.json.get('end_date', '9999-01-01')
+        doc_mark_time_tags = DocMarkTimeTag.query.filter(
+            and_(DocMarkTimeTag.valid == 1, DocMarkTimeTag.time_type.in_(['1', '2']))).all()
+        doc_mark_time_tag_ids = []
+
+        for doc_mark_time_tag in doc_mark_time_tags:
+            if doc_mark_time_tag.time_type == 1 and doc_mark_time_tag.format_date.strftime(
+                    '%Y-%m-%d %H:%M:%S') >= start_date:
+                doc_mark_time_tag_ids.append(doc_mark_time_tag.id)
+
+            elif doc_mark_time_tag.time_type == 2 and not (
+                    end_date < doc_mark_time_tag.format_date.strftime(
+                '%Y-%m-%d %H:%M:%S') or start_date > doc_mark_time_tag.format_date_end.strftime('%Y-%m-%d %H:%M:%S')):
+                doc_mark_time_tag_ids.append(doc_mark_time_tag.id)
+            else:
+                pass
+        doc_mark_time_tag_ids_set = set(doc_mark_time_tag_ids)
+        doc_mark_events = DocMarkEvent.query.filter(DocMarkEvent.valid == 1).order_by(
+            DocMarkEvent.create_time.desc()).all()
+        result = {}
+        entities = []
+        for doc_mark_event in doc_mark_events:
+            if set(doc_mark_event.event_time) & doc_mark_time_tag_ids_set:
+                for item in doc_mark_event.event_subject:
+                    if item in entities:
+                        temp = get_json(doc_mark_event)
+                        result[item].append(temp)
+                    else:
+                        entities.append(item)
+                        temp = []
+                        temp.append(get_json(doc_mark_event))
+                        result[item] = temp
+                for item in doc_mark_event.event_object:
+                    if item in entities:
+                        temp = get_json(doc_mark_event)
+                        result[item].append(temp)
+                    else:
+                        entities.append(item)
+                        temp = []
+                        temp.append(get_json(doc_mark_event))
+                        result[item] = temp
+            else:
+                pass
+        print(result)
+        res = success_res(data=result)
+    except Exception as e:
+        print(str(e))
+        res = fail_res(data={})
+    return jsonify(res)
+
+
+def get_json(doc_mark_event):
+    temp = {
+        "id": doc_mark_event.id,
+        "event_id": doc_mark_event.event_id,
+        "event_desc": doc_mark_event.event_desc,
+        "event_subject": doc_mark_event.event_subject,
+        "event_predicate": doc_mark_event.event_predicate,
+        "event_object": doc_mark_event.event_object,
+        "event_time": doc_mark_event.event_time,
+        "event_address": doc_mark_event.event_address,
+        "event_why": doc_mark_event.event_why,
+        "event_result": doc_mark_event.event_result,
+        "event_conduct": doc_mark_event.event_conduct,
+        "event_talk": doc_mark_event.event_talk,
+        "event_how": doc_mark_event.event_how,
+        "doc_id": doc_mark_event.doc_id,
+        "customer_id": doc_mark_event.customer_id,
+        "parent_id": doc_mark_event.parent_id,
+        "title": doc_mark_event.title,
+        "event_class_id": doc_mark_event.event_class_id,
+        "event_type_id": doc_mark_event.event_type_id,
+        "create_by": doc_mark_event.create_by,
+        "create_time": doc_mark_event.create_time.strftime(
+            "%Y-%m-%d %H:%M:%S") if doc_mark_event.create_time else None,
+        "update_by": doc_mark_event.update_by,
+        "update_time": doc_mark_event.update_time.strftime(
+            "%Y-%m-%d %H:%M:%S") if doc_mark_event.update_time else None,
+        "add_time": doc_mark_event.add_time.strftime(
+            "%Y-%m-%d %H:%M:%S") if doc_mark_event.add_time else None
+    }
+    return temp
