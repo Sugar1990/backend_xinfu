@@ -5,7 +5,7 @@ import json
 import math
 import os
 import time
-
+import re
 import requests
 # from flasgger import swag_from
 from flask import jsonify, request
@@ -172,24 +172,55 @@ def upload_doc():
                                             doc_mark_place = DocMarkPlace(doc_id=doc.id, valid=1)
                                             if item_place.get("word", ""):
                                                 doc_mark_place.word = item_place["word"]
-                                                data_insert_place.append(item_place["word"])
+                                                # data_insert_place.append(item_place["word"])
                                             if item_place.get("type", 0):
                                                 doc_mark_place.type = item_place["type"]
                                             if item_place.get("place_id", 0):
                                                 doc_mark_place.place_id = item_place["place_id"]
-                                            if item_place.get("place_lon", ""):
-                                                doc_mark_place.place_lon = item_place["place_lon"]
+
+                                            # doc_mark_place是经纬度时必须含有lon和lat
+                                            if doc_mark_place.type == 2:
+                                                if item_place.get("place_lon", "") and item_place.get("place_lat", ""):
+                                                    if "°" in item_place["place_lon"]:
+                                                        place_lon = find_dfm(item_place["place_lon"])
+                                                    else:
+                                                        place_lon = find_int_in_str(item_place["place_lon"])
+                                                    doc_mark_place.place_lon = place_lon
+
+                                                    if "°" in item_place["place_lat"]:
+                                                        place_lat = find_dfm(item_place["place_lat"])
+                                                    else:
+                                                        place_lat = find_int_in_str(item_place["place_lat"])
+                                                    doc_mark_place.place_lat = place_lat
+                                            # 其他类型的doc_mark_place
+                                            else:
+                                                if item_place.get("place_lon", ""):
+                                                    doc_mark_place.place_lon = item_place("place_lon")
+                                                    doc_mark_place.place_lon = place_lon
                                                 # location_json["lon"] = item_place["place_lon"]
-                                            if item_place.get("place_lat", ""):
-                                                doc_mark_place.place_lat = item_place["place_lat"]
+                                                if item_place.get("place_lat", ""):
+                                                    doc_mark_place.place_lat = item_place["place_lat"]
+                                                    doc_mark_place.place_lat = place_lat
                                                 # location_json["lat"] = item_place["place_lat"]
                                             if item_place.get("word_count", ""):
                                                 word_count_list = list(item_place["word_count"].split(','))
                                                 doc_mark_place.appear_index_in_text = word_count_list
 
-                                            db.session.add(doc_mark_place)
-                                            db.session.commit()
-                                            item_place["doc_mark_id"] = doc_mark_place.id
+                                            # 经纬度都有值时添加到数据库中
+                                            if doc_mark_place.type == 2:
+                                                if doc_mark_place.place_lon and doc_mark_place.place_lat:
+                                                    db.session.add(doc_mark_place)
+                                                    db.session.commit()
+                                                    item_place["doc_mark_id"] = doc_mark_place.id
+                                                    # 合格的地名才同步es
+                                                    data_insert_place.append(doc_mark_place.word)
+                                            else:
+                                                db.session.add(doc_mark_place)
+                                                db.session.commit()
+                                                item_place["doc_mark_id"] = doc_mark_place.id
+
+                                                data_insert_place.append(doc_mark_place.word)
+
                                             # data_insert_location.append(location_json)
                                         # print("doc_mark_place数据插入成功")
 
@@ -1841,3 +1872,16 @@ def get_keywords(content):
     return res
 
 # ——————————————————————— 提取关键词 —————————————————————————————
+
+#------------------处理经纬度----------------------------
+
+
+def find_int_in_str(string):
+    str_to_num = re.findall('(\d+)', string)[0]
+    return int(str_to_num)
+
+
+def find_dfm(dfm_string):
+    d_ = find_int_in_str(dfm_string.split("°")[0])
+    f_ = find_int_in_str(dfm_string.split("°")[1])
+    return d_ + f_/60
