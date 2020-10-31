@@ -262,6 +262,7 @@ def get_catalog_files():
                                                                         DocMarkComment.create_by.in_(leader_ids),
                                                                         DocMarkComment.valid==1).all()
                         doc_json["leader_operate"] = 1 if doc_mark_comments else 0
+
                         doc_list.append(doc_json)
 
                     res = {

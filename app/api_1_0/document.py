@@ -804,7 +804,6 @@ def get_entity_in_list_pagination():
                                                                                     leader_ids),
                                                                                 DocMarkComment.valid == 1).all()
                                 i["leader_operate"] = 1 if doc_mark_comments else 0
-
                             data.append(i)
                     res = {"data": data,
                            "page_count": int(len(data) / page_size) + 1,
