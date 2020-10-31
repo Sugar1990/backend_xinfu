@@ -19,9 +19,9 @@ from .get_leader_ids import get_leader_ids
 from .utils import success_res, fail_res
 from .. import db, lock
 from ..conf import LEXICON_IP, LEXICON_PORT, SUMMARY_IP, SUMMARY_PORT, YC_ROOT_URL, ES_SERVER_IP, ES_SERVER_PORT, \
-    YC_TAGGING_PAGE_URL, YC_ROOT_URL_PYTHON, EVENT_EXTRACTION_URL
+    YC_TAGGING_PAGE_URL, YC_ROOT_URL_PYTHON, EVENT_EXTRACTION_URL, PLACE_BASE_NAME
 from ..models import Document, Entity, Customer, Permission, Catalog, DocMarkEntity, DocMarkPlace, DocMarkTimeTag, \
-    DocMarkEvent, DocMarkComment
+    DocMarkEvent, DocMarkComment, EntityCategory
 from ..serve.word_parse import extract_word_content
 
 
@@ -774,39 +774,59 @@ def get_entity_in_list_pagination():
         res = {"data": [],
                "page_count": 0,
                "total_count": 0}
+        doc_id_list = []
         if search:
             entitiy = Entity.query.filter(or_(Entity.name == search, Entity.synonyms.has_key(search))).first()
             if entitiy:
-                if YC_ROOT_URL:
-                    url = YC_ROOT_URL + "/doc/get_entity_in_list_pagination"
-                    print(url, flush=True)
-                    resp = requests.get(url=url, params={"cusotmer_id": customer_id,
-                                                         "entity_id": entitiy.id,
-                                                         "cur_page": cur_page,
-                                                         "page_size": page_size})
+                category = EntityCategory.query.filter_by(id=entitiy.category_id, valid=1).first()
+                if category.name == PLACE_BASE_NAME:
+                    doc_mark_place_list = DocMarkPlace.query.filter_by(place_id=entitiy.id, valid=1).all()
+                    for doc_mark_place in doc_mark_place_list:
+                        doc_id_list.append(doc_mark_place.doc_id)
+                else:
+                    doc_mark_entity_list = DocMarkEntity.query.filter_by(entity_id=entitiy.id, valid=1).all()
+                    for doc_mark_entity in doc_mark_entity_list:
+                        doc_id_list.append(doc_mark_entity.doc_id)
 
-                    print(resp.text, flush=True)
-
-                    rows = json.loads(resp.text).get("rows", [])
+                # if YC_ROOT_URL:
+                #     url = YC_ROOT_URL + "/doc/get_entity_in_list_pagination"
+                #     print(url, flush=True)
+                #     resp = requests.get(url=url, params={"cusotmer_id": customer_id,
+                #                                          "entity_id": entitiy.id,
+                #                                          "cur_page": cur_page,
+                #                                          "page_size": page_size})
+                #
+                #     print(resp.text, flush=True)
+                    #rows = json.loads(resp.text).get("rows", [])
                     data = []
                     leader_ids = get_leader_ids()
-                    for i in rows:
-                        doc = Document.query.filter_by(id=i["id"]).first()
+                    for doc_id in list(set(doc_id_list)):
+                        doc = Document.query.filter_by(id=doc_id).first()
                         if doc:
-                            i['name'] = doc.name
-                            i['create_username'] = Customer.get_username_by_id(doc.create_by)
-                            i['path'] = doc.get_full_path() if doc.get_full_path() else '已失效'
-                            i['extension'] = doc.category
-                            i['tag_flag'] = 1 if doc.status == 1 else 0
-                            i['status'] = doc.get_status_name()
-                            i['permission'] = 1 if Permission.judge_power(customer_id, doc.id) else 0
+                            # i['name'] = doc.name
+                            # i['create_username'] = Customer.get_username_by_id(doc.create_by)
+                            # i['path'] = doc.get_full_path() if doc.get_full_path() else '已失效'
+                            # i['extension'] = doc.category
+                            # i['tag_flag'] = 1 if doc.status == 1 else 0
+                            # i['status'] = doc.get_status_name()
+                            # i['permission'] = 1 if Permission.judge_power(customer_id, doc.id) else 0
                             if leader_ids:
                                 doc_mark_comments = DocMarkComment.query.filter(DocMarkComment.doc_id == doc.id,
                                                                                 DocMarkComment.create_by.in_(
                                                                                     leader_ids),
                                                                                 DocMarkComment.valid == 1).all()
-                                i["leader_operate"] = 1 if doc_mark_comments else 0
-                            data.append(i)
+                                #i["leader_operate"] = 1 if doc_mark_comments else 0
+                                res = {
+                                    "name": doc.name,
+                                    "create_username": Customer.get_username_by_id(doc.create_by),
+                                    'path': doc.get_full_path() if doc.get_full_path() else '已失效',
+                                    'extension': doc.category,
+                                    "tag_flag": 1 if doc.status == 1 else 0,
+                                    'status': doc.get_status_name(),
+                                    'permission': 1 if Permission.judge_power(customer_id, doc.id) else 0,
+                                    'leader_operate': 1 if doc_mark_comments else 0
+                                }
+                            data.append(res)
                     res = {"data": data,
                            "page_count": int(len(data) / page_size) + 1,
                            "total_count": len(data)}
