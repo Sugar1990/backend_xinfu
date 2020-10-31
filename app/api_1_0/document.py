@@ -24,6 +24,15 @@ from ..serve.word_parse import extract_word_content
 import re
 
 
+
+@blue_print.route("/doc_adc", methods=['POST'])
+# @swag_from('../swagger/save_tagging_result.yml')
+def doc_adc():
+    doc_ids = request.json.get('doc_ids',[])
+    a1 = jsonify({"event_list": get_event_list_from_docs(doc_ids),"event_list_group_by_entities": get_event_list_from_docs_group_by_entities(doc_ids)})
+    return a1
+
+
 # 上传文档
 @blue_print.route("/upload_doc", methods=['POST'])
 # @swag_from(upload_doc_dict)
@@ -1072,13 +1081,14 @@ def search_advanced_doc_type():
 
         data_forms = [
             {"name": Catalog.get_name_by_id(doc_type), "data": data_by_doc_id[doc_type]}
-            for doc_type in data_by_doc_id if Catalog.get_name_by_id(doc_type)
-        ]
+            for doc_type in data_by_doc_id if Catalog.get_name_by_id(doc_type)]
+        print(doc_ids,flush = True)
+        print(get_event_list_from_docs_group_by_entities(doc_ids),flush = True)
 
         res = {
             "doc": data_forms,
-            "event_list": get_event_list_from_docs(doc_ids),
-            "event_list_group_by_entities": get_event_list_from_docs_group_by_entities(doc_ids),
+            "event_list": get_doc_events_to_earth(doc_ids),
+            "event_list_group_by_entities": get_doc_events_to_earth_by_entities(doc_ids),
             "doc_ids": doc_ids
         }
 
@@ -1114,7 +1124,7 @@ def search_advanced_doc_type():
     return jsonify(res)  # doc:原来格式数据 event_list:事件数据
 
 
-def get_event_list_from_docs(doc_ids=[], start_date='1900-01-01', end_date='9999-12-31'):
+def get_event_list_from_docs(doc_ids=[], start_date='1000-01-01', end_date='9999-12-31'):
     # <editor-fold desc="construct into event_list from docs order by event_time">
     event_list = []
     if doc_ids:
@@ -1129,22 +1139,17 @@ def get_event_list_from_docs(doc_ids=[], start_date='1900-01-01', end_date='9999
                     if places:
                         objects, subjects, form_time = [], [], ""
 
-                        if i.event_object and isinstance(i.event_object, list):
+                        if i.event_object and isinstance(i.event_object, list) and i.event_subject:
+                            object_id_list = i.event_object
+                            object_id_list.extend(i.subject_object)
                             object_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_id).filter(
-                                DocMarkEntity.id.in_(i.event_object)).all()
+                                DocMarkEntity.id.in_(object_id_list)).all()
                             if object_ids:
                                 object_ids = [i[0] for i in object_ids]
                                 objects = Entity.query.filter(Entity.id.in_(object_ids), Entity.valid == 1).all()
 
-                        if i.event_subject and isinstance(i.event_subject, list):
-                            subject_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_id).filter(
-                                DocMarkEntity.id.in_(i.event_subject)).all()
-                            if subject_ids:
-                                subject_ids = [i[0] for i in subject_ids]
-                                subjects = Entity.query.filter(Entity.id.in_(subject_ids), Entity.valid == 1).all()
-
                         # subject和object结合，返回给前端
-                        objects.extend(subjects)
+
                         if objects:
                             if i.event_time and isinstance(i.event_time, list):
                                 mark_time_ids = i.event_time
@@ -1245,7 +1250,79 @@ def get_event_list_from_docs_group_by_entities(doc_ids=[]):
     return event_list
 
 
+def get_doc_events_to_earth(doc_ids):
+    doc_mark_event_list = DocMarkEvent.query.filter(DocMarkEvent.doc_id.in_(doc_ids)).all()
+    result = []
+    for doc_mark_event in doc_mark_event_list:
+        places = doc_mark_event.get_places()
+        place_list = [{
+            "word": i.word,
+            "place_id": i.place_id,
+            "place_lon": i.place_lon,
+            "place_lat": i.place_lat
+        } for i in places if i.place_lon and i.place_lat]
+        if place_list:
+            datetime = ""
+            if doc_mark_event.event_time:
+                time_tag = DocMarkTimeTag.query.filter(DocMarkTimeTag.id.in_(doc_mark_event.event_time)).first()
+                if time_tag:
+                    if time_tag.format_date:
+                        datetime = time_tag.format_date.strftime("%Y-%m-%d %H:%M:%S")
+            if datetime:
+                object_list = doc_mark_event.get_object_entity_names()
+                object_list.extend(doc_mark_event.get_subject_entity_names())
+                if object_list:
+                    result.append({
+                        "title": doc_mark_event.title,
+                        "object": object_list,
+                        "datetime": datetime,
+                        "place": place_list,
+                        "event_id": doc_mark_event.id})
+    res = sorted(result, key=lambda x: x.get('datetime', ''))
+    return res
 
+def get_doc_events_to_earth_by_entities(doc_ids):
+    doc_mark_event_list = DocMarkEvent.query.filter(DocMarkEvent.doc_id.in_(doc_ids)).all()
+    event_dict = {}
+    for doc_mark_event in doc_mark_event_list:
+        places = doc_mark_event.get_places()
+        place_list = [{
+            "word": i.word,
+            "place_id": i.place_id,
+            "place_lon": i.place_lon,
+            "place_lat": i.place_lat
+        } for i in places if i.place_lon and i.place_lat]
+        if place_list:
+            datetime = ""
+            if doc_mark_event.event_time:
+                time_tag = DocMarkTimeTag.query.filter(DocMarkTimeTag.id.in_(doc_mark_event.event_time)).first()
+                if time_tag:
+                    if time_tag.format_date:
+                        datetime = time_tag.format_date.strftime("%Y-%m-%d %H:%M:%S")
+            if datetime:
+                object_list = doc_mark_event.get_object_entity_names()
+                object_list.extend(doc_mark_event.get_subject_entity_names())
+                object_uni_list =list(set(object_list))
+            if object_list:
+
+                    # 确立时间线的key值
+                timeline_key = ",".join([str(i) for i in sorted(object_list)])
+
+                item = {
+                    "datetime": datetime,
+                    "place": place_list,
+                    "title": doc_mark_event.title,
+                    "object": object_list,
+                    "event_id": doc_mark_event.id
+                }
+
+                if event_dict.get(timeline_key, []):
+                    event_dict[timeline_key].append(item)
+                else:
+                    event_dict[timeline_key] = [item]
+        # </editor-fold>
+        res = [sorted(i, key=lambda x: x.get('datetime', '')) for i in event_dict.values()]
+    return res
 
 # 高级搜索结果doc_ids 筛选事件
 @blue_print.route('/screen_event_by_time_range', methods=['POST'])
