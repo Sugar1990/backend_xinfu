@@ -273,3 +273,27 @@ def query_by_ids():
               "code": 0,
               "msg": ""}
     return jsonify(result)
+
+@blue_print.route('/get_eidt_permission', methods=['POST'])
+def query_by_ids():
+    try:
+        uid = request.json.get('uid', '')
+        doc_uid = request.json.get('doc_uid', '')
+
+        customer_uid = Customer.query.filter_by(id=uid, valid=1).first()
+        customer_doc_uid = Customer.query.filter_by(id=doc_uid, valid=1).first()
+        if Permission.get_power(customer_uid.permission_id) - Permission.get_power(customer_doc_uid .permission_id) >= 0:
+            result = {"data": 1,
+                      "code": 1,
+                      "msg": ""}
+        else:
+            result = {"data": 0,
+                      "code": 1,
+                      "msg": ""}
+    except:
+        db.session.rollback()
+        result = {"data": [],
+                  "code": 0,
+                  "msg": "N"}
+        return jsonify(result)
+    return jsonify(result)
