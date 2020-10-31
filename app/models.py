@@ -476,8 +476,6 @@ class DocMarkMind(db.Model):
         return '<DocMarkMind %r>' % self.id
 
 
-
-
 class Es_controller():
     # def __init__(self):
     #     Es_controller =
@@ -515,6 +513,15 @@ class Es_controller():
         location_output = Entity.get_location_of_entity_name(place_name)
         return location_output
 
+import re
+def find_int_in_str(string):
+    str_to_num = re.findall('(\d+)', string)[0]
+    return int(str_to_num)
+
+def find_dfm(dfm_string):
+    d_ = find_int_in_str(dfm_string.split("°")[0])
+    f_ = find_int_in_str(dfm_string.split("°")[1])
+    return d_ + f_/60
 
 
 # Es_controller.hight_convert('100千米')
