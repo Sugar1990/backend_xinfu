@@ -142,8 +142,8 @@ def del_entity_category(id):
     try:
         entity_category = EntityCategory.query.filter_by(id=id, type=1, valid=1).first()
         relation_category = RelationCategory.query.filter(RelationCategory.valid == 1,
-                                                          or_(RelationCategory.source_entity_category_ids == id,
-                                                              RelationCategory.target_entity_category_ids == id)).all()
+                                                          or_(RelationCategory.source_entity_category_ids.op('@>')([id]),
+                                                              RelationCategory.target_entity_category_ids.op('@>')([id]))).all()
         entity = Entity.query.filter_by(category_id=id, valid=1).first()
 
         if not entity_category:
@@ -335,8 +335,8 @@ def del_entity_idea(id):
     try:
         entity_category = EntityCategory.query.filter_by(id=id, type=2, valid=1).first()
         relation_category = RelationCategory.query.filter(RelationCategory.valid == 1,
-                                                          or_(RelationCategory.source_entity_category_ids == id,
-                                                              RelationCategory.target_entity_category_ids == id)).all()
+                                                          or_(RelationCategory.source_entity_category_ids.op('@>')([id]),
+                                                              RelationCategory.target_entity_category_ids.op('@>')([id]))).all()
         entity = Entity.query.filter_by(category_id=id, valid=1).first()
 
         if not entity_category:
