@@ -14,12 +14,13 @@ from werkzeug.utils import secure_filename
 import math
 # from app.swagger.document_dict import *
 from . import api_document as blue_print
+from .get_leader_ids import get_leader_ids
 from .utils import success_res, fail_res
 from .. import db, lock
 from ..conf import LEXICON_IP, LEXICON_PORT, SUMMARY_IP, SUMMARY_PORT, YC_ROOT_URL, ES_SERVER_IP, ES_SERVER_PORT, \
     YC_TAGGING_PAGE_URL, YC_ROOT_URL_PYTHON, EVENT_EXTRACTION_URL
 from ..models import Document, Entity, Customer, Permission, Catalog, DocMarkEntity, DocMarkPlace, DocMarkTimeTag, \
-    DocMarkEvent
+    DocMarkEvent, DocMarkComment
 from ..serve.word_parse import extract_word_content
 import re
 
@@ -786,6 +787,7 @@ def get_entity_in_list_pagination():
 
                     rows = json.loads(resp.text).get("rows", [])
                     data = []
+                    leader_ids = get_leader_ids()
                     for i in rows:
                         doc = Document.query.filter_by(id=i["id"]).first()
                         if doc:
@@ -796,6 +798,13 @@ def get_entity_in_list_pagination():
                             i['tag_flag'] = 1 if doc.status == 1 else 0
                             i['status'] = doc.get_status_name()
                             i['permission'] = 1 if Permission.judge_power(customer_id, doc.id) else 0
+                            if leader_ids:
+                                doc_mark_comments = DocMarkComment.query.filter(DocMarkComment.doc_id == doc.id,
+                                                                                DocMarkComment.create_by.in_(
+                                                                                    leader_ids),
+                                                                                DocMarkComment.valid == 1).all()
+                                i["leader_operate"] = 1 if doc_mark_comments else 0
+
                             data.append(i)
                     res = {"data": data,
                            "page_count": int(len(data) / page_size) + 1,
@@ -858,24 +867,30 @@ def get_search_panigation():
         search_result = requests.post(url=esurl, data=json.dumps(para), headers=header)
         # print(search_result, flush=True)
         data = []
-
+        leader_ids = get_leader_ids()
         for doc in search_result.json()['data']['dataList']:
             doc_pg = Document.query.filter_by(id=doc['_source']['id']).first()
             if doc_pg:
                 path = doc_pg.get_full_path() if doc_pg else '已失效'
                 create_username = Customer.get_username_by_id(doc_pg.create_by) if doc_pg else '无效用户'
-                data_item = {
-                    'id': doc['_source']['id'],
-                    'name': doc['_source']['name'],
-                    'create_username': create_username,
-                    'path': path,
-                    'create_time': doc['_source']['create_time'],
-                    'tag_flag': 1 if doc_pg.status == 1 else 0,
-                    "status": doc_pg.get_status_name(),
-                    'extension': doc_pg.category,
-                    "permission": 1 if Permission.judge_power(customer_id, doc_pg.id) else 0
-                }
-                data.append(data_item)
+                if leader_ids:
+                    doc_mark_comments = DocMarkComment.query.filter(DocMarkComment.doc_id == doc_pg.id,
+                                                                    DocMarkComment.create_by.in_(leader_ids),
+                                                                    DocMarkComment.valid == 1).all()
+
+                    data_item = {
+                        'id': doc['_source']['id'],
+                        'name': doc['_source']['name'],
+                        'create_username': create_username,
+                        'path': path,
+                        'create_time': doc['_source']['create_time'],
+                        'tag_flag': 1 if doc_pg.status == 1 else 0,
+                        "status": doc_pg.get_status_name(),
+                        'extension': doc_pg.category,
+                        "permission": 1 if Permission.judge_power(customer_id, doc_pg.id) else 0,
+                        "leader_operate": 1 if doc_mark_comments else 0
+                    }
+                    data.append(data_item)
 
         total_count = len(data)
 
@@ -1408,6 +1423,7 @@ def search_advanced_pagination():
                              notes=notes, doc_type=doc_type, content=content, notes_content=notes_content)
 
     data_screen_res = []
+    leader_ids = get_leader_ids()
     for data in data_screen:
         doc = Document.query.filter_by(id=data['id']).first()
         if doc:
@@ -1419,6 +1435,12 @@ def search_advanced_pagination():
             data['tag_flag'] = 1 if doc.status == 1 else 0
             data['status'] = doc.get_status_name()
             data['permission'] = 1 if Permission.judge_power(customer_id, doc.id) else 0
+            if leader_ids:
+                doc_mark_comments = DocMarkComment.query.filter(DocMarkComment.doc_id == doc.id,
+                                                                DocMarkComment.create_by.in_(
+                                                                    leader_ids),
+                                                                DocMarkComment.valid == 1).all()
+                data["leader_operate"] = 1 if doc_mark_comments else 0
             data_screen_res.append(data)
     total_count = len(data_screen_res)
     if total_count >= page_size * cur_page:

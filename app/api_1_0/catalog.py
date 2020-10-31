@@ -5,7 +5,8 @@ import json
 from sqlalchemy import and_
 
 from . import api_catalog as blue_print
-from ..models import Catalog, Document, Customer, Permission
+from .get_leader_ids import get_leader_ids
+from ..models import Catalog, Document, Customer, Permission, DocMarkComment
 from .. import db
 from .utils import success_res, fail_res
 from ..conf import TAG_TABS
@@ -244,23 +245,51 @@ def get_catalog_files():
             res = fail_res(msg="无效用户")
         else:
             if customer:
-                res = {
-                    "files": [{
-                        "id": d.id,
-                        "name": d.name,
-                        "create_time": d.create_time,
-                        "create_username": Customer.get_username_by_id(d.create_by),
-                        "extension": d.category.replace('\n\"', ""),
-                        'tag_flag': 1 if d.status == 1 else 0,
-                        "status": d.get_status_name(),
-                        "permission": 1 if Permission.judge_power(customer_id, d.id) else 0
-                    } for d in docs],
-                    # } for i in docs if i.get_power() <= customer.get_power()],
-                    "catalogs": [{
-                        'id': i.id,
-                        'name': i.name
-                    } for i in catalogs]
-                }
+                doc_list = []
+                leader_ids = get_leader_ids()
+                if leader_ids:
+                    for d in docs:
+                        doc_json = {}
+                        doc_json["id"] = d.id
+                        doc_json["name"] = d.name
+                        doc_json["create_time"] = d.create_time
+                        doc_json["create_username"] = Customer.get_username_by_id(d.create_by)
+                        doc_json["extension"] = d.category.replace('\n\"', "")
+                        doc_json["tag_flag"] = 1 if d.status == 1 else 0
+                        doc_json["status"] = d.get_status_name()
+                        doc_json["permission"] = 1 if Permission.judge_power(customer_id, d.id) else 0
+                        doc_mark_comments = DocMarkComment.query.filter(DocMarkComment.doc_id == d.id,
+                                                                        DocMarkComment.create_by.in_(leader_ids),
+                                                                        DocMarkComment.valid==1).all()
+                        doc_json["leader_operate"] = 1 if doc_mark_comments else 0
+                        doc_list.append(doc_json)
+
+                    res = {
+                        "files": doc_list,
+                        "catalogs": [{
+                            'id': i.id,
+                            'name': i.name
+                        } for i in catalogs]
+                    }
+                else:
+                    res = {"files": [], "catalogs": []}
+                # res = {
+                #     "files": [{
+                #         "id": d.id,
+                #         "name": d.name,
+                #         "create_time": d.create_time,
+                #         "create_username": Customer.get_username_by_id(d.create_by),
+                #         "extension": d.category.replace('\n\"', ""),
+                #         'tag_flag': 1 if d.status == 1 else 0,
+                #         "status": d.get_status_name(),
+                #         "permission": 1 if Permission.judge_power(customer_id, d.id) else 0
+                #     } for d in docs],
+                #     # } for i in docs if i.get_power() <= customer.get_power()],
+                #     "catalogs": [{
+                #         'id': i.id,
+                #         'name': i.name
+                #     } for i in catalogs]
+                # }
             else:
                 res = {"files": [], "catalogs": []}
     except Exception as e:
