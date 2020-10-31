@@ -599,8 +599,8 @@ def dfm_convert(du, fen, miao):
 # @swag_from(get_doc_events_dict)
 def get_during_time_event():
     try:
-        start_date = request.json.get('start_date', '1900-01-01')
-        end_date = request.json.get('end_date', '9999-01-01')
+        start_date = request.arges.get('start_date', '1900-01-01')
+        end_date = request.arges.get('end_date', '9999-01-01')
         doc_mark_time_tags = DocMarkTimeTag.query.filter(
             and_(DocMarkTimeTag.valid == 1, DocMarkTimeTag.time_type.in_(['1', '2']))).all()
         doc_mark_time_tag_ids = []
@@ -654,10 +654,10 @@ def get_during_time_event():
                 event_list.append(event)
             else:
                 pass
-        res = success_res(data=event_list)
+        res = event_list
     except Exception as e:
         print(str(e))
-        res = fail_res(data={})
+        res =[]
     return jsonify(res)
 
 
@@ -665,8 +665,8 @@ def get_during_time_event():
 # @swag_from(get_doc_events_dict)
 def get_during_time_event_by_entities():
     try:
-        start_date = request.json.get('start_date', '1900-01-01')
-        end_date = request.json.get('end_date', '9999-01-01')
+        start_date = request.args.get('start_date', '1900-01-01')
+        end_date = request.args.get('end_date', '9999-01-01')
         doc_mark_time_tags = DocMarkTimeTag.query.filter(
             and_(DocMarkTimeTag.valid == 1, DocMarkTimeTag.time_type.in_(['1', '2']))).all()
         doc_mark_time_tag_ids = []
@@ -721,14 +721,14 @@ def get_during_time_event_by_entities():
                 }
 
                 if event_dict.get(timeline_key, []):
-                    event_dict[timeline_key].append(item)
+                    event_dict[timeline_key].append(event)
                 else:
-                    event_dict[timeline_key] = [item]
+                    event_dict[timeline_key] = [event]
             # </editor-fold>
         event_list = [sorted(i, key=lambda x: x.get('datetime', '')) for i in event_dict.values()]
-        res = success_res(data=event_list)
+        res = event_list
     except Exception as e:
         print(str(e))
-        res = fail_res(data={})
+        res = []
     return jsonify(res)
 
