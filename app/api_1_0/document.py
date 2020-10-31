@@ -1129,30 +1129,6 @@ def search_advanced_doc_type():
             "doc_ids": doc_ids
         }
 
-        '''
-        # 临时测试
-        with open(os.path.join(os.getcwd(), 'static', 'search_advanced_doc_type.json'), 'r', encoding='utf-8') as f:
-            print("read search_advanced_doc_type.json")
-            res = json.loads(f.read())
-        '''
-        '''
-        # yc接口格式
-        {
-            "event_list": [{
-                "datetime": ["2020-07-08 00:00:00"],
-                "subject": null,
-                "place": [{
-                    "placeLat": "34.4648398080001",
-                    "placeId": 41447,
-                    "type": 1,
-                    "word": "中国",
-                    "placeIon": "107.525810728"
-                }],
-                "title": "中国军事专家宋忠平7月8日在接受《环球时报》采访",
-                "object": ["环球时报"]
-            }]
-        }
-        '''
 
     except Exception as e:
         print(str(e), flush=True)
@@ -1341,16 +1317,16 @@ def get_doc_events_to_earth_by_entities(doc_ids):
                 object_list = doc_mark_event.get_object_entity_names()
                 object_list.extend(doc_mark_event.get_subject_entity_names())
                 object_uni_list = list(set(object_list))
-            if object_list:
+            if object_uni_list:
 
                 # 确立时间线的key值
-                timeline_key = ",".join([str(i) for i in sorted(object_list)])
+                timeline_key = ",".join([str(i) for i in sorted(object_uni_list)])
 
                 item = {
                     "datetime": datetime,
                     "place": place_list,
                     "title": doc_mark_event.title,
-                    "object": object_list,
+                    "object": object_uni_list,
                     "event_id": doc_mark_event.id
                 }
 
