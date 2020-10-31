@@ -852,7 +852,7 @@ def judge_doc_permission():
     cus_power = cus.get_power() if cus else 0
     if cus_power:
         if doc_power <= cus_power:
-            res = success_res()
+            res = success_res(msg="可以打开")
         else:
             res = fail_res(msg="此文档权限较高，无法打开")
     else:
