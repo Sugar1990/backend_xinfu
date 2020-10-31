@@ -195,12 +195,12 @@ def upload_doc():
                                             # 其他类型的doc_mark_place
                                             else:
                                                 if item_place.get("place_lon", ""):
-                                                    doc_mark_place.place_lon = item_place("place_lon")
-                                                    doc_mark_place.place_lon = place_lon
+                                                    doc_mark_place.place_lon = item_place["place_lon"]
+
                                                 # location_json["lon"] = item_place["place_lon"]
                                                 if item_place.get("place_lat", ""):
                                                     doc_mark_place.place_lat = item_place["place_lat"]
-                                                    doc_mark_place.place_lat = place_lat
+
                                                 # location_json["lat"] = item_place["place_lat"]
                                             if item_place.get("word_count", ""):
                                                 word_count_list = list(item_place["word_count"].split(','))
