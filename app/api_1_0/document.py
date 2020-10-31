@@ -841,9 +841,9 @@ def judge_doc_permission():
 
 
 # 模糊文档搜索分页展示
-@blue_print.route('/get_search_doc_panigation', methods=['GET'])
+@blue_print.route('/get_search_doc_pagination', methods=['GET'])
 # @swag_from(get_search_panigation_dict)
-def get_search_panigation():
+def get_search_pagination():
     try:
         customer_id = request.args.get("customer_id", 0, type=int)
         search = request.args.get('search', "")
@@ -908,7 +908,7 @@ def get_search_panigation():
     except Exception as e:
         print(str(e))
         res = {'data': [],
-               'page_count': 0,
+               'page_count': 1,
                'total_count': 0}
     return jsonify(res)
 
