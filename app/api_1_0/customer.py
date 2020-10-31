@@ -275,7 +275,7 @@ def query_by_ids():
     return jsonify(result)
 
 @blue_print.route('/get_eidt_permission', methods=['POST'])
-def query_by_ids():
+def query_by_uid_doc_uid():
     try:
         uid = request.json.get('uid', '')
         doc_uid = request.json.get('doc_uid', '')
