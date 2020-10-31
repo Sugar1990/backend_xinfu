@@ -599,8 +599,8 @@ def dfm_convert(du, fen, miao):
 # @swag_from(get_doc_events_dict)
 def get_during_time_event():
     try:
-        start_date = request.arges.get('start_date', '1900-01-01')
-        end_date = request.arges.get('end_date', '9999-01-01')
+        start_date = request.json.get('start_date', '1900-01-01')
+        end_date = request.json.get('end_date', '9999-01-01')
         doc_mark_time_tags = DocMarkTimeTag.query.filter(
             and_(DocMarkTimeTag.valid == 1, DocMarkTimeTag.time_type.in_(['1', '2']))).all()
         doc_mark_time_tag_ids = []
@@ -629,12 +629,13 @@ def get_during_time_event():
                 for item in doc_mark_event.event_address:
                     temp = {}
                     doc_mark_place = DocMarkPlace.query.filter_by(id=item, valid=1).first()
-                    temp["word"] = doc_mark_place.word
-                    temp["place_id"] = doc_mark_place.place_id
-                    entity = Entity.query.filter_by(id=doc_mark_place.place_id, valid=1).first()
-                    temp["place_lon"] = entity.longitude
-                    temp["place_lat"] = entity.latitude
-                    place.append(temp)
+                    if doc_mark_place:
+                        temp["word"] = doc_mark_place.word
+                        temp["place_id"] = doc_mark_place.place_id
+                        entity = Entity.query.filter_by(id=doc_mark_place.place_id, valid=1).first()
+                        temp["place_lon"] = entity.longitude
+                        temp["place_lat"] = entity.latitude
+                        place.append(temp)
                 title = doc_mark_event.title
                 subject_object = doc_mark_event.event_subject
                 if doc_mark_event.event_object:
@@ -665,8 +666,8 @@ def get_during_time_event():
 # @swag_from(get_doc_events_dict)
 def get_during_time_event_by_entities():
     try:
-        start_date = request.args.get('start_date', '1900-01-01')
-        end_date = request.args.get('end_date', '9999-01-01')
+        start_date = request.json.get('start_date', '1900-01-01')
+        end_date = request.json.get('end_date', '9999-01-01')
         doc_mark_time_tags = DocMarkTimeTag.query.filter(
             and_(DocMarkTimeTag.valid == 1, DocMarkTimeTag.time_type.in_(['1', '2']))).all()
         doc_mark_time_tag_ids = []
@@ -695,12 +696,13 @@ def get_during_time_event_by_entities():
                 for item in doc_mark_event.event_address:
                     temp = {}
                     doc_mark_place = DocMarkPlace.query.filter_by(id=item, valid=1).first()
-                    temp["word"] = doc_mark_place.word
-                    temp["place_id"] = doc_mark_place.place_id
-                    entity = Entity.query.filter_by(id=doc_mark_place.place_id, valid=1).first()
-                    temp["place_lon"] = entity.longitude
-                    temp["place_lat"] = entity.latitude
-                    place.append(temp)
+                    if doc_mark_place:
+                        temp["word"] = doc_mark_place.word
+                        temp["place_id"] = doc_mark_place.place_id
+                        entity = Entity.query.filter_by(id=doc_mark_place.place_id, valid=1).first()
+                        temp["place_lon"] = entity.longitude
+                        temp["place_lat"] = entity.latitude
+                        place.append(temp)
                 title = doc_mark_event.title
                 subject_object = doc_mark_event.event_subject
                 if doc_mark_event.event_object:
