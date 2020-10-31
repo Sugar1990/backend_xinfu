@@ -2,6 +2,7 @@
 import datetime
 import hashlib
 import json
+import math
 import os
 import time
 
@@ -11,7 +12,7 @@ from flask import jsonify, request
 from pypinyin import lazy_pinyin
 from sqlalchemy import or_, and_
 from werkzeug.utils import secure_filename
-import math
+
 # from app.swagger.document_dict import *
 from . import api_document as blue_print
 from .utils import success_res, fail_res
@@ -21,15 +22,14 @@ from ..conf import LEXICON_IP, LEXICON_PORT, SUMMARY_IP, SUMMARY_PORT, YC_ROOT_U
 from ..models import Document, Entity, Customer, Permission, Catalog, DocMarkEntity, DocMarkPlace, DocMarkTimeTag, \
     DocMarkEvent
 from ..serve.word_parse import extract_word_content
-import re
-
 
 
 @blue_print.route("/doc_adc", methods=['POST'])
 # @swag_from('../swagger/save_tagging_result.yml')
 def doc_adc():
-    doc_ids = request.json.get('doc_ids',[])
-    a1 = jsonify({"event_list": get_event_list_from_docs(doc_ids),"event_list_group_by_entities": get_event_list_from_docs_group_by_entities(doc_ids)})
+    doc_ids = request.json.get('doc_ids', [])
+    a1 = jsonify({"event_list": get_event_list_from_docs(doc_ids),
+                  "event_list_group_by_entities": get_event_list_from_docs_group_by_entities(doc_ids)})
     return a1
 
 
@@ -212,7 +212,8 @@ def upload_doc():
                                             if item_time.get("word_count", ""):
                                                 word_count_list = list(item_time["word_count"].split(','))
                                                 doc_mark_time_tag.appear_index_in_text = word_count_list
-                                            if item_time.get("format_date", "") and item_time.get("format_date_end", ""):
+                                            if item_time.get("format_date", "") and item_time.get("format_date_end",
+                                                                                                  ""):
                                                 start_time = time.strptime(item_time["format_date"],
                                                                            "%Y-%m-%d %H:%M:%S")
                                                 start_time = int(time.mktime(start_time))
@@ -222,7 +223,8 @@ def upload_doc():
                                                 time_range_json["start_time"] = start_time
                                                 time_range_json["end_time"] = end_time
                                                 data_insert_time_range.append(time_range_json)
-                                            if not item_time.get("format_date_end","") and item_time.get("format_date", ""):
+                                            if not item_time.get("format_date_end", "") and item_time.get("format_date",
+                                                                                                          ""):
                                                 start_time = time.strptime(item_time["format_date"],
                                                                            "%Y-%m-%d %H:%M:%S")
                                                 start_time = int(time.mktime(start_time))
@@ -1074,7 +1076,8 @@ def search_advanced_doc_type():
                 if data.get("id", False):
                     doc_ids.append(data["id"])
                 if data.get("doc_type", False):
-                    if data_by_doc_id.get(data["doc_type"], False) and len(data_by_doc_id[data["doc_type"]]) <= page_size:
+                    if data_by_doc_id.get(data["doc_type"], False) and len(
+                            data_by_doc_id[data["doc_type"]]) <= page_size:
                         data_by_doc_id[data["doc_type"]].append(data)
                     else:
                         data_by_doc_id[data["doc_type"]] = [data]
@@ -1082,8 +1085,8 @@ def search_advanced_doc_type():
         data_forms = [
             {"name": Catalog.get_name_by_id(doc_type), "data": data_by_doc_id[doc_type]}
             for doc_type in data_by_doc_id if Catalog.get_name_by_id(doc_type)]
-        print(doc_ids,flush = True)
-        print(get_event_list_from_docs_group_by_entities(doc_ids),flush = True)
+        print(doc_ids, flush=True)
+        print(get_event_list_from_docs_group_by_entities(doc_ids), flush=True)
 
         res = {
             "doc": data_forms,
@@ -1281,6 +1284,7 @@ def get_doc_events_to_earth(doc_ids):
     res = sorted(result, key=lambda x: x.get('datetime', ''))
     return res
 
+
 def get_doc_events_to_earth_by_entities(doc_ids):
     doc_mark_event_list = DocMarkEvent.query.filter(DocMarkEvent.doc_id.in_(doc_ids)).all()
     event_dict = {}
@@ -1302,10 +1306,10 @@ def get_doc_events_to_earth_by_entities(doc_ids):
             if datetime:
                 object_list = doc_mark_event.get_object_entity_names()
                 object_list.extend(doc_mark_event.get_subject_entity_names())
-                object_uni_list =list(set(object_list))
+                object_uni_list = list(set(object_list))
             if object_list:
 
-                    # 确立时间线的key值
+                # 确立时间线的key值
                 timeline_key = ",".join([str(i) for i in sorted(object_list)])
 
                 item = {
@@ -1324,6 +1328,7 @@ def get_doc_events_to_earth_by_entities(doc_ids):
         res = [sorted(i, key=lambda x: x.get('datetime', '')) for i in event_dict.values()]
     return res
 
+
 # 高级搜索结果doc_ids 筛选事件
 @blue_print.route('/screen_event_by_time_range', methods=['POST'])
 def get_events_by_doc_ids_and_time_range():
@@ -1336,7 +1341,6 @@ def get_events_by_doc_ids_and_time_range():
         print(str(e))
         res = []
     return jsonify(res)
-
 
 
 # 高级搜索分页展示
