@@ -624,14 +624,19 @@ def get_advanced_search_of_events():
                                                     or_(*condition_object)).order_by(
             DocMarkEvent.create_time.desc()).all()
         event_list = []
+        event_dict = {}
         for doc_mark_event in doc_mark_events:
             event_id = doc_mark_event.id
-            datetime = ""
+            datetime = []
             doc_mark_time_tag = DocMarkTimeTag.query.filter(DocMarkTimeTag.id.in_(doc_mark_event.event_time),
                                                             DocMarkTimeTag.time_type.in_([1, 2]),
                                                             DocMarkTimeTag.valid == 1).first()
             if doc_mark_time_tag:
-                datetime = doc_mark_time_tag.format_date.strftime('%Y-%m-%d %H:%M:%S')
+                if doc_mark_time_tag.time_type == 1:
+                    datetime.append(doc_mark_time_tag.format_date.strftime('%Y-%m-%d %H:%M:%S'))
+                if doc_mark_time_tag.time_type == 2:
+                    datetime.append(doc_mark_time_tag.format_date.strftime('%Y-%m-%d %H:%M:%S'))
+                    datetime.append(doc_mark_time_tag.format_date_end.strftime('%Y-%m-%d %H:%M:%S'))
 
             place = []
             for doc_mark_place_id in doc_mark_event.event_address:
@@ -655,6 +660,8 @@ def get_advanced_search_of_events():
                 doc_mark_entity = DocMarkEntity.query.filter_by(id=entity_id, valid=1).first()
                 if doc_mark_entity:
                     object.append(doc_mark_entity.word)
+
+            timeline_key = ",".join([str(i) for i in sorted(object)])
             event = {
                 "event_id": event_id,
                 "datetime": datetime,
@@ -662,8 +669,13 @@ def get_advanced_search_of_events():
                 "title": title,
                 "object": object
             }
-            event_list.append(event)
 
+            if event_dict.get(timeline_key, []):
+                event_dict[timeline_key].append(event)
+            else:
+                event_dict[timeline_key] = [event]
+
+        event_list = [sorted(i, key=lambda x: x.get('datetime', '')) for i in event_dict.values()]
         res = success_res(data=event_list)
 
     except Exception as e:
