@@ -1151,7 +1151,7 @@ def search_advanced_doc_type():
             {"name": Catalog.get_name_by_id(doc_type), "data": data_by_doc_id[doc_type]}
             for doc_type in data_by_doc_id if Catalog.get_name_by_id(doc_type)]
         print(doc_ids, flush=True)
-        print(get_event_list_from_docs_group_by_entities(doc_ids), flush=True)
+
 
         res = {
             "doc": data_forms,
@@ -1338,8 +1338,9 @@ def get_doc_events_to_earth(doc_ids):
 def get_doc_events_to_earth_by_entities(doc_ids):
     doc_mark_event_list = DocMarkEvent.query.filter(DocMarkEvent.doc_id.in_(doc_ids)).all()
     event_dict = {}
-    object_uni_list = []
+
     for doc_mark_event in doc_mark_event_list:
+        object_uni_list = []
         places = doc_mark_event.get_places()
         place_list = [{
             "word": i.word,
@@ -1358,7 +1359,8 @@ def get_doc_events_to_earth_by_entities(doc_ids):
                         datetime.append(time_tag.format_date_end.strftime("%Y-%m-%d %H:%M:%S"))
             if datetime:
                 object_list = doc_mark_event.get_object_entity_names()
-                object_list.extend(doc_mark_event.get_subject_entity_names())
+                if doc_mark_event.get_subject_entity_names():
+                    object_list.extend(doc_mark_event.get_subject_entity_names())
                 object_uni_list = list(set(object_list))
             if object_uni_list:
 
