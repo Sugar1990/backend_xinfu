@@ -20,7 +20,7 @@ from .. import db
 from ..conf import ES_SERVER_IP, ES_SERVER_PORT, YC_ROOT_URL, YC_ROOT_URL_PYTHON, PLACE_BASE_NAME, USE_PLACE_SERVER
 from ..models import Entity, EntityCategory, DocMarkPlace, DocMarkEntity
 from .place import get_place_from_base_server
-from ..serve.neo4j_imp import create_node, update_node, delete_node
+# from ..serve.neo4j_imp import create_node, update_node, delete_node
 
 
 # -*- coding:utf-8 -*-
@@ -560,6 +560,8 @@ def sync_yc_add_synonyms(synonyms, entity_id, category_id, mark_category, longit
             url = YC_ROOT_URL_PYTHON + "/api/redis/add"
             entity_data = []
             for synonym in synonyms:
+                entity = Entity.query.filter(Entity.synonyms.has_key(synonym),
+                                             Entity.category_id == category_id, Entity.valid == 1).first()
                 item = {
                     "entity_id": entity_id,
                     "name": synonym,
@@ -568,8 +570,13 @@ def sync_yc_add_synonyms(synonyms, entity_id, category_id, mark_category, longit
                 }
                 if longitude:
                     item['lon'] = longitude
+                else:
+                    item["lon"] = entity.longitude if entity else 0
+                    print("lon", item["lon"])
                 if latitude:
                     item['lat'] = latitude
+                else:
+                    item["lat"] = entity.latitude if entity else 0
                 entity_data.append(item)
 
             sync_yc_redis_data = {
