@@ -1336,6 +1336,7 @@ def get_doc_events_to_earth(doc_ids):
 def get_doc_events_to_earth_by_entities(doc_ids):
     doc_mark_event_list = DocMarkEvent.query.filter(DocMarkEvent.doc_id.in_(doc_ids)).all()
     event_dict = {}
+    object_uni_list = []
     for doc_mark_event in doc_mark_event_list:
         places = doc_mark_event.get_places()
         place_list = [{
