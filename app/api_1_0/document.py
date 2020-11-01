@@ -1185,7 +1185,8 @@ def get_event_list_from_docs(doc_ids=[], start_date='1000-01-01', end_date='9999
 
                         if i.event_object and isinstance(i.event_object, list) and i.event_subject:
                             object_id_list = i.event_object
-                            object_id_list.extend(i.subject_object)
+                            if i.event_subject:
+                                object_id_list.extend(i.event_subject)
                             object_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_id).filter(
                                 DocMarkEntity.id.in_(object_id_list)).all()
                             if object_ids:
@@ -1197,7 +1198,7 @@ def get_event_list_from_docs(doc_ids=[], start_date='1000-01-01', end_date='9999
                         if objects:
                             if i.event_time and isinstance(i.event_time, list):
                                 mark_time_ids = i.event_time
-                                times = DocMarkTimeTag.query.with_entities(DocMarkTimeTag.format_date).filter(
+                                times = DocMarkTimeTag.query.with_entities(DocMarkTimeTag.format_date, DocMarkTimeTag.format_date_end).filter(
                                     DocMarkTimeTag.id.in_(mark_time_ids),
                                     or_(and_(DocMarkTimeTag.format_date.between(start_date, end_date),
                                              DocMarkTimeTag.time_type == 1),
@@ -1206,11 +1207,12 @@ def get_event_list_from_docs(doc_ids=[], start_date='1000-01-01', end_date='9999
                                              DocMarkTimeTag.time_type == 2))
                                 ).all()
                                 for time_tag in times:
-                                    datetime = [time_tag.format_date]
-                                    try:
-                                        datetime.append(time_tag.format_date_end)
-                                    except:
-                                        pass
+                                    datetime = []
+                                    if time_tag[0]:
+                                        datetime.append(time_tag[0])
+                                    if time_tag[1]:
+                                        datetime.append(time_tag[1])
+
                                     item = {
                                         "datetime": datetime,
                                         "place": [{
