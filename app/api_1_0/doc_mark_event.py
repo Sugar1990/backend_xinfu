@@ -153,6 +153,11 @@ def add_doc_mark_event():
         update_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         add_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
+        place_insert_ids = []
+        object_insert_ids = []
+        subject_insert_ids = []
+        time_tag_insert_ids = []
+
         if not (isinstance(doc_id, int) and isinstance(customer_id, int) and isinstance(parent_id, int)
                 and isinstance(event_class_id, int) and isinstance(event_type_id, int) and isinstance(create_by, int)
                 and isinstance(update_by, int)):
@@ -162,24 +167,85 @@ def add_doc_mark_event():
                   and isinstance(event_address, list)):
             res = fail_res(msg="参数event_subject、event_object、event_time和event_address应为list类型")
         else:
-            if event_time and event_address:
-                doc_mark_event = DocMarkEvent(event_id=event_id, event_desc=event_desc, event_subject=event_subject,
-                                              event_predicate=event_predicate, event_object=event_object,
-                                              event_time=event_time,
-                                              event_address=event_address, event_why=event_why,
-                                              event_result=event_result,
-                                              event_conduct=event_conduct, event_talk=event_talk, event_how=event_how,
-                                              doc_id=doc_id,
-                                              customer_id=customer_id, parent_id=parent_id, title=title,
-                                              event_class_id=event_class_id,
-                                              event_type_id=event_type_id, create_by=create_by, create_time=create_time,
-                                              update_by=update_by, update_time=update_time, add_time=add_time,
-                                              valid=1)
-                db.session.add(doc_mark_event)
-                db.session.commit()
-                res = success_res(data={"id": doc_mark_event.id})
+            if event_address:
+                place_ids = DocMarkPlace.query.with_entities(DocMarkPlace.place_id).filter(
+                    DocMarkPlace.id.in_(event_address)).all()
+                if place_ids:
+                    place_ids = [i[0] for i in place_ids]
+                    places = Entity.query.filter(Entity.id.in_(place_ids), Entity.valid == 1).all()
+                    if places:
+                        for place in places:
+                            doc_mark_place = DocMarkPlace.query.filter_by(place_id=place.id, valid=1).first()
+                            if doc_mark_place:
+                                place_insert_ids.append(doc_mark_place.id)
+                        objects, subjects = [], []
+                        if event_object or event_subject:
+                            # object_id_list = event_object
+                            # if event_subject:
+                            #     object_id_list.extend(event_subject)
+                            object_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_id).filter(
+                                DocMarkEntity.id.in_(event_object)).all()
+                            subject_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_id).filter(
+                                DocMarkEntity.id.in_(event_subject)).all()
+                            if object_ids or subject_ids:
+                                object_ids = [i[0] for i in object_ids]
+                                subject_ids = [i[0] for i in subject_ids]
+                                objects = Entity.query.filter(Entity.id.in_(object_ids), Entity.valid == 1).all()
+                                subjects = Entity.query.filter(Entity.id.in_(subject_ids), Entity.valid == 1).all()
+                                if objects or subjects:
+                                    for object in objects:
+                                        doc_mark_entity = DocMarkEntity.query.filter_by(entity_id=object.id, doc_id= doc_id,
+                                                                                        valid=1).first()
+                                        if doc_mark_entity:
+                                            object_insert_ids.append(doc_mark_entity.id)
+                                    for subject in subjects:
+                                        doc_mark_entity = DocMarkEntity.query.filter_by(entity_id=subject.id, doc_id= doc_id,
+                                                                                        valid=1).first()
+                                        if doc_mark_entity:
+                                            subject_insert_ids.append(doc_mark_entity.id)
+                                    if event_time:
+                                        times = DocMarkTimeTag.query.filter(DocMarkTimeTag.id.in_(event_time)).all()
+                                        if times:
+                                            for time_tag in times:
+                                                time_tag_insert_ids.append(time_tag.id)
+                                            doc_mark_event = DocMarkEvent(event_id=event_id, event_desc=event_desc,
+                                                                          event_subject=subject_insert_ids,
+                                                                          event_predicate=event_predicate,
+                                                                          event_object=object_insert_ids,
+                                                                          event_time=time_tag_insert_ids,
+                                                                          event_address=place_insert_ids,
+                                                                          event_why=event_why,
+                                                                          event_result=event_result,
+                                                                          event_conduct=event_conduct,
+                                                                          event_talk=event_talk, event_how=event_how,
+                                                                          doc_id=doc_id,
+                                                                          customer_id=customer_id, parent_id=parent_id,
+                                                                          title=title,
+                                                                          event_class_id=event_class_id,
+                                                                          event_type_id=event_type_id,
+                                                                          create_by=create_by, create_time=create_time,
+                                                                          update_by=update_by, update_time=update_time,
+                                                                          add_time=add_time,
+                                                                          valid=1)
+                                            db.session.add(doc_mark_event)
+                                            db.session.commit()
+                                            res = success_res(data={"id": doc_mark_event.id})
+                                        else:
+                                            res = fail_res(msg="doc_mark_time_tag中部分不含有该时间，事件插入失败！")
+                                    else:
+                                        res = fail_res(msg="事件时间不能为空,事件插入失败！")
+                                else:
+                                    res = fail_res(msg="实体库中不含有该实体,事件插入失败！")
+                            else:
+                                res = fail_res(msg="doc_mark_entity中不存在该实体,事件插入失败！")
+                        else:
+                            res = fail_res(msg="主语和宾语不能同时为空,事件插入失败！")
+                    else:
+                        res = fail_res(msg="地名库中不含有该地点,事件插入失败！")
+                else:
+                    res = fail_res(msg="doc_mark_place中不存在该地点,事件插入失败！")
             else:
-                res = fail_res(msg="事件时间和地点不能为空")
+                res = fail_res(msg="事件地点不能为空,事件插入失败！")
 
     except Exception as e:
         print(str(e))
