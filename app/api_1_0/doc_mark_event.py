@@ -712,13 +712,16 @@ def get_during_time_event():
             else:
                 pass
         doc_mark_time_tag_ids_set = set(doc_mark_time_tag_ids)
-        doc_mark_events = DocMarkEvent.query.filter(DocMarkEvent.valid == 1).order_by(
-            DocMarkEvent.create_time.desc()).all()
+        doc_mark_events = DocMarkEvent.query.filter(DocMarkEvent.valid == 1).all()
         event_list = []
         for doc_mark_event in doc_mark_events:
             if set(doc_mark_event.event_time) & doc_mark_time_tag_ids_set:
                 time_id = list(set(doc_mark_event.event_time) & doc_mark_time_tag_ids_set)[0]
-                datetime = DocMarkTimeTag.query.filter_by(id=time_id, valid=1).first().format_date
+                datetime = [DocMarkTimeTag.query.filter_by(id=time_id, valid=1).first().format_date]
+                try:
+                    datetime.append(DocMarkTimeTag.query.filter_by(id=time_id, valid=1).first().format_date_end)
+                except:
+                    pass
                 event_id = doc_mark_event.id
                 place = []
                 for item in doc_mark_event.event_address:
@@ -750,6 +753,7 @@ def get_during_time_event():
                 event_list.append(event)
             else:
                 pass
+        event_list = [sorted(i, key=lambda x: x.get('datetime', '')[0]) for i in event_dict.values()]
         res = event_list
     except Exception as e:
         print(str(e))
@@ -779,13 +783,16 @@ def get_during_time_event_by_entities():
             else:
                 pass
         doc_mark_time_tag_ids_set = set(doc_mark_time_tag_ids)
-        doc_mark_events = DocMarkEvent.query.filter(DocMarkEvent.valid == 1).order_by(
-            DocMarkEvent.create_time.desc()).all()
+        doc_mark_events = DocMarkEvent.query.filter(DocMarkEvent.valid == 1).all()
         event_dict = {}
         for doc_mark_event in doc_mark_events:
             if set(doc_mark_event.event_time) & doc_mark_time_tag_ids_set:
                 time_id = list(set(doc_mark_event.event_time) & doc_mark_time_tag_ids_set)[0]
-                datetime = DocMarkTimeTag.query.filter_by(id=time_id, valid=1).first().format_date
+                datetime = [DocMarkTimeTag.query.filter_by(id=time_id, valid=1).first().format_date]
+                try:
+                    datetime.append(DocMarkTimeTag.query.filter_by(id=time_id, valid=1).first().format_date_end)
+                except:
+                    pass
                 event_id = doc_mark_event.id
                 place = []
                 for item in doc_mark_event.event_address:
@@ -822,7 +829,7 @@ def get_during_time_event_by_entities():
                 else:
                     event_dict[timeline_key] = [event]
 
-        event_list = [sorted(i, key=lambda x: x.get('datetime', '')) for i in event_dict.values()]
+        event_list = [sorted(i, key=lambda x: x.get('datetime', '')[0]) for i in event_dict.values()]
         res = event_list
     except Exception as e:
         print(str(e))

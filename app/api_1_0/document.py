@@ -1206,8 +1206,13 @@ def get_event_list_from_docs(doc_ids=[], start_date='1000-01-01', end_date='9999
                                              DocMarkTimeTag.time_type == 2))
                                 ).all()
                                 for time_tag in times:
+                                    datetime = [time_tag.format_date]
+                                    try:
+                                        datetime.append(time_tag.format_date_end)
+                                    except:
+                                        pass
                                     item = {
-                                        "datetime": time_tag.format_date,
+                                        "datetime": datetime,
                                         "place": [{
                                             "place_lat": place.latitude,
                                             "place_lon": place.longitude,
@@ -1221,7 +1226,7 @@ def get_event_list_from_docs(doc_ids=[], start_date='1000-01-01', end_date='9999
                                     }
                                     event_list.append(item)
         # </editor-fold>
-        event_list = sorted(event_list, key=lambda x: x.get('datetime', ''))
+        event_list = sorted(event_list, key=lambda x: x.get('datetime', '')[0])
     return event_list
 
 
@@ -1240,7 +1245,7 @@ def get_event_list_from_docs_group_by_entities(doc_ids=[]):
                     places = Entity.query.filter(Entity.id.in_(place_ids), Entity.valid == 1).all()
                     if places:
                         object_ids, subject_ids = [], []
-                        objects, subjects, form_time = [], [], ""
+                        objects, subjects, form_time = [], [], []
 
                         if i.event_object and isinstance(i.event_object, list):
                             object_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_id).filter(
@@ -1261,12 +1266,13 @@ def get_event_list_from_docs_group_by_entities(doc_ids=[]):
                         if objects:
                             if i.event_time and isinstance(i.event_time, list):
                                 mark_time_ids = i.event_time
-                                times = DocMarkTimeTag.query.with_entities(DocMarkTimeTag.format_date).filter(
+                                times = DocMarkTimeTag.query.with_entities(DocMarkTimeTag.format_date, DocMarkTimeTag.format_date_end).filter(
                                     DocMarkTimeTag.id.in_(mark_time_ids),
                                     DocMarkTimeTag.time_type.in_(['1', '2'])).all()
-                                if times:
-                                    form_time = times[0]
-
+                                if times[0]:
+                                    form_time.append(times[0])
+                                if times[1]:
+                                    form_time.append(times[1])
                             if object_ids + subject_ids and form_time:
                                 # 确立时间线的key值
                                 timeline_key = ",".join([str(i) for i in sorted(list(set(object_ids + subject_ids)))])
@@ -1284,13 +1290,12 @@ def get_event_list_from_docs_group_by_entities(doc_ids=[]):
                                     "object": [i.name for i in objects],
                                     "event_id": i.id
                                 }
-
                                 if event_dict.get(timeline_key, []):
                                     event_dict[timeline_key].append(item)
                                 else:
                                     event_dict[timeline_key] = [item]
         # </editor-fold>
-        event_list = [sorted(i, key=lambda x: x.get('datetime', '')) for i in event_dict.values()]
+        event_list = [sorted(i, key=lambda x: x.get('datetime', '')[0]) for i in event_dict.values()]
     return event_list
 
 
@@ -1306,12 +1311,14 @@ def get_doc_events_to_earth(doc_ids):
             "place_lat": i.place_lat
         } for i in places if i.place_lon and i.place_lat]
         if place_list:
-            datetime = ""
+            datetime = []
             if doc_mark_event.event_time:
                 time_tag = DocMarkTimeTag.query.filter(DocMarkTimeTag.id.in_(doc_mark_event.event_time)).first()
                 if time_tag:
                     if time_tag.format_date:
-                        datetime = time_tag.format_date.strftime("%Y-%m-%d %H:%M:%S")
+                        datetime.append(time_tag.format_date.strftime("%Y-%m-%d %H:%M:%S"))
+                    if time_tag.format_date_end:
+                        datetime.append(time_tag.format_date_end.strftime("%Y-%m-%d %H:%M:%S"))
             if datetime:
                 object_list = doc_mark_event.get_object_entity_names()
                 object_list.extend(doc_mark_event.get_subject_entity_names())
@@ -1322,7 +1329,7 @@ def get_doc_events_to_earth(doc_ids):
                         "datetime": datetime,
                         "place": place_list,
                         "event_id": doc_mark_event.id})
-    res = sorted(result, key=lambda x: x.get('datetime', ''))
+    res = sorted(result, key=lambda x: x.get('datetime', '')[0])
     return res
 
 
@@ -1338,12 +1345,14 @@ def get_doc_events_to_earth_by_entities(doc_ids):
             "place_lat": i.place_lat
         } for i in places if i.place_lon and i.place_lat]
         if place_list:
-            datetime = ""
+            datetime = []
             if doc_mark_event.event_time:
                 time_tag = DocMarkTimeTag.query.filter(DocMarkTimeTag.id.in_(doc_mark_event.event_time)).first()
                 if time_tag:
                     if time_tag.format_date:
-                        datetime = time_tag.format_date.strftime("%Y-%m-%d %H:%M:%S")
+                        datetime.append(time_tag.format_date.strftime("%Y-%m-%d %H:%M:%S"))
+                    if time_tag.format_date_end:
+                        datetime.append(time_tag.format_date_end.strftime("%Y-%m-%d %H:%M:%S"))
             if datetime:
                 object_list = doc_mark_event.get_object_entity_names()
                 object_list.extend(doc_mark_event.get_subject_entity_names())
@@ -1366,7 +1375,7 @@ def get_doc_events_to_earth_by_entities(doc_ids):
                 else:
                     event_dict[timeline_key] = [item]
         # </editor-fold>
-        res = [sorted(i, key=lambda x: x.get('datetime', '')) for i in event_dict.values()]
+        res = [sorted(i, key=lambda x: x.get('datetime', '')[0]) for i in event_dict.values()]
     return res
 
 
