@@ -5,7 +5,7 @@ import json
 import math
 import os
 import time
-
+import re
 import requests
 # from flasgger import swag_from
 from flask import jsonify, request
@@ -172,24 +172,55 @@ def upload_doc():
                                             doc_mark_place = DocMarkPlace(doc_id=doc.id, valid=1)
                                             if item_place.get("word", ""):
                                                 doc_mark_place.word = item_place["word"]
-                                                data_insert_place.append(item_place["word"])
+                                                # data_insert_place.append(item_place["word"])
                                             if item_place.get("type", 0):
                                                 doc_mark_place.type = item_place["type"]
                                             if item_place.get("place_id", 0):
                                                 doc_mark_place.place_id = item_place["place_id"]
-                                            if item_place.get("place_lon", ""):
-                                                doc_mark_place.place_lon = item_place["place_lon"]
+
+                                            # doc_mark_place是经纬度时必须含有lon和lat
+                                            if doc_mark_place.type == 2:
+                                                if item_place.get("place_lon", "") and item_place.get("place_lat", ""):
+                                                    if "°" in item_place["place_lon"]:
+                                                        place_lon = find_dfm(item_place["place_lon"])
+                                                    else:
+                                                        place_lon = find_int_in_str(item_place["place_lon"])
+                                                    doc_mark_place.place_lon = place_lon
+
+                                                    if "°" in item_place["place_lat"]:
+                                                        place_lat = find_dfm(item_place["place_lat"])
+                                                    else:
+                                                        place_lat = find_int_in_str(item_place["place_lat"])
+                                                    doc_mark_place.place_lat = place_lat
+                                            # 其他类型的doc_mark_place
+                                            else:
+                                                if item_place.get("place_lon", ""):
+                                                    doc_mark_place.place_lon = item_place["place_lon"]
+
                                                 # location_json["lon"] = item_place["place_lon"]
-                                            if item_place.get("place_lat", ""):
-                                                doc_mark_place.place_lat = item_place["place_lat"]
+                                                if item_place.get("place_lat", ""):
+                                                    doc_mark_place.place_lat = item_place["place_lat"]
+
                                                 # location_json["lat"] = item_place["place_lat"]
                                             if item_place.get("word_count", ""):
                                                 word_count_list = list(item_place["word_count"].split(','))
                                                 doc_mark_place.appear_index_in_text = word_count_list
 
-                                            db.session.add(doc_mark_place)
-                                            db.session.commit()
-                                            item_place["doc_mark_id"] = doc_mark_place.id
+                                            # 经纬度都有值时添加到数据库中
+                                            if doc_mark_place.type == 2:
+                                                if doc_mark_place.place_lon and doc_mark_place.place_lat:
+                                                    db.session.add(doc_mark_place)
+                                                    db.session.commit()
+                                                    item_place["doc_mark_id"] = doc_mark_place.id
+                                                    # 合格的地名才同步es
+                                                    data_insert_place.append(doc_mark_place.word)
+                                            else:
+                                                db.session.add(doc_mark_place)
+                                                db.session.commit()
+                                                item_place["doc_mark_id"] = doc_mark_place.id
+
+                                                data_insert_place.append(doc_mark_place.word)
+
                                             # data_insert_location.append(location_json)
                                         # print("doc_mark_place数据插入成功")
 
@@ -856,7 +887,7 @@ def judge_doc_permission():
         else:
             res = fail_res(msg="此文档权限较高，无法打开")
     else:
-        res = fail_res(msg="无效用户，无法操作")
+        res = fail_res(msg="当前用户权限较低，无法操作")
 
     return res
 
@@ -1175,8 +1206,13 @@ def get_event_list_from_docs(doc_ids=[], start_date='1000-01-01', end_date='9999
                                              DocMarkTimeTag.time_type == 2))
                                 ).all()
                                 for time_tag in times:
+                                    datetime = [time_tag.format_date]
+                                    try:
+                                        datetime.append(time_tag.format_date_end)
+                                    except:
+                                        pass
                                     item = {
-                                        "datetime": time_tag.format_date,
+                                        "datetime": datetime,
                                         "place": [{
                                             "place_lat": place.latitude,
                                             "place_lon": place.longitude,
@@ -1190,7 +1226,7 @@ def get_event_list_from_docs(doc_ids=[], start_date='1000-01-01', end_date='9999
                                     }
                                     event_list.append(item)
         # </editor-fold>
-        event_list = sorted(event_list, key=lambda x: x.get('datetime', ''))
+        event_list = sorted(event_list, key=lambda x: x.get('datetime', '')[0])
     return event_list
 
 
@@ -1209,7 +1245,7 @@ def get_event_list_from_docs_group_by_entities(doc_ids=[]):
                     places = Entity.query.filter(Entity.id.in_(place_ids), Entity.valid == 1).all()
                     if places:
                         object_ids, subject_ids = [], []
-                        objects, subjects, form_time = [], [], ""
+                        objects, subjects, form_time = [], [], []
 
                         if i.event_object and isinstance(i.event_object, list):
                             object_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_id).filter(
@@ -1230,12 +1266,13 @@ def get_event_list_from_docs_group_by_entities(doc_ids=[]):
                         if objects:
                             if i.event_time and isinstance(i.event_time, list):
                                 mark_time_ids = i.event_time
-                                times = DocMarkTimeTag.query.with_entities(DocMarkTimeTag.format_date).filter(
+                                times = DocMarkTimeTag.query.with_entities(DocMarkTimeTag.format_date, DocMarkTimeTag.format_date_end).filter(
                                     DocMarkTimeTag.id.in_(mark_time_ids),
                                     DocMarkTimeTag.time_type.in_(['1', '2'])).all()
-                                if times:
-                                    form_time = times[0]
-
+                                if times[0]:
+                                    form_time.append(times[0])
+                                if times[1]:
+                                    form_time.append(times[1])
                             if object_ids + subject_ids and form_time:
                                 # 确立时间线的key值
                                 timeline_key = ",".join([str(i) for i in sorted(list(set(object_ids + subject_ids)))])
@@ -1253,13 +1290,12 @@ def get_event_list_from_docs_group_by_entities(doc_ids=[]):
                                     "object": [i.name for i in objects],
                                     "event_id": i.id
                                 }
-
                                 if event_dict.get(timeline_key, []):
                                     event_dict[timeline_key].append(item)
                                 else:
                                     event_dict[timeline_key] = [item]
         # </editor-fold>
-        event_list = [sorted(i, key=lambda x: x.get('datetime', '')) for i in event_dict.values()]
+        event_list = [sorted(i, key=lambda x: x.get('datetime', '')[0]) for i in event_dict.values()]
     return event_list
 
 
@@ -1275,12 +1311,14 @@ def get_doc_events_to_earth(doc_ids):
             "place_lat": i.place_lat
         } for i in places if i.place_lon and i.place_lat]
         if place_list:
-            datetime = ""
+            datetime = []
             if doc_mark_event.event_time:
                 time_tag = DocMarkTimeTag.query.filter(DocMarkTimeTag.id.in_(doc_mark_event.event_time)).first()
                 if time_tag:
                     if time_tag.format_date:
-                        datetime = time_tag.format_date.strftime("%Y-%m-%d %H:%M:%S")
+                        datetime.append(time_tag.format_date.strftime("%Y-%m-%d %H:%M:%S"))
+                    if time_tag.format_date_end:
+                        datetime.append(time_tag.format_date_end.strftime("%Y-%m-%d %H:%M:%S"))
             if datetime:
                 object_list = doc_mark_event.get_object_entity_names()
                 object_list.extend(doc_mark_event.get_subject_entity_names())
@@ -1291,7 +1329,7 @@ def get_doc_events_to_earth(doc_ids):
                         "datetime": datetime,
                         "place": place_list,
                         "event_id": doc_mark_event.id})
-    res = sorted(result, key=lambda x: x.get('datetime', ''))
+    res = sorted(result, key=lambda x: x.get('datetime', '')[0])
     return res
 
 
@@ -1307,12 +1345,14 @@ def get_doc_events_to_earth_by_entities(doc_ids):
             "place_lat": i.place_lat
         } for i in places if i.place_lon and i.place_lat]
         if place_list:
-            datetime = ""
+            datetime = []
             if doc_mark_event.event_time:
                 time_tag = DocMarkTimeTag.query.filter(DocMarkTimeTag.id.in_(doc_mark_event.event_time)).first()
                 if time_tag:
                     if time_tag.format_date:
-                        datetime = time_tag.format_date.strftime("%Y-%m-%d %H:%M:%S")
+                        datetime.append(time_tag.format_date.strftime("%Y-%m-%d %H:%M:%S"))
+                    if time_tag.format_date_end:
+                        datetime.append(time_tag.format_date_end.strftime("%Y-%m-%d %H:%M:%S"))
             if datetime:
                 object_list = doc_mark_event.get_object_entity_names()
                 object_list.extend(doc_mark_event.get_subject_entity_names())
@@ -1335,7 +1375,7 @@ def get_doc_events_to_earth_by_entities(doc_ids):
                 else:
                     event_dict[timeline_key] = [item]
         # </editor-fold>
-        res = [sorted(i, key=lambda x: x.get('datetime', '')) for i in event_dict.values()]
+        res = [sorted(i, key=lambda x: x.get('datetime', '')[0]) for i in event_dict.values()]
     return res
 
 
@@ -1842,3 +1882,16 @@ def get_keywords(content):
     return res
 
 # ——————————————————————— 提取关键词 —————————————————————————————
+
+#------------------处理经纬度----------------------------
+
+
+def find_int_in_str(string):
+    str_to_num = re.findall('(\d+)', string)[0]
+    return int(str_to_num)
+
+
+def find_dfm(dfm_string):
+    d_ = find_int_in_str(dfm_string.split("°")[0])
+    f_ = find_int_in_str(dfm_string.split("°")[1])
+    return d_ + f_/60
