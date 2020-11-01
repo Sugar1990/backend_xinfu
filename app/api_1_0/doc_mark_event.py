@@ -714,7 +714,7 @@ def get_during_time_event():
         doc_mark_time_tag_ids_set = set(doc_mark_time_tag_ids)
         doc_mark_events = DocMarkEvent.query.filter(DocMarkEvent.valid == 1).all()
         event_list = []
-        event_dict = {}
+        # event_dict = {}
         for doc_mark_event in doc_mark_events:
             if set(doc_mark_event.event_time) & doc_mark_time_tag_ids_set:
                 time_id = list(set(doc_mark_event.event_time) & doc_mark_time_tag_ids_set)[0]
@@ -744,7 +744,7 @@ def get_during_time_event():
                     doc_mark_entity = DocMarkEntity.query.filter_by(id=item, valid=1).first()
                     if doc_mark_entity:
                         object.append(doc_mark_entity.word)
-                timeline_key = ",".join([str(i) for i in sorted(object)])
+                # timeline_key = ",".join([str(i) for i in sorted(object)])
                 event = {
                     "event_id": event_id,
                     "datetime": datetime,
@@ -752,13 +752,14 @@ def get_during_time_event():
                     "title": title,
                     "object": object
                 }
+                event_list.append(event)
 
-                if event_dict.get(timeline_key, []):
-                    event_dict[timeline_key].append(event)
-                else:
-                    event_dict[timeline_key] = [event]
+                # if event_dict.get(timeline_key, []):
+                #     event_dict[timeline_key].append(event)
+                # else:
+                #     event_dict[timeline_key] = [event]
+                event_list = sorted(event_list, key=lambda x: x.get('datetime', '')[0])
 
-            event_list = [sorted(i, key=lambda x: x.get('datetime', '')[0]) for i in event_dict.values()]
         res = event_list
     except Exception as e:
         print(str(e))
