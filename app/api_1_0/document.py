@@ -887,7 +887,7 @@ def judge_doc_permission():
         else:
             res = fail_res(msg="此文档权限较高，无法打开")
     else:
-        res = fail_res(msg="无效用户，无法操作")
+        res = fail_res(msg="当前用户权限较低，无法操作")
 
     return res
 
