@@ -1649,7 +1649,8 @@ def get_es_doc(url, customer_id=0, date=[], time_range=[], time_period=[], place
         search_json["doc_type"] = {"type": "id", "value": doc_type}
     if search_json:
         search_json["sort"] = {"type": "normal", "sort": "create_time", "asc_desc": "desc"}
-
+    if not search_json:
+        search_json["all"] = {"type": "all", "value": "create_time"}
     # 直接es查询
     para = {"search_index": 'document', "search_json": search_json}
     header = {"Content-Type": "application/json"}
