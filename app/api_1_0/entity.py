@@ -20,6 +20,8 @@ from .. import db
 from ..conf import ES_SERVER_IP, ES_SERVER_PORT, YC_ROOT_URL, YC_ROOT_URL_PYTHON, PLACE_BASE_NAME, USE_PLACE_SERVER
 from ..models import Entity, EntityCategory, DocMarkPlace, DocMarkEntity
 from .place import get_place_from_base_server
+
+
 # from ..serve.neo4j_imp import create_node, update_node, delete_node
 
 
@@ -1201,4 +1203,206 @@ def import_entity_excel_straightly():
         print(str(e))
 
     res = success_res()
+    return jsonify(res)
+
+
+# def GetColumnTitle(sheet):
+#     col_dict = {}
+#     for i in range(sheet.ncols):
+#         col_dict[sheet.cell_value(0, i).strip()] = i
+#     return col_dict
+#
+#
+# def SaveOneFile(filepath):
+#     print(filepath)
+#     file_name = filepath.split("/")[-1]
+#     workbook = xlrd.open_workbook(filepath)
+#     sheet = workbook.sheet_by_index(0)  # 只读第一个$sheet，没遍历所有！
+#     # 如第一行有列名，则按列名取数
+#     col_dict = GetColumnTitle(sheet)
+#     print("col_dict", col_dict)
+#     if bool(col_dict):
+#         number_of_rows = sheet.nrows
+#         if file_name == "机构-台外军机构.xlsx":
+#             for row in range(1, number_of_rows):
+#                 insert_json = {
+#                     "name": sheet.cell(row, col_dict["名称"].value),
+#                     "category_id": 4,
+#                     "summary": sheet.cell(row, col_dict["属性"].value)
+#                 }
+#                 header = {"Content-Type": "application/json; charset=UTF-8"}
+#                 url = 'http://0.0.0.0:5000' + '/entity/insert_entity'
+#                 data = json.dumps(insert_json)
+#                 res = requests.post(url=url, data=data, headers=header)
+#         if file_name == "人员-关岗.xlsx":
+#             for row in range(1, number_of_rows):
+#                 props_json = {"身份证号码": col_dict[0].value,
+#                               "性别": col_dict["性别"].value,
+#                               "政治面貌": col_dict["政治面貌"].value,
+#                               "军衔": col_dict["军衔"].value,
+#                               "文化程度": col_dict["文化程度"].value,
+#                               "职务级别": col_dict["职务级别"].value,
+#                               "第一学历": col_dict["第一学历"].value,
+#                               "籍贯": col_dict["籍贯"].value,
+#                               "入伍时间": col_dict["入伍时间"].value,
+#                               "部队内码": col_dict["部队内码"].value,
+#                               "院校培训": col_dict["院校培训"].value,
+#                               "简述": col_dict["简述"].value,
+#                               "职务": col_dict["职务"].value,
+#                               "任现职时间": col_dict["任现职时间"].value,
+#                               "现岗时间": col_dict["现岗时间"].value,
+#                               "任职经历": col_dict["任职经历"].value
+#                               }
+#                 insert_json = {
+#                     "name": sheet.cell(row, col_dict["姓名"].value),
+#                     "category_id": 5,
+#                     "props": props_json
+#                 }
+#                 header = {"Content-Type": "application/json; charset=UTF-8"}
+#                 url = 'http://0.0.0.0:5000' + '/entity/insert_entity'
+#                 data = json.dumps(insert_json)
+#                 res = requests.post(url=url, data=data, headers=header)
+#         if file_name == "设施-仓库工程.xlsx":
+#             for row in range(1, number_of_rows):
+#                 props_json = {"扩展地名": col_dict["扩展地名"].value,
+#                               "仓库级别": col_dict["仓库级别"].value,
+#                               "储存性质": col_dict["储存性质"].value,
+#                               "启用时间": col_dict["启用时间"].value,
+#                               "容量": col_dict["容量"].value,
+#                               "占地面积": col_dict["占地面积"].value,
+#                               "占用率": col_dict["占用率"].value
+#                               }
+#                 insert_json = {
+#                     "name": sheet.cell(row, col_dict["工程名称"].value),
+#                     "category_id": 13,
+#                     "props": props_json
+#                 }
+#                 header = {"Content-Type": "application/json; charset=UTF-8"}
+#                 url = 'http://0.0.0.0:5000' + '/entity/insert_entity'
+#                 data = json.dumps(insert_json)
+#                 res = requests.post(url=url, data=data, headers=header)
+#
+#     else:
+#         pass
+#
+#
+# @blue_print.route('import_excel_to_pg', methods=['POST'])
+# def import_excel_to_pg():
+#     try:
+#
+#         # file_path = request.json.get("file_path", "")
+#         file_list = request.files.getlist('file', None)
+#         for file_obj in file_list:
+#             path_filename = file_obj.filename
+#             path = path_filename.split("/")
+#
+#             filename = secure_filename(''.join(lazy_pinyin(path[-1])))
+#             save_filename = "{0}{1}{2}".format(os.path.splitext(filename)[0],
+#                                                datetime.datetime.now().strftime('%Y%m%d%H%M%S'),
+#                                                os.path.splitext(filename)[1]).lower()
+#             file_savepath = os.path.join(os.getcwd(), 'static', save_filename)
+#             file_obj.save(file_savepath)
+#             print(file_savepath)
+#             # path = os.path.join(root, f)
+#             SaveOneFile(file_savepath)
+#         res = success_res()
+#     except:
+#         res = fail_res()
+#
+#     return jsonify(res)
+    # for root, dirs, files in os.walk(file_path):
+    #     # root 表示当前正在访问的文件夹路径
+    #     # dirs 表示该文件夹下的子目录名list
+    #     # files 表示该文件夹下的文件list
+    #
+    #     # 遍历文件
+    #     for f in files:
+    #         path = os.path.join(root, f)
+    #         print(os.path.join(root, f))
+    #         SaveOneFile(path)
+
+    # 遍历所有的文件夹
+    # for d in dirs:
+    #     print(os.path.join(root, d))
+
+
+@blue_print.route('post_json_data_path_to_yc', methods=['POST'])
+def post_json_data_path_to_yc():
+    try:
+        entity_category_1 = EntityCategory.query.filter_by(valid=1, type=1).all()
+        entity_category_2 = EntityCategory.query.filter_by(valid=1, type=2).all()
+        entity_category1_ids = [i.id for i in entity_category_1]
+        entity_category2_ids = [i.id for i in entity_category_2]
+        if entity_category1_ids:
+            entity_list = Entity.query.filter(Entity.valid == 1, Entity.category_id != 8,
+                                              Entity.category_id.in_(entity_category1_ids)).all()
+        place_list = Entity.query.filter_by(valid=1, category_id=8).all()
+        if entity_category2_ids:
+            concept_list = Entity.query.filter(Entity.valid == 1, Entity.category_id.in_(entity_category2_ids)).all()
+
+        root_path = os.getcwd()
+        yc_entity_path = os.path.join("/static", "entity.json")
+        entity_json_save_path = os.path.join(root_path, "static", "entity.json")
+        with open(entity_json_save_path, 'w', encoding='utf-8') as f:
+            entity_records = [{
+                "id": entity.id,
+                "name": entity.name,
+                "synonyms": entity.synonyms,
+                "props": entity.props,
+                "category_id": entity.category_id,
+                "summary": entity.summary,
+                "valid": entity.valid,
+                "longitude": entity.longitude,
+                "latitude": entity.latitude} for entity in entity_list]
+            dict_entity = {"RECORDS": entity_records}
+            f.write(json.dumps(dict_entity))
+
+        yc_place_path = os.path.join("/static", "place.json")
+        place_json_save_path = os.path.join(root_path, "static", "place.json")
+        with open(place_json_save_path, 'w', encoding='utf-8') as f:
+            place_records = [{
+                "id": place.id,
+                "name": place.name,
+                "synonyms": place.synonyms,
+                "props": place.props,
+                "category_id": place.category_id,
+                "summary": place.summary,
+                "valid": place.valid,
+                "longitude": place.longitude,
+                "latitude": place.latitude} for place in place_list]
+            dict_place = {"RECORDS": place_records}
+            f.write(json.dumps(dict_place))
+
+        yc_concept_path = os.path.join("/static", "concept.json")
+        concept_json_save_path = os.path.join(root_path, "static", "concept.json")
+        with open(concept_json_save_path, 'w', encoding='utf-8') as f:
+            concept_records = [{
+                "id": concept.id,
+                "name": concept.name,
+                "synonyms": concept.synonyms,
+                "props": concept.props,
+                "category_id": concept.category_id,
+                "summary": concept.summary,
+                "valid": concept.valid,
+                "longitude": concept.longitude,
+                "latitude": concept.latitude} for concept in concept_list]
+            dict_concept = {"RECORDS": concept_records}
+            f.write(json.dumps(dict_concept))
+
+        header = {"Content-Type": "application/json; charset=UTF-8"}
+        url = YC_ROOT_URL + '/entity/init'
+        body = {
+            "entityPath": yc_entity_path,
+            "placePath": yc_place_path,
+            "conceptPath": yc_concept_path
+        }
+        data = json.dumps(body)
+        print(data)
+        yc_res = requests.post(url=url, data=data, headers=header)
+        print("yc_res.status_code", yc_res.status_code)
+        res = success_res()
+
+    except Exception as e:
+        print(str(e))
+        res = fail_res()
     return jsonify(res)
