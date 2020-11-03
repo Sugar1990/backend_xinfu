@@ -1206,86 +1206,120 @@ def import_entity_excel_straightly():
     return jsonify(res)
 
 
-# def GetColumnTitle(sheet):
-#     col_dict = {}
-#     for i in range(sheet.ncols):
-#         col_dict[sheet.cell_value(0, i).strip()] = i
-#     return col_dict
-#
-#
-# def SaveOneFile(filepath):
-#     print(filepath)
-#     file_name = filepath.split("/")[-1]
-#     workbook = xlrd.open_workbook(filepath)
-#     sheet = workbook.sheet_by_index(0)  # 只读第一个$sheet，没遍历所有！
-#     # 如第一行有列名，则按列名取数
-#     col_dict = GetColumnTitle(sheet)
-#     print("col_dict", col_dict)
-#     if bool(col_dict):
-#         number_of_rows = sheet.nrows
-#         if file_name == "机构-台外军机构.xlsx":
-#             for row in range(1, number_of_rows):
-#                 insert_json = {
-#                     "name": sheet.cell(row, col_dict["名称"].value),
-#                     "category_id": 4,
-#                     "summary": sheet.cell(row, col_dict["属性"].value)
-#                 }
-#                 header = {"Content-Type": "application/json; charset=UTF-8"}
-#                 url = 'http://0.0.0.0:5000' + '/entity/insert_entity'
-#                 data = json.dumps(insert_json)
-#                 res = requests.post(url=url, data=data, headers=header)
-#         if file_name == "人员-关岗.xlsx":
-#             for row in range(1, number_of_rows):
-#                 props_json = {"身份证号码": col_dict[0].value,
-#                               "性别": col_dict["性别"].value,
-#                               "政治面貌": col_dict["政治面貌"].value,
-#                               "军衔": col_dict["军衔"].value,
-#                               "文化程度": col_dict["文化程度"].value,
-#                               "职务级别": col_dict["职务级别"].value,
-#                               "第一学历": col_dict["第一学历"].value,
-#                               "籍贯": col_dict["籍贯"].value,
-#                               "入伍时间": col_dict["入伍时间"].value,
-#                               "部队内码": col_dict["部队内码"].value,
-#                               "院校培训": col_dict["院校培训"].value,
-#                               "简述": col_dict["简述"].value,
-#                               "职务": col_dict["职务"].value,
-#                               "任现职时间": col_dict["任现职时间"].value,
-#                               "现岗时间": col_dict["现岗时间"].value,
-#                               "任职经历": col_dict["任职经历"].value
-#                               }
-#                 insert_json = {
-#                     "name": sheet.cell(row, col_dict["姓名"].value),
-#                     "category_id": 5,
-#                     "props": props_json
-#                 }
-#                 header = {"Content-Type": "application/json; charset=UTF-8"}
-#                 url = 'http://0.0.0.0:5000' + '/entity/insert_entity'
-#                 data = json.dumps(insert_json)
-#                 res = requests.post(url=url, data=data, headers=header)
-#         if file_name == "设施-仓库工程.xlsx":
-#             for row in range(1, number_of_rows):
-#                 props_json = {"扩展地名": col_dict["扩展地名"].value,
-#                               "仓库级别": col_dict["仓库级别"].value,
-#                               "储存性质": col_dict["储存性质"].value,
-#                               "启用时间": col_dict["启用时间"].value,
-#                               "容量": col_dict["容量"].value,
-#                               "占地面积": col_dict["占地面积"].value,
-#                               "占用率": col_dict["占用率"].value
-#                               }
-#                 insert_json = {
-#                     "name": sheet.cell(row, col_dict["工程名称"].value),
-#                     "category_id": 13,
-#                     "props": props_json
-#                 }
-#                 header = {"Content-Type": "application/json; charset=UTF-8"}
-#                 url = 'http://0.0.0.0:5000' + '/entity/insert_entity'
-#                 data = json.dumps(insert_json)
-#                 res = requests.post(url=url, data=data, headers=header)
-#
-#     else:
-#         pass
-#
-#
+def GetColumnTitle(sheet):
+    col_dict = {}
+    for i in range(sheet.ncols):
+        col_dict[sheet.cell_value(0, i).strip()] = i
+    return col_dict
+
+
+def SaveOneFile(filepath):
+    print(filepath)
+    file_name = filepath.split("\\")[-1]
+    workbook = xlrd.open_workbook(filepath)
+    sheet = workbook.sheet_by_index(0)  # 只读第一个$sheet，没遍历所有！
+    # 如第一行有列名，则按列名取数
+    col_dict = GetColumnTitle(sheet)
+    print("col_dict", col_dict)
+    if bool(col_dict):
+        number_of_rows = sheet.nrows
+        if file_name == "机构-台外军机构.xlsx":
+            for row in range(1, number_of_rows):
+                print(sheet.cell(row, col_dict["名称"]).value)
+                insert_json = {
+                    "name": sheet.cell(row, col_dict["名称"]).value,
+                    "category_id": 4,
+                    "summary": sheet.cell(row, col_dict["属性"]).value
+                }
+                header = {"Content-Type": "application/json; charset=UTF-8"}
+                url = 'http://0.0.0.0:5000' + '/entity/insert_entity'
+                data = json.dumps(insert_json)
+                res = requests.post(url=url, data=data, headers=header)
+        if file_name == "人员-关岗.xlsx":
+            for row in range(1, number_of_rows):
+                props_json = {"身份证号码": sheet.cell(row,col_dict[0]).value,
+                              "性别": sheet.cell(row, col_dict["性别"]).value,
+                              "政治面貌": sheet.cell(row, col_dict["政治面貌"]).value,
+                              "军衔": sheet.cell(row, col_dict["军衔"]).value,
+                              "文化程度": sheet.cell(row, col_dict["文化程度"]).value,
+                              "职务级别": sheet.cell(row, col_dict["职务级别"]).value,
+                              "第一学历": sheet.cell(row, col_dict["第一学历"]).value,
+                              "籍贯": sheet.cell(row, col_dict["籍贯"]).value,
+                              "入伍时间": sheet.cell(row, col_dict["入伍时间"]).value,
+                              "部队内码": sheet.cell(row, col_dict["部队内码"]).value,
+                              "院校培训": sheet.cell(row, col_dict["院校培训"]).value,
+                              "简述": sheet.cell(row, col_dict["简述"]).value,
+                              "职务": sheet.cell(row, col_dict["职务"]).value,
+                              "任现职时间": sheet.cell(row, col_dict["任现职时间"]).value,
+                              "现岗时间": sheet.cell(row, col_dict["现岗时间"]).value,
+                              "任职经历": sheet.cell(row, col_dict["任职经历"]).value
+                              }
+                insert_json = {
+                    "name": sheet.cell(row, col_dict["姓名"]).value,
+                    "category_id": 5,
+                    "props": props_json
+                }
+                header = {"Content-Type": "application/json; charset=UTF-8"}
+                url = 'http://0.0.0.0:5000' + '/entity/insert_entity'
+                data = json.dumps(insert_json)
+                res = requests.post(url=url, data=data, headers=header)
+        if file_name == "设施-仓库工程.xlsx":
+            for row in range(1, number_of_rows):
+                props_json = {"扩展地名": sheet.cell(row, col_dict["扩展地名"]).value,
+                              "仓库级别": sheet.cell(row, col_dict["仓库级别"]).value,
+                              "储存性质": sheet.cell(row, col_dict["储存性质"]).value,
+                              "启用时间": sheet.cell(row, col_dict["启用时间"]).value,
+                              "容量": sheet.cell(row, col_dict["容量"]).value,
+                              "占地面积": sheet.cell(row, col_dict["占地面积"]).value,
+                              "占用率": sheet.cell(row, col_dict["占用率"]).value
+                              }
+                insert_json = {
+                    "name": sheet.cell(row, col_dict["工程名称"]).value,
+                    "category_id": 13,
+                    "props": props_json
+                }
+                header = {"Content-Type": "application/json; charset=UTF-8"}
+                url = 'http://0.0.0.0:5000' + '/entity/insert_entity'
+                data = json.dumps(insert_json)
+                res = requests.post(url=url, data=data, headers=header)
+
+        if file_name == "设施-机场.xlsx":
+            for row in range(1, number_of_rows):
+                props_json = {
+                    "地名": sheet.cell(row, col_dict["地名"]).value,
+                    "纬度": sheet.cell(row, col_dict["纬度"]).value,
+                    "经度": sheet.cell(row, col_dict["经度"]).value,
+                    "机场类别": sheet.cell(row, col_dict["机场类别"]).value,
+                    "机场等级": sheet.cell(row, col_dict["机场等级"]).value,
+                    "导航方式": sheet.cell(row, col_dict["导航方式"]).value,
+                    "军事设施使用性质": sheet.cell(row, col_dict["军事设施使用性质"]).value,
+                    "道面结构材料": sheet.cell(row, col_dict["道面结构材料"]).value,
+                    "场站级别": sheet.cell(row, col_dict["场站级别"]).value,
+                    "夜航灯光方式": sheet.cell(row, col_dict["夜航灯光方式"]).value,
+                    "主跑道长": sheet.cell(row, col_dict["主跑道长"]).value,
+                    "跑道方向": sheet.cell(row, col_dict["跑道方向"]).value,
+                    "标高": sheet.cell(row, col_dict["标高"]).value,
+                    "配套情况": sheet.cell(row, col_dict["配套情况"]).value,
+                    "单机掩蔽库数量": sheet.cell(row, col_dict["单机掩蔽库数量"]).value,
+                    "油库容量": sheet.cell(row, col_dict["油库容量"]).value,
+                    "营房总面积": sheet.cell(row, col_dict["营房总面积"]).value,
+                    "占地面积": sheet.cell(row, col_dict["占地面积"]).value,
+                    "简述": sheet.cell(row, col_dict["简述"]).value,
+                              }
+                insert_json = {
+                    "name": sheet.cell(row, col_dict["工程名称"]).value,
+                    "category_id": 7,
+                    "props": props_json
+                }
+                header = {"Content-Type": "application/json; charset=UTF-8"}
+                url = 'http://0.0.0.0:5000' + '/entity/insert_entity'
+                data = json.dumps(insert_json)
+                res = requests.post(url=url, data=data, headers=header)
+
+    else:
+        pass
+
+
 # @blue_print.route('import_excel_to_pg', methods=['POST'])
 # def import_excel_to_pg():
 #     try:
@@ -1294,13 +1328,15 @@ def import_entity_excel_straightly():
 #         file_list = request.files.getlist('file', None)
 #         for file_obj in file_list:
 #             path_filename = file_obj.filename
+#             print(path_filename)
 #             path = path_filename.split("/")
 #
-#             filename = secure_filename(''.join(lazy_pinyin(path[-1])))
-#             save_filename = "{0}{1}{2}".format(os.path.splitext(filename)[0],
-#                                                datetime.datetime.now().strftime('%Y%m%d%H%M%S'),
-#                                                os.path.splitext(filename)[1]).lower()
-#             file_savepath = os.path.join(os.getcwd(), 'static', save_filename)
+#             # filename = secure_filename(''.join(lazy_pinyin(path[-1])))
+#             # save_filename = "{0}{1}{2}".format(os.path.splitext(filename)[0],
+#             #                                    datetime.datetime.now().strftime('%Y%m%d%H%M%S'),
+#             #                                    os.path.splitext(filename)[1]).lower()
+#             file_savepath = os.path.join(os.getcwd(), 'static', path_filename)
+#             print(file_savepath)
 #             file_obj.save(file_savepath)
 #             print(file_savepath)
 #             # path = os.path.join(root, f)
@@ -1348,12 +1384,7 @@ def post_json_data_path_to_yc():
                 "id": entity.id,
                 "name": entity.name,
                 "synonyms": entity.synonyms,
-                "props": entity.props,
-                "category_id": entity.category_id,
-                "summary": entity.summary,
-                "valid": entity.valid,
-                "longitude": entity.longitude,
-                "latitude": entity.latitude} for entity in entity_list]
+                "category_id": entity.category_id} for entity in entity_list]
             dict_entity = {"RECORDS": entity_records}
             f.write(json.dumps(dict_entity))
 
@@ -1380,12 +1411,7 @@ def post_json_data_path_to_yc():
                 "id": concept.id,
                 "name": concept.name,
                 "synonyms": concept.synonyms,
-                "props": concept.props,
-                "category_id": concept.category_id,
-                "summary": concept.summary,
-                "valid": concept.valid,
-                "longitude": concept.longitude,
-                "latitude": concept.latitude} for concept in concept_list]
+                "category_id": concept.category_id} for concept in concept_list]
             dict_concept = {"RECORDS": concept_records}
             f.write(json.dumps(dict_concept))
 
