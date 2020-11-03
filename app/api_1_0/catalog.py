@@ -209,6 +209,7 @@ def get_favorite_files():
             res = fail_res(msg="无效用户")
         else:
             if customer:
+                leader_ids = get_leader_ids()
                 res = {
                     "files": [{
                         "id": d.id,
@@ -218,7 +219,11 @@ def get_favorite_files():
                         "extension": d.category.replace('\n\"', ""),
                         'tag_flag': 1 if d.status == 1 else 0,
                         "status": d.get_status_name(),
-                        "permission": 1 if Permission.judge_power(customer_id, d.id) else 0
+                        "permission": 1 if Permission.judge_power(customer_id, d.id) else 0,
+                        "leader_operate":  1 if DocMarkComment.query.filter(DocMarkComment.doc_id == d.id,
+                                                    DocMarkComment.create_by.in_(leader_ids),
+                                                    DocMarkComment.valid == 1).all() else 0
+
                     } for d in docs if d.is_favorite == 1],
                     # } for i in docs if i.get_power() <= customer.get_power()],
                     "catalogs": []
