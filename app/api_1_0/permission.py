@@ -99,7 +99,7 @@ def update_permission():
         if name in [ADMIN_ROLE_NAME, ASSIS_ROLE_NAME]:
             res = fail_res(msg="无权限更新")
         else:
-            permission = Permission.query.filter_by(name=name, valid=1).first()
+            permission = Permission.query.filter_by(name=name, power=power, valid=1).first()
             if permission:
                 res = fail_res(msg="相同权限用户已存在")
             else:

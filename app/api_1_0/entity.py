@@ -1224,142 +1224,221 @@ def SaveOneFile(filepath):
     if bool(col_dict):
         number_of_rows = sheet.nrows
         if file_name == "机构-台外军机构.xlsx":
-            for row in range(1, number_of_rows):
-                print(sheet.cell(row, col_dict["名称"]).value)
-                insert_json = {
-                    "name": sheet.cell(row, col_dict["名称"]).value,
-                    "category_id": 4,
-                    "summary": sheet.cell(row, col_dict["属性"]).value
-                }
-                header = {"Content-Type": "application/json; charset=UTF-8"}
-                url = 'http://0.0.0.0:5000' + '/entity/insert_entity'
-                data = json.dumps(insert_json)
-                res = requests.post(url=url, data=data, headers=header)
+            try:
+                for row in range(1, number_of_rows):
+                    insert_json = {
+                        "name": sheet.cell(row, col_dict["名称"]).value,
+                        "category_id": 4,
+                        "summary": sheet.cell(row, col_dict["属性"]).value}
+
+                    insert_entity_to_pg_and_es(insert_json.get("name", ""), insert_json.get("category_id", 0),
+                                               insert_json.get("summary", ""),
+                                               insert_json.get("props", None), insert_json.get("synonyms", []))
+            except Exception as e:
+                print(str(e))
+
         if file_name == "人员-关岗.xlsx":
-            for row in range(1, number_of_rows):
-                props_json = {"身份证号码": sheet.cell(row,col_dict[0]).value,
-                              "性别": sheet.cell(row, col_dict["性别"]).value,
-                              "政治面貌": sheet.cell(row, col_dict["政治面貌"]).value,
-                              "军衔": sheet.cell(row, col_dict["军衔"]).value,
-                              "文化程度": sheet.cell(row, col_dict["文化程度"]).value,
-                              "职务级别": sheet.cell(row, col_dict["职务级别"]).value,
-                              "第一学历": sheet.cell(row, col_dict["第一学历"]).value,
-                              "籍贯": sheet.cell(row, col_dict["籍贯"]).value,
-                              "入伍时间": sheet.cell(row, col_dict["入伍时间"]).value,
-                              "部队内码": sheet.cell(row, col_dict["部队内码"]).value,
-                              "院校培训": sheet.cell(row, col_dict["院校培训"]).value,
-                              "简述": sheet.cell(row, col_dict["简述"]).value,
-                              "职务": sheet.cell(row, col_dict["职务"]).value,
-                              "任现职时间": sheet.cell(row, col_dict["任现职时间"]).value,
-                              "现岗时间": sheet.cell(row, col_dict["现岗时间"]).value,
-                              "任职经历": sheet.cell(row, col_dict["任职经历"]).value
-                              }
-                insert_json = {
-                    "name": sheet.cell(row, col_dict["姓名"]).value,
-                    "category_id": 5,
-                    "props": props_json
-                }
-                header = {"Content-Type": "application/json; charset=UTF-8"}
-                url = 'http://0.0.0.0:5000' + '/entity/insert_entity'
-                data = json.dumps(insert_json)
-                res = requests.post(url=url, data=data, headers=header)
+            try:
+                for row in range(1, number_of_rows):
+                    props_json = {"身份证号码": sheet.cell(row,col_dict["身份证号码"]).value,
+                                  "性别": sheet.cell(row, col_dict["性别"]).value,
+                                  "政治面貌": sheet.cell(row, col_dict["政治面貌"]).value,
+                                  "军衔": sheet.cell(row, col_dict["军衔"]).value,
+                                  "文化程度": sheet.cell(row, col_dict["文化程度"]).value,
+                                  "职务级别": sheet.cell(row, col_dict["职务级别"]).value,
+                                  "第一学历": sheet.cell(row, col_dict["第一学历"]).value,
+                                  "籍贯": sheet.cell(row, col_dict["籍贯"]).value,
+                                  "入伍时间": sheet.cell(row, col_dict["入伍时间"]).value,
+                                  "部队内码": sheet.cell(row, col_dict["部队内码"]).value,
+                                  "院校培训": sheet.cell(row, col_dict["院校培训"]).value,
+                                  "简述": sheet.cell(row, col_dict["简述"]).value,
+                                  "职务": sheet.cell(row, col_dict["职务"]).value,
+                                  "任现职时间": sheet.cell(row, col_dict["任现职时间"]).value,
+                                  "现岗时间": sheet.cell(row, col_dict["现岗时间"]).value,
+                                  "任职经历": sheet.cell(row, col_dict["任职经历"]).value}
+
+                    insert_json = {
+                        "name": sheet.cell(row, col_dict["姓名"]).value,
+                        "category_id": 5,
+                        "props": props_json
+                    }
+                    # print(insert_json)
+                    insert_entity_to_pg_and_es(insert_json.get("name", ""), insert_json.get("category_id", 0), insert_json.get("summary", ""),
+                                               insert_json.get("props", None), insert_json.get("synonyms", []))
+
+            except Exception as e:
+                print(str(e))
+
         if file_name == "设施-仓库工程.xlsx":
-            for row in range(1, number_of_rows):
-                props_json = {"扩展地名": sheet.cell(row, col_dict["扩展地名"]).value,
-                              "仓库级别": sheet.cell(row, col_dict["仓库级别"]).value,
-                              "储存性质": sheet.cell(row, col_dict["储存性质"]).value,
-                              "启用时间": sheet.cell(row, col_dict["启用时间"]).value,
-                              "容量": sheet.cell(row, col_dict["容量"]).value,
-                              "占地面积": sheet.cell(row, col_dict["占地面积"]).value,
-                              "占用率": sheet.cell(row, col_dict["占用率"]).value
-                              }
-                insert_json = {
-                    "name": sheet.cell(row, col_dict["工程名称"]).value,
-                    "category_id": 13,
-                    "props": props_json
-                }
-                header = {"Content-Type": "application/json; charset=UTF-8"}
-                url = 'http://0.0.0.0:5000' + '/entity/insert_entity'
-                data = json.dumps(insert_json)
-                res = requests.post(url=url, data=data, headers=header)
+            try:
+                for row in range(1, number_of_rows):
+                    props_json = {"扩展地名": sheet.cell(row, col_dict["扩展地名"]).value,
+                                  "仓库级别": sheet.cell(row, col_dict["仓库级别"]).value,
+                                  "储存性质": sheet.cell(row, col_dict["储存性质"]).value,
+                                  "启用时间": sheet.cell(row, col_dict["启用时间"]).value,
+                                  "容量": sheet.cell(row, col_dict["容量"]).value,
+                                  "占地面积": sheet.cell(row, col_dict["占地面积"]).value,
+                                  "占用率": sheet.cell(row, col_dict["占用率"]).value}
+
+                    insert_json = {
+                        "name": sheet.cell(row, col_dict["工程名称"]).value,
+                        "category_id": 13,
+                        "props": props_json
+                    }
+                    insert_entity_to_pg_and_es(insert_json.get("name", ""), insert_json.get("category_id", 0),
+                                               insert_json.get("summary", ""),
+                                               insert_json.get("props", None), insert_json.get("synonyms", []))
+            except Exception as e:
+                print(str(e))
 
         if file_name == "设施-机场.xlsx":
-            for row in range(1, number_of_rows):
-                props_json = {
-                    "地名": sheet.cell(row, col_dict["地名"]).value,
-                    "纬度": sheet.cell(row, col_dict["纬度"]).value,
-                    "经度": sheet.cell(row, col_dict["经度"]).value,
-                    "机场类别": sheet.cell(row, col_dict["机场类别"]).value,
-                    "机场等级": sheet.cell(row, col_dict["机场等级"]).value,
-                    "导航方式": sheet.cell(row, col_dict["导航方式"]).value,
-                    "军事设施使用性质": sheet.cell(row, col_dict["军事设施使用性质"]).value,
-                    "道面结构材料": sheet.cell(row, col_dict["道面结构材料"]).value,
-                    "场站级别": sheet.cell(row, col_dict["场站级别"]).value,
-                    "夜航灯光方式": sheet.cell(row, col_dict["夜航灯光方式"]).value,
-                    "主跑道长": sheet.cell(row, col_dict["主跑道长"]).value,
-                    "跑道方向": sheet.cell(row, col_dict["跑道方向"]).value,
-                    "标高": sheet.cell(row, col_dict["标高"]).value,
-                    "配套情况": sheet.cell(row, col_dict["配套情况"]).value,
-                    "单机掩蔽库数量": sheet.cell(row, col_dict["单机掩蔽库数量"]).value,
-                    "油库容量": sheet.cell(row, col_dict["油库容量"]).value,
-                    "营房总面积": sheet.cell(row, col_dict["营房总面积"]).value,
-                    "占地面积": sheet.cell(row, col_dict["占地面积"]).value,
-                    "简述": sheet.cell(row, col_dict["简述"]).value,
-                              }
-                insert_json = {
-                    "name": sheet.cell(row, col_dict["工程名称"]).value,
-                    "category_id": 7,
-                    "props": props_json
-                }
-                header = {"Content-Type": "application/json; charset=UTF-8"}
-                url = 'http://0.0.0.0:5000' + '/entity/insert_entity'
-                data = json.dumps(insert_json)
-                res = requests.post(url=url, data=data, headers=header)
+            try:
+                for row in range(1, number_of_rows):
+                    props_json = {
+                        "地名": sheet.cell(row, col_dict["地名"]).value,
+                        "纬度": sheet.cell(row, col_dict["纬度"]).value,
+                        "经度": sheet.cell(row, col_dict["经度"]).value,
+                        "机场类别": sheet.cell(row, col_dict["机场类别"]).value,
+                        "机场等级": sheet.cell(row, col_dict["机场等级"]).value,
+                        "导航方式": sheet.cell(row, col_dict["导航方式"]).value,
+                        "军事设施使用性质": sheet.cell(row, col_dict["军事设施使用性质"]).value,
+                        "道面结构材料": sheet.cell(row, col_dict["道面结构材料"]).value,
+                        "场站级别": sheet.cell(row, col_dict["场站级别"]).value,
+                        "夜航灯光方式": sheet.cell(row, col_dict["夜航灯光方式"]).value,
+                        "主跑道长": sheet.cell(row, col_dict["主跑道长"]).value,
+                        "跑道方向": sheet.cell(row, col_dict["跑道方向"]).value,
+                        "标高": sheet.cell(row, col_dict["标高"]).value,
+                        "配套情况": sheet.cell(row, col_dict["配套情况"]).value,
+                        "单机掩蔽库数量": sheet.cell(row, col_dict["单机掩蔽库数量"]).value,
+                        "油库容量": sheet.cell(row, col_dict["油库容量"]).value,
+                        "营房总面积": sheet.cell(row, col_dict["营房总面积"]).value,
+                        "占地面积": sheet.cell(row, col_dict["占地面积"]).value
+                        }
+
+                    insert_json = {
+                        "name": sheet.cell(row, col_dict["工程名称"]).value,
+                        "category_id": 7,
+                        "props": props_json,
+                        "summary": sheet.cell(row, col_dict["简述"]).value
+                    }
+                    insert_entity_to_pg_and_es(insert_json["name"], insert_json["category_id"], '',
+                                               insert_json["props"], insert_json["synonyms"])
+            except Exception as e:
+                print(str(e))
+
+        if file_name == "装备-台外军装备.xlsx":
+            try:
+                for row in range(1, number_of_rows):
+                    props_json = {
+                        "装备分类": sheet.cell(row, col_dict["装备分类"]).value,
+                        "国家": sheet.cell(row, col_dict["国家"]).value}
+                    insert_json = {
+                        "name": sheet.cell(row, col_dict["装备名称"]).value,
+                        "category_id": 6,
+                        "props": props_json
+                    }
+                    insert_entity_to_pg_and_es(insert_json.get("name", ""), insert_json.get("category_id", 0),
+                                               insert_json.get("summary", ""),
+                                               insert_json.get("props", None), insert_json.get("synonyms", []))
+            except Exception as e:
+                print(str(e))
+
+        # 横表
+        if file_name == "装备-我军装备.xlsx":
+            insert_json = {}
+            props_json = {}
+            mc_value = sheet.cell(1, 1).value
+            try:
+                insert_json["category_id"] = 6
+                for row in range(1, number_of_rows):
+
+                    if sheet.cell(row, 1).value == mc_value:
+                        if sheet.cell(row, 2).value == "装备名称":
+                            insert_json["name"] = sheet.cell(row, 3).value
+                        elif sheet.cell(row, 2).value == "装备别名":
+                            insert_json["synonyms"] = [sheet.cell(row, 3).value]
+                        else:
+                            props_json[str(sheet.cell(row, 2).value)] = sheet.cell(row, 3).value
+                            insert_json["props"] = json.dumps(props_json, ensure_ascii=False)
+                        if row == number_of_rows - 1 or sheet.cell(row + 1, 1).value != mc_value:
+                            insert_entity_to_pg_and_es(insert_json.get("name", ""), insert_json.get("category_id", 0),
+                                                       insert_json.get("summary", ""),
+                                                       insert_json.get("props", None), insert_json.get("synonyms", []))
+
+                    else:
+                        mc_value = sheet.cell(row, 1).value
+                        if sheet.cell(row, 2).value == "装备名称":
+                            insert_json["name"] = sheet.cell(row, 3).value
+
+            except Exception as e:
+                print(str(e))
+
+        if file_name == "组织-部队.xlsx":
+            try:
+                for row in range(1, number_of_rows):
+                    props_json = {
+                        "部队内码": sheet.cell(row, col_dict["部队内码"]).value,
+                        "代号": sheet.cell(row, col_dict["代号"]).value,
+                        "驻地": sheet.cell(row, col_dict["部队内码"]).value,
+                        "经度": sheet.cell(row, col_dict["部队内码"]).value,
+                        "纬度": sheet.cell(row, col_dict["代号"]).value,
+                        "高程": sheet.cell(row, col_dict["高程"]).value,
+                        "类别": sheet.cell(row, col_dict["类别"]).value,
+                        "级别": sheet.cell(row, col_dict["级别"]).value,
+                        "建制": sheet.cell(row, col_dict["建制"]).value
+                    }
+                    insert_json = {
+                        "name": sheet.cell(row, col_dict["部队番号"]).value,
+                        "category_id": 3,
+                        "props": props_json,
+                        "synonyms": [sheet.cell(row, col_dict["部队简称"]).value]
+                    }
+                    insert_entity_to_pg_and_es(insert_json.get("name", ""), insert_json.get("category_id", 0),
+                                               insert_json.get("summary", ""),
+                                               insert_json.get("props", None), insert_json.get("synonyms", []))
+            except Exception as e:
+                print(str(e))
+
+        if file_name == "组织-台外军部队.xlsx":
+            try:
+                for row in range(1, number_of_rows):
+
+                    insert_json = {
+                        "name": sheet.cell(row, col_dict["名称"]).value,
+                        "category_id": 3,
+                        "summary": sheet.cell(row, col_dict["简述"]).value
+                    }
+                    insert_entity_to_pg_and_es(insert_json.get("name", ""), insert_json.get("category_id", 0),
+                                               insert_json.get("summary", ""),
+                                               insert_json.get("props", None), insert_json.get("synonyms", []))
+            except Exception as e:
+                print(str(e))
 
     else:
         pass
 
 
-# @blue_print.route('import_excel_to_pg', methods=['POST'])
-# def import_excel_to_pg():
-#     try:
-#
-#         # file_path = request.json.get("file_path", "")
-#         file_list = request.files.getlist('file', None)
-#         for file_obj in file_list:
-#             path_filename = file_obj.filename
-#             print(path_filename)
-#             path = path_filename.split("/")
-#
-#             # filename = secure_filename(''.join(lazy_pinyin(path[-1])))
-#             # save_filename = "{0}{1}{2}".format(os.path.splitext(filename)[0],
-#             #                                    datetime.datetime.now().strftime('%Y%m%d%H%M%S'),
-#             #                                    os.path.splitext(filename)[1]).lower()
-#             file_savepath = os.path.join(os.getcwd(), 'static', path_filename)
-#             print(file_savepath)
-#             file_obj.save(file_savepath)
-#             print(file_savepath)
-#             # path = os.path.join(root, f)
-#             SaveOneFile(file_savepath)
-#         res = success_res()
-#     except:
-#         res = fail_res()
-#
-#     return jsonify(res)
-    # for root, dirs, files in os.walk(file_path):
-    #     # root 表示当前正在访问的文件夹路径
-    #     # dirs 表示该文件夹下的子目录名list
-    #     # files 表示该文件夹下的文件list
-    #
-    #     # 遍历文件
-    #     for f in files:
-    #         path = os.path.join(root, f)
-    #         print(os.path.join(root, f))
-    #         SaveOneFile(path)
+@blue_print.route('import_excel_to_pg', methods=['POST'])
+def import_excel_to_pg():
+    try:
+        file_list = request.files.getlist('file', None)
+        for file_obj in file_list:
+            path_filename = file_obj.filename
+            print(path_filename)
+            path = path_filename.split("/")
+            # filename = secure_filename(''.join(lazy_pinyin(path[-1])))
+            # save_filename = "{0}{1}{2}".format(os.path.splitext(filename)[0],
+            #                                    datetime.datetime.now().strftime('%Y%m%d%H%M%S'),
+            #                                    os.path.splitext(filename)[1]).lower()
+            file_savepath = os.path.join(os.getcwd(), 'static', path_filename)
+            print(file_savepath)
+            file_obj.save(file_savepath)
+            SaveOneFile(file_savepath)
+        res = success_res()
+    except:
+        res = fail_res()
 
-    # 遍历所有的文件夹
-    # for d in dirs:
-    #     print(os.path.join(root, d))
+    return jsonify(res)
 
 
 @blue_print.route('post_json_data_path_to_yc', methods=['POST'])
@@ -1432,3 +1511,77 @@ def post_json_data_path_to_yc():
         print(str(e))
         res = fail_res()
     return jsonify(res)
+
+
+
+def insert_entity_to_pg_and_es(name, category_id, summary, props={}, synonyms=[]):
+    try:
+
+        category = EntityCategory.query.filter_by(id=category_id, valid=1).first()
+        if not category:
+            res = fail_res(msg="实体类型不存在，添加失败！")
+            return jsonify(res)
+
+        # if category.name == PLACE_BASE_NAME:
+        #     res = fail_res(msg="地名库由专业团队维护,不能添加！")
+        #     return jsonify(res)
+        if not name:
+            res = fail_res(msg="实体名称不能为空，添加失败！")
+            return jsonify(res)
+
+        entity = Entity.query.filter(Entity.name == name, Entity.valid == 1,
+                                     Entity.category_id == category_id).first()
+
+        if not entity:
+            props = props if props else {}
+            if name in synonyms:
+                synonyms.remove(name)
+            entity = Entity(name=name, category_id=category_id, props=props, synonyms=synonyms, summary=summary,
+                            valid=1)
+
+            # es 插入操作
+            longitude, latitude = 0, 0
+            # 地名实体获取经纬度
+            if EntityCategory.get_category_name(category_id) == PLACE_BASE_NAME:
+                longitude = request.json.get('longitude', 0)
+                latitude = request.json.get('latitude', 0)
+                if longitude:
+                    entity.longitude = longitude
+                if latitude:
+                    entity.latitude = latitude
+
+            db.session.add(entity)
+            db.session.commit()
+            # es_insert_item = {}
+            #
+            # if entity.id:
+            #     es_insert_item = {"id": entity.id}
+            # # es 插入操作
+            # es_insert_item = {'id': entity.id}
+            # if name:
+            #     es_insert_item["name"] = name
+            # if category_id:
+            #     es_insert_item["category_id"] = category_id
+            # if summary:
+            #     es_insert_item["summary"] = summary
+            #
+            # es_insert_item["props"] = props if props else {}
+            # if synonyms:
+            #     es_insert_item["synonyms"] = synonyms
+            #
+            # if longitude:
+            #     es_insert_item["longitude"] = longitude
+            # if latitude:
+            #     es_insert_item["latitude"] = latitude
+            #
+            # data_insert_json = [es_insert_item]
+            # url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+            #
+            # header = {"Content-Type": "application/json; charset=UTF-8"}
+            #
+            # # print(data_insert_json)
+            # para = {"data_insert_index": "entity", "data_insert_json": data_insert_json}
+            # search_result = requests.post(url + '/dataInsert', data=json.dumps(para), headers=header)
+    except Exception as e:
+        print(str(e))
+
