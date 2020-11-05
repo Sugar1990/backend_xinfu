@@ -10,6 +10,7 @@ from .utils import success_res, fail_res
 from .. import db
 from ..conf import ADMIN_ROLE_POWER, ASSIS_ROLE_POWER, ADMIN_NAME, ASSIS_NAME
 from ..models import Customer, Permission
+import uuid
 
 
 # 修改时，如果找不到是报错
@@ -25,7 +26,7 @@ def login():
             if customer:
                 if input_pwd == customer.pwd:
                     md5_hash = hashlib.md5(
-                        "{}{}{}".format(customer.id, datetime.datetime.now().timestamp(), customer.username).encode(
+                        "{}{}{}".format(customer.uuid, datetime.datetime.now().timestamp(), customer.username).encode(
                             encoding="utf-8"))
                     token = md5_hash.hexdigest()
                     print(token)
@@ -57,8 +58,8 @@ def verify_token():
                     role = 1
                 elif customer.get_power() == ASSIS_ROLE_POWER:
                     role = 2
-                res = success_res(data={"uid": customer.id, "uname": customer.username, "role": role,
-                                        "permission_power": Permission.get_power(customer.permission_id)})
+                res = success_res(data={"uuid": customer.uuid, "uname": customer.username, "role": role,
+                                        "power_score": customer.power_score})
             else:
                 res = fail_res(msg="验证失败")
     except Exception as e:
@@ -97,7 +98,7 @@ def insert_customer():
         if customer:
             res = fail_res(msg="用户已存在")
         else:
-            customer_name = Customer(username=username, pwd=pwd, permission_id=permission_id, valid=1)
+            customer_name = Customer(username=username, pwd=pwd, permission_id=permission_id, valid=1, uuid=uuid.uuid1())
             db.session.add(customer_name)
             db.session.commit()
             res = success_res()
@@ -111,12 +112,12 @@ def insert_customer():
 
 @blue_print.route('/update_customer', methods=['PUT'])
 def update_customer():
-    uid = request.json.get('customer_id', 0)
+    uuid = request.json.get('customer_uuid', '')
     username = request.json.get('customer_username', '')
     pwd = request.json.get('customer_pwd', '')
     permission_id = request.json.get('customer_permission_id', 0)
     try:
-        customer = db.session.query(Customer).filter(and_(Customer.id == uid, Customer.valid == 1)).first()
+        customer = db.session.query(Customer).filter(and_(Customer.uuid == uuid, Customer.valid == 1)).first()
         if customer:
             customer1 = db.session.query(Customer).filter(and_(Customer.username == username, Customer.pwd == pwd,
                                                                Customer.permission_id == permission_id,
@@ -144,10 +145,10 @@ def update_customer():
 
 @blue_print.route('/del_customer', methods=['POST'])
 def del_customer():
-    customer_id = request.json.get("customer_id", 0)
+    customer_uuid = request.json.get("customer_uuid", '')
 
     try:
-        customer = db.session.query(Customer).filter(and_(Customer.id == customer_id, Customer.valid == 1)).first()
+        customer = db.session.query(Customer).filter(and_(Customer.uuid == customer_uuid, Customer.valid == 1)).first()
         customer.valid = 0
         res = success_res(msg="删除成功")
     except Exception as e:
@@ -158,13 +159,13 @@ def del_customer():
     return jsonify(res)
 
 
-@blue_print.route('/query_by_id', methods=['GET'])
-def query_by_id():
-    uid = request.args.get('customer_id', 0, type=int)
+@blue_print.route('/query_by_uuid', methods=['GET'])
+def query_by_uuid():
+    uuid = request.args.get('customer_uuid', '')
     try:
-        customer = Customer.query.filter_by(id=uid, valid=1).first()
+        customer = Customer.query.filter_by(uuid=uuid, valid=1).first()
         res = {
-            "id": customer.id,
+            "uuid": customer.uuid,
             "username": customer.username,
             "permission_id": customer.permission_id,
             "permission_power": Permission.get_power(customer.permission_id),
@@ -173,7 +174,7 @@ def query_by_id():
     except Exception as e:
         print(str(e))
         db.session.rollback()
-        res = {"id": -1,
+        res = {"uuid": '-1',
                "username": ""}
     return jsonify(res)
 
@@ -185,7 +186,7 @@ def query_all():
         res = []
         for i in customer:
             if i.valid:
-                res.append({"id": i.id, "username": i.username, "permission_id": i.permission_id})
+                res.append({"uuid": i.uuid, "username": i.username, "permission_id": i.permission_id})
     except Exception as e:
         print(str(e))
         db.session.rollback()
@@ -204,12 +205,11 @@ def query_customer_paginate():
             Customer.username.like('%' + search + '%'), Customer.valid == 1,
             not_(Customer.username.in_([ADMIN_NAME, ASSIS_NAME]))
         ]
-        pagination = Customer.query.filter(*cons).order_by(
-            Customer.id.desc()).paginate(current_page, page_size, False)
+        pagination = Customer.query.filter(*cons).paginate(current_page, page_size, False)
         data = []
         for item in pagination.items:
             data.append({
-                "id": item.id,
+                "uuid": item.uuid,
                 "name": item.username,
                 "permission_id": item.permission_id
             })
@@ -233,11 +233,11 @@ def query_customer_paginate():
 
 @blue_print.route('/batch_del_customer', methods=['POST'])
 def batch_del_customer():
-    del_customer_list = request.json.get('ids', [])
+    del_customer_list = request.json.get('uuids', [])
 
     try:
-        for customer_id in del_customer_list:
-            customer = db.session.query(Customer).filter(and_(Customer.id == customer_id, Customer.valid == 1)).first()
+        for customer_uuid in del_customer_list:
+            customer = db.session.query(Customer).filter(and_(Customer.uuid == customer_uuid, Customer.valid == 1)).first()
             if customer:
                 customer.valid = 0
         res = success_res(msg="批量删除成功")
@@ -250,14 +250,14 @@ def batch_del_customer():
 
 
 @blue_print.route('/get_custom_info', methods=['POST'])
-def query_by_ids():
-    uid_list = request.json.get('ids', [])
+def query_by_uuids():
+    uuid_list = request.json.get('uuids', [])
     try:
         data = []
-        for uid in uid_list:
-            customer = Customer.query.filter_by(id=uid, valid=1).first()
+        for uuid in uuid_list:
+            customer = Customer.query.filter_by(uuid=uuid, valid=1).first()
             res = {
-                "id": customer.id,
+                "uuid": customer.uuid,
                 "username": customer.username,
                 "permission_id": customer.permission_id,
                 "permission_power": Permission.get_power(customer.permission_id)
@@ -275,14 +275,14 @@ def query_by_ids():
     return jsonify(result)
 
 @blue_print.route('/get_eidt_permission', methods=['POST'])
-def query_by_uid_doc_uid():
+def query_by_uuid_doc_uuid():
     try:
-        uid = request.json.get('uid', '')
-        doc_uid = request.json.get('doc_uid', '')
+        uuid = request.json.get('uuid', '')
+        doc_uuid = request.json.get('doc_uuid', '')
 
-        customer_uid = Customer.query.filter_by(id=uid, valid=1).first()
-        customer_doc_uid = Customer.query.filter_by(id=doc_uid, valid=1).first()
-        if Permission.get_power(customer_uid.permission_id) - Permission.get_power(customer_doc_uid .permission_id) >= 0:
+        customer_uuid = Customer.query.filter_by(uuid=uuid, valid=1).first()
+        customer_doc_uuid = Customer.query.filter_by(uuid=doc_uuid, valid=1).first()
+        if Permission.get_power(customer_uuid.permission_id) - Permission.get_power(customer_doc_uuid .permission_id) >= 0:
             result = {"data": 1,
                       "code": 1,
                       "msg": ""}
@@ -297,3 +297,47 @@ def query_by_uid_doc_uid():
                   "msg": "N"}
         return jsonify(result)
     return jsonify(result)
+
+@blue_print.route('/update_power_score', methods=['PUT'])
+def update_power_score():
+    uuid = request.json.get('customer_uuid', '')
+    try:
+        customer = db.session.query(Customer).filter(and_(Customer.uuid == uuid, Customer.valid == 1)).first()
+        if customer:
+            connection = db.engine.raw_connection()
+            cursor = connection.cursor()
+            cursor.callproc('get_customer_power',[uuid])
+            customer.power_score = cursor.fetchall()[0][0]
+            db.session.commit()
+            res = success_res()
+        else:
+            res = fail_res(msg="用户不存在")
+
+    except Exception as e:
+        print(str(e))
+        db.session.rollback()
+        res = fail_res()
+    return jsonify(res)
+
+@blue_print.route('/update_all_power_score', methods=['PUT'])
+def update_all_power_score():
+    customer_uuids = Customer.query.with_entities(Customer.uuid).filter_by(valid=1).all()
+    try:
+        for uuid in customer_uuids:
+            uuid = uuid[0]
+            customer = db.session.query(Customer).filter(and_(Customer.uuid == uuid, Customer.valid == 1)).first()
+            if customer:
+                connection = db.engine.raw_connection()
+                cursor = connection.cursor()
+                cursor.callproc('get_customer_power',[uuid])
+                customer.power_score = cursor.fetchall()[0][0]
+            else:
+                pass
+        db.session.commit()
+        res = success_res()
+
+    except Exception as e:
+        print(str(e))
+        db.session.rollback()
+        res = fail_res()
+    return jsonify(res)
