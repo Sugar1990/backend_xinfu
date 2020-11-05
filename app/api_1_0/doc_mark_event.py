@@ -24,7 +24,7 @@ def get_doc_mark_event_by_id():
         if doc_mark_event:
             res = success_res({
                 "uuid": doc_mark_event.uuid,
-                "event_uuid": doc_mark_event.event_uuid,
+                "event_id": doc_mark_event.event_id,
                 "event_desc": doc_mark_event.event_desc,
                 "event_subject": doc_mark_event.event_subject,
                 "event_predicate": doc_mark_event.event_predicate,
@@ -57,7 +57,7 @@ def get_doc_mark_event_by_id():
         print(str(e))
         res = fail_res({
             "uuid": '',
-            "event_uuid": "",
+            "event_id": "",
             "event_desc": "",
             "event_subject": [],
             "event_predicate": "",
@@ -93,7 +93,7 @@ def get_doc_mark_event_by_doc_id():
         doc_mark_event_list = DocMarkEvent.query.filter_by(doc_uuid=doc_uuid, valid=1).all()
         res = success_res(data=[{
             "uuid": i.uuid,
-            "event_uuid": i.event_uuid,
+            "event_id": i.event_id,
             "event_desc": i.event_desc,
             "event_subject": i.event_subject,
             "event_predicate": i.event_predicate,
@@ -129,7 +129,7 @@ def get_doc_mark_event_by_doc_id():
 @blue_print.route('/add_doc_mark_event', methods=['POST'])
 def add_doc_mark_event():
     try:
-        event_uuid = request.json.get("event_uuid", "")
+        event_id = request.json.get("event_id", "")
         event_desc = request.json.get("event_desc", "")
         event_subject = request.json.get("event_subject", [])
         event_predicate = request.json.get("event_predicate", "")
@@ -199,7 +199,7 @@ def add_doc_mark_event():
                                     if times:
                                         for time_tag in times:
                                             time_tag_insert_ids.append(time_tag.uuid)
-                                        doc_mark_event = DocMarkEvent(uuid=uuid.uuid1(),event_uuid=event_uuid, event_desc=event_desc,
+                                        doc_mark_event = DocMarkEvent(uuid=uuid.uuid1(),event_id=event_id, event_desc=event_desc,
                                                                       event_subject=subject_insert_ids,
                                                                       event_predicate=event_predicate,
                                                                       event_object=object_insert_ids,
@@ -250,7 +250,7 @@ def add_doc_mark_event():
 def modify_doc_mark_event():
     try:
         uuid = request.json.get("uuid", '')
-        event_uuid = request.json.get("event_uuid", "")
+        event_id = request.json.get("event_id", "")
         event_desc = request.json.get("event_desc", "")
         event_subject = request.json.get("event_subject", [])
         event_predicate = request.json.get("event_predicate", "")
@@ -276,8 +276,8 @@ def modify_doc_mark_event():
 
         doc_mark_event = DocMarkEvent.query.filter_by(uuid=uuid, valid=1).first()
         if doc_mark_event:
-            if event_uuid:
-                doc_mark_event.doc_uuid = event_uuid
+            if event_id:
+                doc_mark_event.doc_uuid = event_id
             if event_desc:
                 doc_mark_event.event_desc = event_desc
             if event_subject:
@@ -730,7 +730,7 @@ def get_during_time_event():
                         object.append(doc_mark_entity.word)
                 # timeline_key = ",".join([str(i) for i in sorted(object)])
                 event = {
-                    "event_uuid": event_id,
+                    "event_id": event_id,
                     "datetime": datetime,
                     "place": place,
                     "title": title,
@@ -807,7 +807,7 @@ def get_during_time_event_by_entities():
 
                 timeline_key = ",".join([str(i) for i in sorted(object)])
                 event = {
-                    "event_uuid": event_id,
+                    "event_id": event_id,
                     "datetime": datetime,
                     "place": place,
                     "title": title,
