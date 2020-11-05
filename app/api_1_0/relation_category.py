@@ -100,7 +100,7 @@ def add_relation_category():
 @blue_print.route('/delete_relation_category', methods=['POST'])
 def delete_relation_category():
     try:
-        uuid = request.json.get("id", "")
+        uuid = request.json.get("uuid", "")
 
         relation_category = RelationCategory.query.filter_by(uuid=uuid, valid=1).first()
         if not relation_category:
@@ -121,7 +121,7 @@ def delete_relation_category():
 @blue_print.route('/delete_relation_category_by_ids', methods=['POST'])
 def delete_relation_category_by_ids():
     try:
-        uuids = request.json.get("ids", [])
+        uuids = request.json.get("uuids", [])
         relation_category = db.session.query(RelationCategory).filter(RelationCategory.uuid.in_(uuids),
                                                                       RelationCategory.valid == 1).all()
         if relation_category:
@@ -211,9 +211,9 @@ def get_relation_categories():
     try:
         relation_category = RelationCategory.query.filter_by(valid=1).all()
         data = [{
-            "id": rc.uuid,
-            "source_entity_category_ids": rc.source_entity_category_uuids,
-            "target_entity_category_ids": rc.target_entity_category_uuids,
+            "uuid": rc.uuid,
+            "source_entity_category_uuids": rc.source_entity_category_uuids,
+            "target_entity_category_uuids": rc.target_entity_category_uuids,
             "name": rc.relation_name
         } for rc in relation_category]
         res = success_res(data=data)
@@ -232,9 +232,9 @@ def get_one_relation_category():
         relation_category = RelationCategory.query.filter_by(uuid=id, valid=1).first()
         if relation_category:
             data = {
-                "id": relation_category.uuid,
-                "source_entity_category_ids": relation_category.source_entity_category_uuids,
-                "target_entity_category_ids": relation_category.target_entity_category_uuids,
+                "uuid": relation_category.uuid,
+                "source_entity_category_uuids": relation_category.source_entity_category_uuids,
+                "target_entity_category_uuids": relation_category.target_entity_category_uuids,
                 "name": relation_category.relation_name
             }
             res = success_res(data=data)
@@ -243,9 +243,9 @@ def get_one_relation_category():
     except Exception as e:
         print(str(e))
         res = fail_res(data={
-            "id": -1,
-            "source_entity_category_ids": [],
-            "target_entity_category_ids": [],
+            "uuid": -1,
+            "source_entity_category_uuids": [],
+            "target_entity_category_uuids": [],
             "name": ""
         })
 
@@ -264,10 +264,10 @@ def get_relation_category_paginate():
             RelationCategory.id.desc()).paginate(current_page, page_size, False)
 
         data = [{
-            "id": item.uuid,
-            "source_entity_category_ids": item.source_entity_category_uuids,
+            "uuid": item.uuid,
+            "source_entity_category_uuids": item.source_entity_category_uuids,
             "source_entity_category": item.source_entity_category(),
-            "target_entity_category_ids": item.target_entity_category_uuids,
+            "target_entity_category_uuids": item.target_entity_category_uuids,
             "target_entity_category": item.target_entity_category(),
             "name": item.relation_name
         } for item in pagination.items]
