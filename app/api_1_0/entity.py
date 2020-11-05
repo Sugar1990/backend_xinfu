@@ -8,6 +8,7 @@ import re
 import requests
 import xlrd
 import math
+import uuid
 # from flasgger import swag_from
 from flask import request, jsonify
 from pypinyin import lazy_pinyin
@@ -39,35 +40,35 @@ def get_all():
     ### 重要参数:(当前页和每页条目数)
     current_page = request.args.get('cur_page', 0, type=int)
     page_size = request.args.get('page_size', 0, type=int)
-    category_id = request.args.get('category_id', 0, type=int)
+    category_uuid = request.args.get('category_uuid', '')
     type = request.args.get('type', 0, type=int)
 
-    category = EntityCategory.query.filter_by(id=category_id, name=PLACE_BASE_NAME, valid=1).first()
+    category = EntityCategory.query.filter_by(uuid=category_uuid, name=PLACE_BASE_NAME, valid=1).first()
     if category and int(USE_PLACE_SERVER):
         data, total_count = get_place_from_base_server(page_size=page_size, cur_page=current_page, search='')
         page_count = math.ceil(total_count / page_size)
 
     else:
         conditions = [Entity.valid == 1]
-        if category_id:
-            conditions.append(Entity.category_id == category_id)
+        if category_uuid:
+            conditions.append(Entity.category_uuid == category_uuid)
         else:
-            category_ids = EntityCategory.query.with_entities(EntityCategory.id).filter_by(type=type, valid=1).all()
-            category_ids = [i[0] for i in category_ids]
-            conditions.append(Entity.category_id.in_(category_ids))
+            category_uuids = EntityCategory.query.with_entities(EntityCategory.uuid).filter_by(type=type, valid=1).all()
+            category_uuids = [i[0] for i in category_uuids]
+            conditions.append(Entity.category_uuid.in_(category_uuids))
 
         conditions = tuple(conditions)
-        pagination = Entity.query.filter(and_(*conditions)).order_by(Entity.id.desc()).paginate(current_page, page_size,
-                                                                                                False)
+        pagination = Entity.query.filter(and_(*conditions)).paginate(current_page, page_size, False)
+
 
         data = [{
-            "id": item.id,
+            "uuid": item.uuid,
             "name": item.name,
             'props': item.props if item.props else {},
             'synonyms': item.synonyms if item.synonyms else [],
             "summary": item.summary,
             'category': item.category_name(),
-            'category_id': item.category_id,
+            'category_uuid': item.category_uuid,
             'longitude': item.longitude,
             'latitude': item.latitude
         } for item in pagination.items]
@@ -89,13 +90,13 @@ def get_all():
 def insert_entity():
     try:
         name = request.json.get('name', "")
-        category_id = request.json.get('category_id', 0)
+        category_uuid = request.json.get('category_uuid', '')
         props = request.json.get('props', {})
         synonyms = request.json.get('synonyms', [])
         summary = request.json.get('summary', '')
         sync = request.json.get('sync', 1)
 
-        category = EntityCategory.query.filter_by(id=category_id, valid=1).first()
+        category = EntityCategory.query.filter_by(uuid=category_uuid, valid=1).first()
         if not category:
             res = fail_res(msg="实体类型不存在，添加失败！")
             return jsonify(res)
@@ -108,19 +109,19 @@ def insert_entity():
             return jsonify(res)
 
         entity = Entity.query.filter(Entity.name == name, Entity.valid == 1,
-                                     Entity.category_id == category_id).first()
+                                     Entity.category_uuid == category_uuid).first()
 
         if not entity:
             props = props if props else {}
             if name in synonyms:
                 synonyms.remove(name)
-            entity = Entity(name=name, category_id=category_id, props=props, synonyms=synonyms, summary=summary,
+            entity = Entity(uuid=uuid.uuid1(), name=name, category_uuid=category_uuid, props=props, synonyms=synonyms, summary=summary,
                             valid=1)
 
             # es 插入操作
             longitude, latitude = 0, 0
             # 地名实体获取经纬度
-            if EntityCategory.get_category_name(category_id) == PLACE_BASE_NAME:
+            if EntityCategory.get_category_name(category_uuid) == PLACE_BASE_NAME:
                 longitude = request.json.get('longitude', 0)
                 latitude = request.json.get('latitude', 0)
                 if longitude:
@@ -132,14 +133,14 @@ def insert_entity():
             db.session.commit()
             es_insert_item = {}
 
-            if entity.id:
-                es_insert_item = {"id": entity.id}
+            if entity.uuid:
+                es_insert_item = {"uuid": entity.uuid}
             # es 插入操作
-            es_insert_item = {'id': entity.id}
+            es_insert_item = {'uuid': entity.uuid}
             if name:
                 es_insert_item["name"] = name
-            if category_id:
-                es_insert_item["category_id"] = category_id
+            if category_uuid:
+                es_insert_item["category_uuid"] = category_uuid
             if summary:
                 es_insert_item["summary"] = summary
 
@@ -163,15 +164,15 @@ def insert_entity():
             # print(data_insert_json, search_result.text)
 
             # <editor-fold desc="yc insert name & synonyms">
-            sync_yc_add_name(name, entity.id, entity.category_id, entity.get_yc_mark_category(), longitude, latitude)
-            sync_yc_add_synonyms(synonyms, entity.id, entity.category_id, entity.get_yc_mark_category(), longitude,
+            sync_yc_add_name(name, entity.uuid, entity.category_uuid, entity.get_yc_mark_category(), longitude, latitude)
+            sync_yc_add_synonyms(synonyms, entity.uuid, entity.category_uuid, entity.get_yc_mark_category(), longitude,
                                  latitude)
             # </editor-fold>
 
             # neo4j同步
             # create_node(entity.id, entity.name, entity.category_id)
 
-            res = success_res(data={"entity_id": entity.id})
+            res = success_res(data={"entity_uuid": entity.uuid})
         else:
             res = fail_res(msg="该实体名称已存在")
     except Exception as e:
@@ -185,15 +186,15 @@ def insert_entity():
 # @swag_from(update_entity_dict)
 def update_entity():
     try:
-        id = request.json.get('id', 0)
+        uuid = request.json.get('uuid', '')
         name = request.json.get('name', '')
-        category_id = request.json.get('category_id', 0)
+        category_uuid = request.json.get('category_uuid', 0)
         props = request.json.get('props', {})
         synonyms = request.json.get('synonyms', [])
         summary = request.json.get('summary', '')
         sync = request.json.get('sync', 1)
 
-        category = EntityCategory.query.filter_by(id=category_id, valid=1).first()
+        category = EntityCategory.query.filter_by(uuid=category_uuid, valid=1).first()
         if not category:
             res = fail_res(msg="实体类型不存在，修改失败！")
             return jsonify(res)
@@ -212,11 +213,11 @@ def update_entity():
         #     res = fail_res(msg="地名库由专业团队维护,不能修改！")
         #     return jsonify(res)
 
-        entity = Entity.query.filter_by(id=id, valid=1).first()
+        entity = Entity.query.filter_by(uuid=uuid, valid=1).first()
 
         if entity:
-            entity_same = Entity.query.filter(Entity.name == name, Entity.valid == 1, Entity.id != id,
-                                              Entity.category_id == category_id).first()
+            entity_same = Entity.query.filter(Entity.name == name, Entity.valid == 1, Entity.uuid != uuid,
+                                              Entity.category_uuid == category_uuid).first()
             if entity_same:
                 res = fail_res(msg="相同实体名称已存在")
                 return jsonify(res)
@@ -224,7 +225,7 @@ def update_entity():
             key_value_json = {}
             longitude, latitude = 0, 0
             # 地名实体获取经纬度
-            if EntityCategory.get_category_name(category_id) == PLACE_BASE_NAME:
+            if EntityCategory.get_category_name(category_uuid) == PLACE_BASE_NAME:
                 longitude = request.json.get('longitude', 0)
                 latitude = request.json.get('latitude', 0)
                 if longitude:
@@ -243,14 +244,14 @@ def update_entity():
                 # </editor-fold>
                 entity.name = name
                 key_value_json['name'] = name
-            if category_id:
+            if category_uuid:
                 # <editor-fold desc="yc update category_id">
-                if category_id != entity.category_id:
-                    sync_yc_update_category_id(entity.id, entity.category_id, category_id,
+                if category_uuid != entity.category_uuid:
+                    sync_yc_update_category_uuid(entity.uuid, entity.category_uuid, category_uuid,
                                                entity.get_yc_mark_category(), longitude, latitude)
                 # </editor-fold>
-                entity.category_id = category_id
-                key_value_json['category_id'] = category_id
+                entity.category_uuid = category_uuid
+                key_value_json['category_uuid'] = category_uuid
             if isinstance(props, dict):
                 entity.props = props
                 key_value_json['props'] = props
@@ -262,11 +263,11 @@ def update_entity():
                 add_synonyms = list(set(synonyms).difference(set(entity.synonyms)))
                 remove_synonyms = list(set(entity.synonyms).difference(set(synonyms)))
 
-                sync_yc_add_synonyms(add_synonyms, entity.id, entity.category_id,
+                sync_yc_add_synonyms(add_synonyms, entity.uuid, entity.category_uuid,
                                      entity.get_yc_mark_category(), longitude, latitude)
                 if remove_synonyms:
                     # 删除别名
-                    sync_yc_del_synonyms(remove_synonyms, entity.id, entity.get_yc_mark_category())
+                    sync_yc_del_synonyms(remove_synonyms, entity.uuid, entity.get_yc_mark_category())
                 # </editor-fold>
                 if name in synonyms:
                     synonyms.remove(name)
@@ -307,9 +308,9 @@ def update_entity():
 # @swag_from(delete_entity_dict)
 def delete_entity():
     try:
-        id = request.json.get('id', 0)
+        uuid = request.json.get('uuid', '')
 
-        entity = Entity.query.filter_by(id=id, valid=1).first()
+        entity = Entity.query.filter_by(uuid=uuid, valid=1).first()
         if entity:
             # category_place = EntityCategory.query.filter_by(id=entity.category_id, valid=1).first()
             # if category_place.name == PLACE_BASE_NAME:
@@ -318,17 +319,17 @@ def delete_entity():
 
             try:
                 entity.valid = 0
-                category_place = EntityCategory.query.filter_by(id=entity.category_id, valid=1).first()
+                category_place = EntityCategory.query.filter_by(uuid=entity.category_uuid, valid=1).first()
                 if category_place.name == PLACE_BASE_NAME:
-                    doc_mark_place = DocMarkPlace.query.filter_by(place_id=entity.id, valid=1).all()
+                    doc_mark_place = DocMarkPlace.query.filter_by(place_uuid=entity.uuid, valid=1).all()
                     for place_item in doc_mark_place:
                         place_item.valid = 0
                 else:
-                    doc_mark_entity = DocMarkEntity.query.filter_by(entity_id=entity.id, valid=1).all()
+                    doc_mark_entity = DocMarkEntity.query.filter_by(entity_uuid=entity.uuid, valid=1).all()
                     for entity_item in doc_mark_entity:
                         entity_item.valid = 0
             except:
-                print(id, 'not delete_done')
+                print(uuid, 'not delete_done')
 
             url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
             header = {"Content-Type": "application/json; charset=UTF-8"}
@@ -372,9 +373,9 @@ def delete_entity():
 # @swag_from(delete_entity_by_ids_dict)
 def delete_entity_by_ids():
     try:
-        ids = request.json.get('ids')
-        entity = db.session.query(Entity).filter(Entity.id.in_(ids), Entity.valid == 1).all()
-        valid_ids = []
+        uuids = request.json.get('uuids')
+        entity = db.session.query(Entity).filter(Entity.uuid.in_(uuids), Entity.valid == 1).all()
+        valid_uuids = []
         # feedback = set()
         for uni_entity in entity:
             try:
@@ -389,15 +390,15 @@ def delete_entity_by_ids():
                     sync_yc_del_synonyms(uni_entity.synonyms, uni_entity.id, uni_entity.get_yc_mark_category())
                 # </editor-fold>
 
-                valid_ids.append(uni_entity.id)
+                valid_uuids.append(uni_entity.uuid)
                 uni_entity.valid = 0
-                category_place = EntityCategory.query.filter_by(id=uni_entity.category_id, valid=1).first()
+                category_place = EntityCategory.query.filter_by(uuid=uni_entity.category_uuid, valid=1).first()
                 if category_place.name == PLACE_BASE_NAME:
-                    doc_mark_place = DocMarkPlace.query.filter_by(place_id=uni_entity.id, valid=1).all()
+                    doc_mark_place = DocMarkPlace.query.filter_by(place_uuid=uni_entity.uuid, valid=1).all()
                     for place_item in doc_mark_place:
                         place_item.valid = 0
                 else:
-                    doc_mark_entity = DocMarkEntity.query.filter_by(entity_id=uni_entity.id, valid=1).all()
+                    doc_mark_entity = DocMarkEntity.query.filter_by(entity_uuid=uni_entity.uuid, valid=1).all()
                     for entity_item in doc_mark_entity:
                         entity_item.valid = 0
                 # feedback.add(category_place.name)
@@ -439,11 +440,11 @@ def delete_entity_by_ids():
 # @swag_from(add_synonyms_dict)
 def add_synonyms():
     try:
-        id = request.json.get('id', 0)
+        uuid = request.json.get('uuid', '')
         synonyms = request.json.get('synonyms', [])
         sync = request.json.get('sync', 1)
 
-        entity = Entity.query.filter_by(id=id, valid=1).first()
+        entity = Entity.query.filter_by(uuid=uuid, valid=1).first()
         if entity.synonyms:
             synonyms.extend(entity.synonyms)
 
@@ -486,10 +487,10 @@ def add_synonyms():
 # @swag_from(delete_synonyms_dict)
 def delete_synonyms():
     try:
-        id = request.json.get('id', 0)
+        uuid = request.json.get('uuid', '')
         synonyms = request.json.get('synonyms', [])
         sync = request.json.get('sync', 1)
-        entity = Entity.query.filter_by(id=id, valid=1).first()
+        entity = Entity.query.filter_by(uuid=uuid, valid=1).first()
         if entity:
             entity_synonyms = [item for item in entity.synonyms if item not in synonyms]
             if entity.name in entity_synonyms:
@@ -526,17 +527,17 @@ def delete_synonyms():
 
 
 # <editor-fold desc="雨辰同步-实体增删改">
-def sync_yc_add_name(name, entity_id, category_id, mark_category, longitude=None, latitude=None, sync=1):
+def sync_yc_add_name(name, entity_uuid, category_uuid, mark_category, longitude=None, latitude=None, sync=1):
     try:
         # 雨辰同步
         if sync and YC_ROOT_URL:
             header = {"Content-Type": "application/json; charset=UTF-8"}
             url = YC_ROOT_URL_PYTHON + "/api/redis/add"
             item = {
-                "entity_id": entity_id,
+                "entity_uuid": entity_uuid,
                 "name": name,
                 "type": 1,  # 1主体；2别名
-                "category_id": category_id
+                "category_uuid": category_uuid
             }
 
             if longitude:
@@ -554,7 +555,7 @@ def sync_yc_add_name(name, entity_id, category_id, mark_category, longitude=None
         print(str(e))
 
 
-def sync_yc_add_synonyms(synonyms, entity_id, category_id, mark_category, longitude=None, latitude=None, sync=1):
+def sync_yc_add_synonyms(synonyms, entity_uuid, category_uuid, mark_category, longitude=None, latitude=None, sync=1):
     try:
         # 雨辰同步
         if sync and YC_ROOT_URL:
@@ -563,12 +564,12 @@ def sync_yc_add_synonyms(synonyms, entity_id, category_id, mark_category, longit
             entity_data = []
             for synonym in synonyms:
                 entity = Entity.query.filter(Entity.synonyms.has_key(synonym),
-                                             Entity.category_id == category_id, Entity.valid == 1).first()
+                                             Entity.category_uuid == category_uuid, Entity.valid == 1).first()
                 item = {
-                    "entity_id": entity_id,
+                    "entity_uuid": entity_uuid,
                     "name": synonym,
                     "type": 2,  # 1主体；2别名
-                    "category_id": category_id
+                    "category_uuid": category_uuid
                 }
                 if longitude:
                     item['lon'] = longitude
@@ -591,7 +592,7 @@ def sync_yc_add_synonyms(synonyms, entity_id, category_id, mark_category, longit
         print(str(e))
 
 
-def sync_yc_update_name(old_name, new_name, entity_id, mark_category, longitude=None, latitude=None,
+def sync_yc_update_name(old_name, new_name, entity_uuid, mark_category, longitude=None, latitude=None,
                         sync=1):
     try:
         # 雨辰同步
@@ -599,7 +600,7 @@ def sync_yc_update_name(old_name, new_name, entity_id, mark_category, longitude=
             yc_update_item = {
                 "old_name": old_name,
                 "new_name": new_name,
-                "entity_id": entity_id,
+                "entity_uuid": entity_uuid,
                 "type": 1  # 1主体；2别名
             }
             if longitude:
@@ -618,15 +619,15 @@ def sync_yc_update_name(old_name, new_name, entity_id, mark_category, longitude=
         print(str(e))
 
 
-def sync_yc_update_category_id(entity_id, old_category_id, new_category_id, mark_category, longitude=None,
+def sync_yc_update_category_id(entity_uuid, old_category_id, new_category_uuid, mark_category, longitude=None,
                                latitude=None,
                                sync=1):
     try:
         # 雨辰同步
         if sync and YC_ROOT_URL:
             for type in ["1", "2"]:
-                yc_update_item = {"entity_id": entity_id,
-                                  "category_id": new_category_id,
+                yc_update_item = {"entity_uuid": entity_uuid,
+                                  "category_uuid": new_category_uuid,
                                   "type": type}
                 if longitude:
                     yc_update_item['lon'] = longitude
@@ -644,27 +645,27 @@ def sync_yc_update_category_id(entity_id, old_category_id, new_category_id, mark
         print(str(e))
 
 
-def sync_yc_del_name(name, entity_id, mark_category, sync=1):
+def sync_yc_del_name(name, entity_uuid, mark_category, sync=1):
     try:
         if sync and YC_ROOT_URL:
             header = {"Content-Type": "application/json; charset=UTF-8"}
             url = YC_ROOT_URL_PYTHON + "/api/redis/del"
             data = {"entity_data": [{"name": name,
-                                     "entity_id": entity_id}],
+                                     "entity_uuid": entity_uuid}],
                     "mark_category": mark_category}
             yc_res = requests.post(url=url, data=data, headers=header)
     except Exception as e:
         print(str(e))
 
 
-def sync_yc_del_synonyms(del_synonyms, entity_id, mark_category, sync=1):
+def sync_yc_del_synonyms(del_synonyms, entity_uuid, mark_category, sync=1):
     try:
         # 雨辰同步
         if sync and YC_ROOT_URL:
             header = {"Content-Type": "application/json; charset=UTF-8"}
             url = YC_ROOT_URL_PYTHON + "/api/redis/del"
             sync_yc_redis_data = {"entity_data": [{"name": i,
-                                                   "entity_id": entity_id} for i in del_synonyms],
+                                                   "entity_uuid": entity_uuid} for i in del_synonyms],
                                   "mark_category": mark_category}
             data = json.dumps(sync_yc_redis_data)
             yc_res = requests.post(url=url, data=data, headers=header)
@@ -681,21 +682,21 @@ def sync_yc_del_synonyms(del_synonyms, entity_id, mark_category, sync=1):
 def get_linking_entity():
     try:
         entity_name = request.args.get('search', '')
-        category_id = request.args.get('category_id', 0, type=int)
+        category_uuid = request.args.get('category_uuid','')
         entity = Entity.query.filter(
             and_(Entity.valid == 1, or_(Entity.name == entity_name, Entity.synonyms.has_key(entity_name))))
 
-        if category_id:
-            entity = entity.filter_by(category_id=category_id, valid=1)
+        if category_uuid:
+            entity = entity.filter_by(category_uuid=category_uuid, valid=1)
         entity = entity.first()
 
         if entity:
-            res = {'id': entity.id, 'name': entity.name, 'category': entity.category_name()}
+            res = {'uuid': entity.uuid, 'name': entity.name, 'category': entity.category_name()}
         else:
-            res = {'id': -1, 'name': '', 'category': ''}
+            res = {'uuid': '-1', 'name': '', 'category': ''}
     except Exception as e:
         print(str(e))
-        res = {'id': -1, 'name': '', 'category': ''}
+        res = {'uuid': '-1', 'name': '', 'category': ''}
     return res
 
 
@@ -732,9 +733,9 @@ def get_search_panigation():
         search = request.args.get('search', "")
         page_size = request.args.get('page_size', 10, type=int)
         cur_page = request.args.get('cur_page', 1, type=int)
-        category_id = request.args.get('category_id', 0, type=int)
+        category_uuid = request.args.get('category_uuid', 0, type=int)
         data, total_count = get_search_panigation_es(search=search, page_size=page_size, cur_page=cur_page,
-                                                     category_id=category_id)
+                                                     category_uuid=category_uuid)
         res = {
             "data": data,
             "cur_page": cur_page,
@@ -806,9 +807,9 @@ def get_search_entity():
         search = request.args.get('search', "")
         # page_size = request.args.get('page_size', 10, type=int)
         # cur_page = request.args.get('cur_page', 1, type=int)
-        category_id = request.args.get('category_id', 0, type=int)
+        category_uuid = request.args.get('category_uuid', '')
         data, total_count = get_search_es(search=search,
-                                          category_id=category_id)
+                                          category_uuid=category_uuid)
         res = {
             "data": data,
             "total_count": total_count
@@ -895,10 +896,10 @@ def get_entity_data_es():
 # @swag_from(get_entity_info_dict)
 def get_entity_info():
     try:
-        id = request.args.get('id', 0, type=int)
-        entity = Entity.query.filter_by(id=id, valid=1).first()
+        uuid = request.args.get('uuid', '')
+        entity = Entity.query.filter_by(uuid=uuid, valid=1).first()
         if entity:
-            res = {'id': entity.id, 'name': entity.name,
+            res = {'uuid': entity.uuid, 'name': entity.name,
                    'synonyms': entity.synonyms if entity.synonyms else [],
                    'props': entity.props if entity.props else {},
                    'category_id': entity.category_id,
@@ -907,11 +908,11 @@ def get_entity_info():
                    'longitude': entity.longitude,
                    'latitude': entity.latitude}
         else:
-            res = {'id': -1, 'name': '', 'synonyms': [], 'props': {}, 'category_id': -1, 'category': '',
+            res = {'uuid': '-1', 'name': '', 'synonyms': [], 'props': {}, 'category_uuid': "-1", 'category': '',
                    'longitude': None, 'latitude': None}
     except Exception as e:
         print(str(e))
-        res = {'id': -1, 'name': '', 'synonyms': [], 'props': {}, 'category_id': -1, 'category': '', 'longitude': None,
+        res = {'id': "-1", 'name': '', 'synonyms': [], 'props': {}, 'category_uuid': "-1", 'category': '', 'longitude': None,
                'latitude': None}
     return jsonify(res)
 
@@ -921,12 +922,12 @@ def get_entity_info():
 # @swag_from(get_entities_info)
 def get_entities_info():
     try:
-        ids = request.json.get('ids', [])
-        entities = Entity.query.filter(Entity.id.in_(ids)).all()
-        res = success_res(data=[{'id': i.id,
+        uuids = request.json.get('uuids', [])
+        entities = Entity.query.filter(Entity.uuid.in_(uuids)).all()
+        res = success_res(data=[{'uuid': i.uuid,
                                  'name': i.name,
                                  'synonyms': i.synonyms if i.synonyms else [],
-                                 'category_id': i.category_id,
+                                 'category_uuid': i.category_uuid,
                                  'category': i.category_name(),
                                  'longitude': i.longitude,
                                  'latitude': i.latitude} for i in entities])
@@ -944,10 +945,10 @@ def get_entity_data():
         search = request.args.get('search', '')
         entity = Entity.query.filter_by(name=search, valid=1).first()
         if entity:
-            res = {'id': entity.id, 'name': entity.name, 'synonyms': entity.synonyms,
+            res = {'uuid': entity.uuid, 'name': entity.name, 'synonyms': entity.synonyms,
                    'props': entity.props, 'category': entity.category_name()}
         else:
-            res = {'id': -1, 'name': '', 'synonyms': [], 'props': {},
+            res = {'uuid': '-1', 'name': '', 'synonyms': [], 'props': {},
                    'category': ''}
     except Exception as e:
         print(str(e))
@@ -962,8 +963,8 @@ def get_entity_data():
 def get_top_list():
     try:
         search = request.args.get('search', '')
-        category_id = request.args.get('category_id', 0)
-        data, _ = get_search_panigation_es(search=search, category_id=category_id, page_size=5, cur_page=1)
+        category_uuid = request.args.get('category_uuid', '')
+        data, _ = get_search_panigation_es(search=search, category_uuid=category_uuid, page_size=5, cur_page=1)
         res = data
     except Exception as e:
         print(str(e))
@@ -985,17 +986,17 @@ def get_search_panigation_pg():
                                                                       Entity.synonyms.has_key(entity_name)))
                                           ).all()
 
-        entity_ids = [i.id for i in entity_list]
+        entity_uuids = [i.uuid for i in entity_list]
 
         search_cuts = analyse.extract_tags(entity_name, topK=5)
         conditions = [Entity.name.like("%" + i + "%") for i in search_cuts]
         conditions.extend([Entity.synonyms.has_key(i) for i in search_cuts])
 
         conditions = tuple(conditions)
-        ex_list = Entity.query.filter(and_(or_(*conditions), Entity.valid == 1, ~Entity.id.in_(entity_ids))).all()
+        ex_list = Entity.query.filter(and_(or_(*conditions), Entity.valid == 1, ~Entity.uuid.in_(entity_uuids))).all()
         entity_list.extend(ex_list)
 
-        total_like_list = [{'id': entity.id,
+        total_like_list = [{'uuid': entity.uuid,
                             'name': entity.name,
                             'category': entity.category_name()
                             } for entity in entity_list]
@@ -1036,10 +1037,10 @@ def import_entity_excel():
             try:
                 row_value = table.row_values(row_index)
                 ex_name = row_value[0].strip()
-                category_id = EntityCategory.get_category_id(row_value[1].strip())
+                category_uuid = EntityCategory.get_category_id(row_value[1].strip())
 
                 # 地名数据不得导入
-                if category_id != EntityCategory.get_category_id(PLACE_BASE_NAME):
+                if category_uuid != EntityCategory.get_category_id(PLACE_BASE_NAME):
                     ex_summary = row_value[2].strip()
                     # 解析别名
                     ex_synonyms = []
@@ -1062,12 +1063,12 @@ def import_entity_excel():
                     if entity:
                         # <editor-fold desc="yc update name">
                         if entity.name != ex_name:
-                            sync_yc_update_name(entity.name, ex_name, entity.id, entity.get_yc_mark_category())
+                            sync_yc_update_name(entity.name, ex_name, entity.uuid, entity.get_yc_mark_category())
                         # </editor-fold>
 
                         # <editor-fold desc="yc update category_id">
-                        if category_id != entity.category_id:
-                            sync_yc_update_category_id(entity.id, entity.category_id, category_id,
+                        if category_uuid != entity.category_uuid:
+                            sync_yc_update_category_id(entity.uuid, entity.category_uuid, category_uuid,
                                                        entity.get_yc_mark_category())
                         # </editor-fold>
 
@@ -1076,18 +1077,18 @@ def import_entity_excel():
                             add_synonyms = list(set(ex_synonyms).difference(set(entity.synonyms)))
                             remove_synonyms = list(set(entity.synonyms).difference(set(ex_synonyms)))
 
-                            sync_yc_add_synonyms(add_synonyms, entity.id, entity.category_id,
+                            sync_yc_add_synonyms(add_synonyms, entity.uuid, entity.category_uuid,
                                                  entity.get_yc_mark_category())
                             if remove_synonyms:
                                 # 删除别名
-                                sync_yc_del_synonyms(remove_synonyms, entity.id, entity.get_yc_mark_category())
+                                sync_yc_del_synonyms(remove_synonyms, entity.uuid, entity.get_yc_mark_category())
                         # </editor-fold>
 
                         entity.name = ex_name
                         entity.props = ex_props
                         entity.synonyms = ex_synonyms
                         entity.summary = ex_summary
-                        entity.category_id = category_id
+                        entity.category_uuid = category_uuid
                         entity.valid = 1
 
                         # es 插入操作
@@ -1109,7 +1110,7 @@ def import_entity_excel():
                         # print(search_result.text, flush=True)
 
                     else:
-                        entity = Entity(name=ex_name, props=ex_props, synonyms=ex_synonyms, category_id=category_id,
+                        entity = Entity(uuid=uuid.uuid1(), name=ex_name, props=ex_props, synonyms=ex_synonyms, category_uuid=category_uuid,
                                         valid=1)
                         db.session.add(entity)
                         # db.session.commit()

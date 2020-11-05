@@ -5,6 +5,7 @@
 # @Time : 2020/9/5 9:25
 
 import datetime
+import uuid
 
 from flask import jsonify, request
 from . import api_document_records as blue_print
@@ -16,18 +17,20 @@ from .utils import success_res, fail_res
 @blue_print.route('/insert_records', methods=['POST'])
 def insert_records():
     try:
-        doc_id = request.json.get('doc_id', 0)
-        customer_id = request.json.get('customer_id', 0)
+        #doc_id = request.json.get('doc_id', 0)
+        doc_uuid = request.json.get('doc_uuid', '')
+        create_by_uuid = request.json.get('create_by_uuid', '')
         operate_type = request.json.get('operate_type', 0)
-        document = Document.query.filter_by(id=doc_id).first()
-        customer = Customer.query.filter_by(id=customer_id).first()
+        document = Document.query.filter_by(uuid=doc_uuid).first()
+        customer = Customer.query.filter_by(uuid=create_by_uuid).first()
         if not document:
             res = fail_res(msg="文档id不存在!")
         elif not customer:
             res = fail_res(msg="用户id不存在!")
         else:
-            documentRecords = DocumentRecords(doc_id=doc_id,
-                                              create_by=customer_id,
+            documentRecords = DocumentRecords(doc_uuid=doc_uuid,
+                                              uuid=uuid.uuid1(),
+                                              create_by_uuid=create_by_uuid,
                                               create_time=datetime.datetime.now(),
                                               operate_type=operate_type)
             db.session.add(documentRecords)
@@ -44,13 +47,14 @@ def insert_records():
 @blue_print.route('/get_doc_records', methods=['GET'])
 def get_doc_records():
     try:
-        doc_id = request.args.get('doc_id', 0)
-        doc_records = DocumentRecords.query.filter(DocumentRecords.doc_id == doc_id).order_by(
+        #doc_id = request.args.get('doc_id', 0)
+        doc_uuid = request.args.get('doc_uuid', '')
+        doc_records = DocumentRecords.query.filter(DocumentRecords.doc_uuid == doc_uuid).order_by(
             DocumentRecords.create_time.desc())
         res = []
         if doc_records:
             for doc_record in doc_records:
-                customer = Customer.query.filter_by(id=doc_record.create_by).first()
+                customer = Customer.query.filter_by(uuid=doc_record.create_by_uuid).first()
                 if customer:
                     res.append({
                         # 对应models.py中的字段

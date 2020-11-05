@@ -7,7 +7,7 @@ from ..models import EntityCategory, RelationCategory, Entity
 from .. import db
 from .utils import success_res, fail_res
 from ..conf import PLACE_BASE_NAME
-
+import uuid
 
 # <editor-fold desc="实体类型，type=1：国家、地名、机构……">
 # 查全集实体类型
@@ -16,7 +16,7 @@ def get_entity_categories():
     try:
         categories = EntityCategory.query.filter_by(type=1, valid=1).all()
         res = [{
-            "id": i.id,
+            "uuid": i.uuid,
             "name": i.name
         } for i in categories]
     except Exception as e:
@@ -34,7 +34,7 @@ def get_entity_categories_without_place():
         categories = EntityCategory.query.filter(EntityCategory.type == 1, EntityCategory.valid == 1,
                                                  EntityCategory.name != PLACE_BASE_NAME).all()
         res = [{
-            "id": i.id,
+            "uuid": i.uuid,
             "name": i.name
         } for i in categories]
     except Exception as e:
@@ -49,11 +49,11 @@ def get_entity_categories_without_place():
 @blue_print.route('/get_one_entity_category', methods=['GET'])
 def get_one_entity_category():
     try:
-        id = request.args.get('id', 0, type=int)
-        category = EntityCategory.query.filter_by(id=id, type=1, valid=1).first()
+        uuid = request.args.get('uuid', '')
+        category = EntityCategory.query.filter_by(uuid=uuid, type=1, valid=1).first()
         if category:
             res = {
-                "id": category.id,
+                "uuid": category.uuid,
                 "name": category.name
             }
         else:
@@ -61,7 +61,7 @@ def get_one_entity_category():
     except Exception as e:
         print(str(e))
         res = {
-            "id": -1,
+            "uuid": "-1",
             "name": ""
         }
 
@@ -80,7 +80,7 @@ def add_entity_category():
         if entity_category:
             res = fail_res(msg="同名实体类型已存在")
         else:
-            entity = EntityCategory(name=name, type=1, valid=1)
+            entity = EntityCategory(uuid=uuid.uuid1(), name=name, type=1, valid=1)
             db.session.add(entity)
             db.session.commit()
             res = success_res()
@@ -95,14 +95,14 @@ def add_entity_category():
 @blue_print.route('/modify_entity_category', methods=['PUT'])
 def modify_entity_category():
     try:
-        id = request.json.get('id', 0)
+        uuid = request.json.get('uuid', '')
         name = request.json.get('name', '')
         if name:
             entity_category_same = EntityCategory.query.filter_by(name=name, type=1, valid=1).first()
             if entity_category_same:
                 res = fail_res(msg="同名实体类型已存在")
             else:
-                entity_category = EntityCategory.query.filter_by(id=id, type=1, valid=1).first()
+                entity_category = EntityCategory.query.filter_by(uuid=uuid, type=1, valid=1).first()
                 if entity_category:
                     # if entity_category.name != PLACE_BASE_NAME:
                     entity_category.name = name
@@ -125,8 +125,8 @@ def modify_entity_category():
 @blue_print.route('/delete_entity_category', methods=['POST'])
 def delete_entity_category():
     try:
-        id = request.json.get("id", 0)
-        flag, msg = del_entity_category(id)
+        uuid = request.json.get("uuid", '')
+        flag, msg = del_entity_category(uuid)
         if flag:
             res = success_res()
         else:
@@ -138,13 +138,13 @@ def delete_entity_category():
     return jsonify(res)
 
 
-def del_entity_category(id):
+def del_entity_category(uuid):
     try:
-        entity_category = EntityCategory.query.filter_by(id=id, type=1, valid=1).first()
+        entity_category = EntityCategory.query.filter_by(uuid=uuid, type=1, valid=1).first()
         relation_category = RelationCategory.query.filter(RelationCategory.valid == 1,
-                                                          or_(RelationCategory.source_entity_category_ids.op('@>')([id]),
-                                                              RelationCategory.target_entity_category_ids.op('@>')([id]))).all()
-        entity = Entity.query.filter_by(category_id=id, valid=1).first()
+                                                          or_(RelationCategory.source_entity_category_uuids.op('@>')([uuid]),
+                                                              RelationCategory.target_entity_category_uuids.op('@>')([uuid]))).all()
+        entity = Entity.query.filter_by(category_uuid=uuid, valid=1).first()
 
         if not entity_category:
             res = False, "实体类型不存在"
@@ -167,10 +167,10 @@ def del_entity_category(id):
 @blue_print.route('/delete_entity_category_by_ids', methods=['POST'])
 def delete_entity_category_by_ids():
     try:
-        ids = request.json.get("ids", [])
+        uuids = request.json.get("uuids", [])
         res_flag = True
-        for id in ids:
-            flag, msg = del_entity_category(id)
+        for uuid in uuids:
+            flag, msg = del_entity_category(uuid)
             res_flag = res_flag & flag
         if res_flag:
             res = success_res()
@@ -193,12 +193,11 @@ def get_entity_category_paginate():
     search = request.args.get("search", "")
     try:
         pagination = EntityCategory.query.filter(EntityCategory.valid == 1, EntityCategory.type == 1,
-                                                 EntityCategory.name.like('%' + search + '%')).order_by(
-            EntityCategory.id.desc()).paginate(current_page, page_size, False)
+                                                 EntityCategory.name.like('%' + search + '%')).paginate(current_page, page_size, False)
         data = []
         for item in pagination.items:
             data.append({
-                "id": item.id,
+                "uuid": item.uuid,
                 "name": item.name
             })
         res = {
@@ -227,7 +226,7 @@ def get_entity_ideas():
     try:
         categories = EntityCategory.query.filter_by(type=2, valid=1).all()
         res = success_res(data=[{
-            "id": i.id,
+            "uuid": i.uuid,
             "name": i.name
         } for i in categories])
 
@@ -242,11 +241,11 @@ def get_entity_ideas():
 @blue_print.route('/get_one_entity_idea', methods=['GET'])
 def get_one_entity_idea():
     try:
-        id = request.args.get('id', 0, type=int)
-        category = EntityCategory.query.filter_by(id=id, type=2, valid=1).first()
+        uuid = request.args.get('uuid', '')
+        category = EntityCategory.query.filter_by(uuid=uuid, type=2, valid=1).first()
         if category:
             res = success_res({
-                "id": category.id,
+                "uuid": category.uuid,
                 "name": category.name
             })
         else:
@@ -254,7 +253,7 @@ def get_one_entity_idea():
     except Exception as e:
         print(str(e))
         res = fail_res({
-            "id": -1,
+            "uuid": "-1",
             "name": ""
         })
 
@@ -273,7 +272,7 @@ def add_entity_idea():
         if entity_category:
             res = fail_res(msg="同名实体概念已存在")
         else:
-            entity = EntityCategory(name=name, type=2, valid=1)
+            entity = EntityCategory(uuid=uuid.uuid1(), name=name, type=2, valid=1)
             db.session.add(entity)
             db.session.commit()
             res = success_res()
@@ -288,14 +287,14 @@ def add_entity_idea():
 @blue_print.route('/modify_entity_idea', methods=['PUT'])
 def modify_entity_idea():
     try:
-        id = request.json.get('id', 0)
+        uuid = request.json.get('uuid', '')
         name = request.json.get('name', '')
         if name:
             entity_category_same = EntityCategory.query.filter_by(name=name, type=2, valid=1).first()
             if entity_category_same:
                 res = fail_res(msg="同名实体概念已存在")
             else:
-                entity_category = EntityCategory.query.filter_by(id=id, type=2, valid=1).first()
+                entity_category = EntityCategory.query.filter_by(uuid=uuid, type=2, valid=1).first()
                 if entity_category:
                     # if entity_category.name != PLACE_BASE_NAME:
                     entity_category.name = name
@@ -318,8 +317,8 @@ def modify_entity_idea():
 @blue_print.route('/delete_entity_idea', methods=['POST'])
 def delete_entity_idea():
     try:
-        id = request.json.get("id", 0)
-        flag, msg = del_entity_idea(id)
+        uuid = request.json.get("uuid", "")
+        flag, msg = del_entity_idea(uuid)
         if flag:
             res = success_res()
         else:
@@ -331,13 +330,13 @@ def delete_entity_idea():
     return jsonify(res)
 
 
-def del_entity_idea(id):
+def del_entity_idea(uuid):
     try:
-        entity_category = EntityCategory.query.filter_by(id=id, type=2, valid=1).first()
+        entity_category = EntityCategory.query.filter_by(uuid=uuid, type=2, valid=1).first()
         relation_category = RelationCategory.query.filter(RelationCategory.valid == 1,
-                                                          or_(RelationCategory.source_entity_category_ids.op('@>')([id]),
-                                                              RelationCategory.target_entity_category_ids.op('@>')([id]))).all()
-        entity = Entity.query.filter_by(category_id=id, valid=1).first()
+                                                          or_(RelationCategory.source_entity_category_uuids.op('@>')([uuid]),
+                                                              RelationCategory.target_entity_category_uuids.op('@>')([uuid]))).all()
+        entity = Entity.query.filter_by(category_uuid=uuid, valid=1).first()
 
         if not entity_category:
             res = False, "实体概念不存在"
@@ -360,10 +359,10 @@ def del_entity_idea(id):
 @blue_print.route('/delete_entity_idea_by_ids', methods=['POST'])
 def delete_entity_idea_by_ids():
     try:
-        ids = request.json.get("ids", [])
+        uuids = request.json.get("uuids", [])
         res_flag = True
-        for id in ids:
-            flag, msg = del_entity_idea(id)
+        for uuid in uuids:
+            flag, msg = del_entity_idea(uuid)
             res_flag = res_flag & flag
         if res_flag:
             res = success_res()
@@ -386,12 +385,11 @@ def get_entity_idea_paginate():
     search = request.args.get("search", "")
     try:
         pagination = EntityCategory.query.filter(EntityCategory.valid == 1, EntityCategory.type == 2,
-                                                 EntityCategory.name.like('%' + search + '%')).order_by(
-            EntityCategory.id.desc()).paginate(current_page, page_size, False)
+                                                 EntityCategory.name.like('%' + search + '%')).paginate(current_page, page_size, False)
         data = []
         for item in pagination.items:
             data.append({
-                "id": item.id,
+                "uuid": item.uuid,
                 "name": item.name
             })
         res = success_res(data={
