@@ -15,16 +15,16 @@ from .utils import success_res, fail_res
 def add_doc_mark_mind():
     try:
         name = request.json.get('name')
-        parent_id = request.json.get('parent_id')
-        doc_id = request.json.get('doc_id')
-        doc_mark_mind_same = DocMarkMind.query.filter_by(doc_id=doc_id, name=name, parent_id=parent_id, valid=1).first()
+        parent_uuid = request.json.get('parent_uuid')
+        doc_uuid = request.json.get('doc_uuid')
+        doc_mark_mind_same = DocMarkMind.query.filter_by(doc_uuid=doc_uuid, name=name, parent_uuid=parent_uuid, valid=1).first()
         if doc_mark_mind_same:
             res = fail_res(msg="导图已存在")
         else:
-            doc_mark_mind = DocMarkMind(doc_id=doc_id, name=name, parent_id=parent_id, valid=1)
+            doc_mark_mind = DocMarkMind(doc_uuid=doc_uuid, name=name, parent_uuid=parent_uuid, valid=1)
             db.session.add(doc_mark_mind)
             db.session.commit()
-            res = success_res(data={"id": doc_mark_mind.id})
+            res = success_res(data={"uuid": doc_mark_mind.uuid})
     except Exception as e:
         print(str(e))
         db.session.rollback()
@@ -36,30 +36,30 @@ def add_doc_mark_mind():
 @blue_print.route('/modify_doc_mark_mind', methods=['PUT'])
 def modify_doc_mark_mind():
     try:
-        doc_mark_mind_id = request.json.get('id', 0)
+        doc_mark_mind_uuid = request.json.get('uuid', 0)
         name = request.json.get('name', '')
-        parent_id = request.json.get('parent_id', 0)
-        doc_id = request.json.get('doc_id', 0)
-        if isinstance(doc_mark_mind_id, int):
-            doc_mark_mind = DocMarkMind.query.filter_by(id=doc_mark_mind_id, valid=1).first()
+        parent_uuid = request.json.get('parent_uuid', 0)
+        doc_uuid = request.json.get('doc_uuid', 0)
+        if isinstance(doc_mark_mind_uuid, int):
+            doc_mark_mind = DocMarkMind.query.filter_by(id=doc_mark_mind_uuid, valid=1).first()
             if doc_mark_mind:
-                doc_mark_mind_same = DocMarkMind.query.filter_by(doc_id=doc_id, name=name, parent_id=parent_id,
+                doc_mark_mind_same = DocMarkMind.query.filter_by(doc_uuid=doc_uuid, name=name, parent_uuid=parent_uuid,
                                                                  valid=1).first()
                 if doc_mark_mind_same:
                     res = fail_res(msg="导图已存在")
                 else:
-                    if doc_id:
-                        doc_mark_mind.doc_id = doc_id
+                    if doc_uuid:
+                        doc_mark_mind.doc_uuid = doc_uuid
                     if name:
                         doc_mark_mind.name = name
-                    if parent_id:
-                        doc_mark_mind.parent_id = parent_id
+                    if parent_uuid:
+                        doc_mark_mind.parent_uuid = parent_uuid
                     db.session.commit()
                     res = success_res()
             else:
-                res = fail_res(msg="id不存在!")
+                res = fail_res(msg="uuid不存在!")
         else:
-            res = fail_res("paramter \"id\" is not int type")
+            res = fail_res("paramter \"uuid\" is not int type")
 
     except Exception as e:
         print(str(e))
@@ -71,16 +71,16 @@ def modify_doc_mark_mind():
 @blue_print.route('/delete_doc_mark_mind', methods=['POST'])
 def delete_doc_mark_mind():
     try:
-        doc_mark_mind_id = request.json.get("id", 0)
-        if isinstance(doc_mark_mind_id, int):
-            doc_mark_mind = DocMarkMind.query.filter_by(id=doc_mark_mind_id, valid=1).first()
+        doc_mark_mind_uuid = request.json.get("uuid", 0)
+        if isinstance(doc_mark_mind_uuid, int):
+            doc_mark_mind = DocMarkMind.query.filter_by(id=doc_mark_mind_uuid, valid=1).first()
             if doc_mark_mind:
                 doc_mark_mind.valid = 0
                 res = success_res()
             else:
                 res = fail_res(msg="操作对象不存在!")
         else:
-            res = fail_res("paramter \"id\" is not int type")
+            res = fail_res("paramter \"uuid\" is not int type")
     except Exception as e:
         print(str(e))
         db.session.rollback()
@@ -93,12 +93,12 @@ def delete_doc_mark_mind():
 def get_doc_mark_mind():
     try:
         result = []
-        doc_mark_mind_doc_id = request.args.get("doc_id", 0, type=int)
-        doc_mark_mind = DocMarkMind.query.filter_by(doc_id=doc_mark_mind_doc_id,parent_id=0, valid=1).first()
+        doc_mark_mind_doc_uuid = request.args.get("doc_uuid", 0, type=int)
+        doc_mark_mind = DocMarkMind.query.filter_by(doc_uuid=doc_mark_mind_doc_uuid,parent_uuid=0, valid=1).first()
         if doc_mark_mind:
-            get_ancestorn_doc_mark_mind(doc_mark_mind.id,result)
+            get_ancestorn_doc_mark_mind(doc_mark_mind.uuid, result)
             res_temp = [{
-                "id": doc_mark_mind.id,
+                "uuid": doc_mark_mind.uuid,
                 "name": doc_mark_mind.name,
                 "children": result
             }]
@@ -113,13 +113,13 @@ def get_doc_mark_mind():
     return jsonify(res)
 
 
-def get_ancestorn_doc_mark_mind(id, result=[]):
-    doc_mark_mind_children = DocMarkMind.query.filter_by(parent_id=id, valid=1).all()
+def get_ancestorn_doc_mark_mind(uuid, result=[]):
+    doc_mark_mind_children = DocMarkMind.query.filter_by(parent_uuid=uuid, valid=1).all()
     for item in doc_mark_mind_children:
         res = {
-            "id": item.id,
+            "uuid": item.uuid,
             "name": item.name,
             "children": []
         }
-        get_ancestorn_doc_mark_mind(item.id, res["children"])
+        get_ancestorn_doc_mark_mind(item.uuid, res["children"])
         result.append(res)
