@@ -21,6 +21,7 @@ from .. import db
 from ..conf import ES_SERVER_IP, ES_SERVER_PORT, YC_ROOT_URL, YC_ROOT_URL_PYTHON, PLACE_BASE_NAME, USE_PLACE_SERVER
 from ..models import Entity, EntityCategory, DocMarkPlace, DocMarkEntity
 from .place import get_place_from_base_server
+import zipfile
 
 
 # from ..serve.neo4j_imp import create_node, update_node, delete_node
@@ -247,7 +248,7 @@ def update_entity():
             if category_uuid:
                 # <editor-fold desc="yc update category_id">
                 if category_uuid != entity.category_uuid:
-                    sync_yc_update_category_uuid(entity.uuid, entity.category_uuid, category_uuid,
+                    sync_yc_update_category_id(entity.uuid, entity.category_uuid, category_uuid,
                                                entity.get_yc_mark_category(), longitude, latitude)
                 # </editor-fold>
                 entity.category_uuid = category_uuid
@@ -408,7 +409,7 @@ def delete_entity_by_ids():
         db.session.commit()
 
         url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
-        for id in valid_ids:
+        for id in valid_uuids:
             search_json = {
                 'id': {'type': 'id', 'value': id}}
             header_es = {"Content-Type": "application/json; charset=UTF-8"}
@@ -1094,7 +1095,7 @@ def import_entity_excel():
                         # es 插入操作
                         data_insert_json = [{
                             'name': ex_name,
-                            'category_id': category_id,
+                            'category_uuid': category_uuid,
                             'summary': ex_summary,
                             'props': ex_props,
                             'synonyms': ex_synonyms
@@ -1118,7 +1119,7 @@ def import_entity_excel():
                         # es 插入操作
                         data_insert_json = [{
                             'name': ex_name,
-                            'category_id': category_id,
+                            'category_uuid': category_uuid,
                             'summary': ex_summary,
                             'props': ex_props,
                             'synonyms': ex_synonyms,
@@ -1424,6 +1425,15 @@ def import_excel_to_pg():
     try:
         file_list = request.files.getlist('file', None)
         for file_obj in file_list:
+            zip_file = zipfile.ZipFile(file_obj)
+            if os.path.isdir(file_obj+"_files"):
+                pass
+            else:
+                os.mkdir(file_obj+"_files")
+            for names in zip_file.namelist():
+                zip_file.extract(names, file_obj+"_files/")
+            zip_file.close()
+
             path_filename = file_obj.filename
             print(path_filename)
             path = path_filename.split("/")
