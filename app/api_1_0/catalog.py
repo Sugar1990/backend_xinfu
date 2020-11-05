@@ -313,20 +313,20 @@ def get_catalog_files():
 
 @blue_print.route('/batch_del_catalog', methods=['POST'])
 def batch_del_catalog():
-    del_catalog_list = request.json.get('ids', [])
-    customer_id = request.json.get('customer_id', 0)
+    del_catalog_list = request.json.get('uuids', [])
+    customer_uuid = request.json.get('customer_uuid', 0)
 
     try:
         msg = ""
-        for catalog_id in del_catalog_list:
+        for catalog_uuid in del_catalog_list:
 
-            flag, msg = judge_del_catalog_permission(customer_id, catalog_id)
+            flag, msg = judge_del_catalog_permission(customer_uuid, catalog_uuid)
             if not flag:
                 msg = msg
 
             if flag:
-                catalog_res = Catalog.query.filter_by(uuid=catalog_id).first()
-                del_catalog_recursive(catalog_id)
+                catalog_res = Catalog.query.filter_by(uuid=catalog_uuid).first()
+                del_catalog_recursive(catalog_uuid)
 
                 db.session.delete(catalog_res)
                 db.session.commit()
@@ -344,15 +344,20 @@ def batch_del_catalog():
 def insert_1stfloor_catalog():
     try:
         name = request.json.get("name", "")
-        customer_id = request.json.get("customer_id", 0)
+        customer_uuid = request.json.get("customer_uuid", "")
         tabs = request.json.get("tabs", [])
-        catalog = Catalog.query.filter_by(name=name, create_by=customer_id, parent_id=0, tagging_tabs=tabs).first()
+        catalog = Catalog.query.filter_by(name=name, create_by_uuid=customer_uuid, parent_uuid=None, tagging_tabs=tabs).first()
 
         if catalog:
             res = fail_res(msg="相同根目录已存在")
         else:
-            catalog = Catalog(name=name, create_by=customer_id, parent_id=0
-                              , create_time=datetime.datetime.now(), tagging_tabs=tabs)
+            sort = Catalog.query.filter_by(parent_uuid="").order_by(Catalog.sort.desc()).first()
+            if sort:
+                sort = sort + 1
+            else:
+                sort = 0
+            catalog = Catalog(uuid=uuid.uuid1(), name=name, create_by_uuid=customer_uuid, parent_uuid=None,
+                              create_time=datetime.datetime.now(), tagging_tabs=tabs, sort=sort)
             db.session.add(catalog)
             db.session.commit()
             res = success_res()
@@ -366,22 +371,22 @@ def insert_1stfloor_catalog():
 
 @blue_print.route('/modify_catalog', methods=['PUT'])
 def modify_catalog():
-    catalog_id = request.json.get('catalog_id', 0)
-    parent_id = request.json.get('parent_id', 0)
+    catalog_uuid = request.json.get('catalog_uuid', "")
+    parent_uuid = request.json.get('parent_uuid', "")
     name = request.json.get('name', '')
     tabs = request.json.get('tabs', [])
     try:
-        catalog = Catalog.query.filter_by(id=catalog_id).first()
+        catalog = Catalog.query.filter_by(uuid=catalog_uuid).first()
         if catalog:
             catalog_same = Catalog.query.filter(
-                and_(Catalog.name == name, Catalog.parent_id == parent_id, Catalog.id != catalog_id)).first()
+                and_(Catalog.name == name, Catalog.parent_uuid == parent_uuid, Catalog.uuid != catalog_uuid)).first()
             if catalog_same:
                 res = fail_res(msg="相同目录已存在")
             else:
                 if name:
                     catalog.name = name
-                if parent_id:
-                    catalog.parent_id = parent_id
+                if parent_uuid:
+                    catalog.parent_uuid = parent_uuid
                 if tabs:
                     catalog.tagging_tabs = tabs
                 db.session.commit()
@@ -397,22 +402,22 @@ def modify_catalog():
 
 @blue_print.route('/move_catalog', methods=['PUT'])
 def move_catalog():
-    catalog_id = request.json.get('catalog_id', 0)
-    parent_id = request.json.get('parent_id', 0)
+    catalog_uuid = request.json.get('catalog_uuid', "")
+    parent_uuid = request.json.get('parent_uuid', "")
 
     try:
-        if not parent_id:
+        if not parent_uuid:
             res = fail_res(msg="请移动到已知目录类型下")
         else:
-            catalog = Catalog.query.filter_by(id=catalog_id).first()
+            catalog = Catalog.query.filter_by(uuid=catalog_uuid).first()
             if catalog:
-                catalog_same = Catalog.query.filter_by(name=catalog.name, parent_id=parent_id).first()
+                catalog_same = Catalog.query.filter_by(name=catalog.name, parent_uuid=parent_uuid).first()
                 if catalog_same:
-                    move_catalog_same_recursive(catalog_id, catalog_same.id)
+                    move_catalog_same_recursive(catalog_uuid, catalog_same.uuid)
                 else:
-                    catalog.parent_id = parent_id
+                    catalog.parent_uuid = parent_uuid
                     db.session.commit()
-                    move_catalog_recursive(catalog.id)
+                    move_catalog_recursive(catalog.uuid)
                 res = success_res()
             else:
                 res = fail_res(msg="操作对象不存在")
@@ -424,36 +429,36 @@ def move_catalog():
 
 
 # 移动目录-处理文件和子目录
-def move_catalog_recursive(source_catalog_id):
+def move_catalog_recursive(source_catalog_uuid):
     # 处理文件
-    source_docs = Document.query.filter_by(catalog_id=source_catalog_id).all()
-    doc_ids = [i.id for i in source_docs]
+    source_docs = Document.query.filter_by(catalog_uuid=source_catalog_uuid).all()
+    doc_ids = [str(i.uuid) for i in source_docs]
     modify_doc_es_doc_type(doc_ids)
 
     # 处理目录
-    source_catalog_children = Catalog.query.filter_by(parent_id=source_catalog_id).all()
+    source_catalog_children = Catalog.query.filter_by(parent_uuid=source_catalog_uuid).all()
     for source_catalog_child in source_catalog_children:
-        move_catalog_recursive(source_catalog_child.id)
+        move_catalog_recursive(source_catalog_child.uuid)
 
 
 # 移动目录-处理重名目录下文件和子目录
 def move_catalog_same_recursive(source_catalog_id, target_catalog_id):
-    source_docs = Document.query.filter_by(catalog_id=source_catalog_id).all()
+    source_docs = Document.query.filter_by(catalog_uuid=source_catalog_id).all()
     # 移动文件到指定目录
     move_source_docs_to_target_catalog(source_docs, target_catalog_id)
 
     # 处理重名目录
-    source_catalog_children = Catalog.query.filter_by(parent_id=source_catalog_id).all()
-    target_catalog_children = Catalog.query.filter_by(parent_id=target_catalog_id).all()
+    source_catalog_children = Catalog.query.filter_by(parent_uuid=source_catalog_id).all()
+    target_catalog_children = Catalog.query.filter_by(parent_uuid=target_catalog_id).all()
 
     target_catalog_children_name_dict = {i.name: i for i in target_catalog_children}
 
     for source_catalog_child in source_catalog_children:
         if source_catalog_child.name in target_catalog_children_name_dict:
             target_catalog_child = target_catalog_children_name_dict[source_catalog_child.name]
-            move_catalog_same_recursive(source_catalog_child.id, target_catalog_child.id)
+            move_catalog_same_recursive(source_catalog_child.uuid, target_catalog_child.uuid)
 
-    source_catalog = Catalog.query.filter_by(id=source_catalog_id).first()
+    source_catalog = Catalog.query.filter_by(uuid=source_catalog_id).first()
     db.session.delete(source_catalog)
     db.session.commit()
 
@@ -472,14 +477,14 @@ def get_tagging_tabs():
 @blue_print.route('/get_1stfloor_catalog', methods=['GET'])
 def get_1stfloor_catalog():
     try:
-        cataloges = Catalog.query.filter_by(parent_id=0).order_by(Catalog.id.asc()).all()
+        cataloges = Catalog.query.filter_by(parent_uuid=None).order_by(Catalog.sort.asc()).all()
         if not cataloges:
             res = []
         else:
-            res = [{"catalog_id": catalog.id,
+            res = [{"catalog_id": catalog.uuid,
                     "name": catalog.name,
-                    "parent_id": catalog.parent_id,
-                    "create_by": catalog.create_by,
+                    "parent_id": catalog.parent_uuid,
+                    "create_by": catalog.create_by_uuid,
                     "create_time": catalog.create_time,
                     "tagging_tabs": catalog.tagging_tabs if catalog.tagging_tabs else []
                     } for catalog in cataloges]

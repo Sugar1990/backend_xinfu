@@ -159,7 +159,7 @@ def del_customer():
     return jsonify(res)
 
 
-@blue_print.route('/query_by_uuid', methods=['GET'])
+@blue_print.route('/query_by_id', methods=['GET'])
 def query_by_uuid():
     uuid = request.args.get('customer_uuid', '')
     try:

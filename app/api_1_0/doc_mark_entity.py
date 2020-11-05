@@ -1,13 +1,12 @@
 # -*- coding: UTF-8 -*-
 from flask import jsonify, request
 from sqlalchemy import or_, and_
-
 from . import api_doc_mark_entity as blue_print
 from ..models import DocMarkEntity, Entity
 from .. import db
 from .utils import success_res, fail_res
 import time
-
+import uuid
 
 # doc_mark_entity表中删除了entity_type、entity_type_id字段，添加了appear_index_in_text字段
 
@@ -15,22 +14,22 @@ import time
 @blue_print.route('/get_doc_mark_entity_by_id', methods=['GET'])
 def get_doc_mark_entity_by_id():
     try:
-        id = request.args.get("id", 0, type=int)
-        doc_mark_entity = DocMarkEntity.query.filter_by(id=id, valid=1).first()
+        uuid = request.args.get("uuid",'')
+        doc_mark_entity = DocMarkEntity.query.filter_by(uuid=uuid, valid=1).first()
         if doc_mark_entity:
             res = success_res(data={
-                "id": doc_mark_entity.id,
-                "doc_id": doc_mark_entity.doc_id,
+                "uuid": doc_mark_entity.uuid,
+                "doc_uuid": doc_mark_entity.doc_uuid,
                 "word": doc_mark_entity.word,
-                "entity_id": doc_mark_entity.entity_id,
+                "entity_uuid": doc_mark_entity.entity_uuid,
                 "source": doc_mark_entity.source,
-                "create_by": doc_mark_entity.create_by,
+                "create_by_uuid": doc_mark_entity.create_by_uuid,
                 "create_time": doc_mark_entity.create_time.strftime(
                     "%Y-%m-%d %H:%M:%S") if doc_mark_entity.create_time else None,
-                "update_by": doc_mark_entity.update_by,
+                "update_by_uuid": doc_mark_entity.update_by_uuid,
                 "update_time": doc_mark_entity.update_time.strftime(
                     "%Y-%m-%d %H:%M:%S") if doc_mark_entity.update_time else None,
-                "entity_type_id": Entity.get_category_id(doc_mark_entity.entity_id),
+                "entity_type_uuid": Entity.get_category_id(doc_mark_entity.entity_uuid),
                 "appear_index_in_text": doc_mark_entity.appear_index_in_text
             })
         else:
@@ -39,16 +38,16 @@ def get_doc_mark_entity_by_id():
     except Exception as e:
         print(str(e))
         res = fail_res(data={
-            "id": -1,
-            "doc_id": -1,
+            "uuid": '',
+            "doc_uuid": '',
             "word": "",
-            "entity_id": -1,
+            "entity_uuid": '',
             "source": -1,
-            "create_by": -1,
+            "create_by_uuid": '',
             "create_time": None,
-            "update_by": -1,
+            "update_by_uuid": '',
             "update_time": None,
-            "entity_type_id": -1,
+            "entity_type_uuid": '',
             "appear_index_in_text": []
         })
 
@@ -59,20 +58,20 @@ def get_doc_mark_entity_by_id():
 @blue_print.route('/get_doc_mark_entity_by_doc_id', methods=['GET'])
 def get_doc_mark_entity_by_doc_id():
     try:
-        doc_id = request.args.get("doc_id", 0, type=int)
-        doc_mark_entity_list = DocMarkEntity.query.filter_by(doc_id=doc_id, valid=1).all()
+        doc_uuid = request.args.get("doc_uuid", 0, type=int)
+        doc_mark_entity_list = DocMarkEntity.query.filter_by(doc_uuid=doc_uuid, valid=1).all()
 
         res = success_res(data=[{
-            "id": i.id,
-            "doc_id": i.doc_id,
+            "uuid": i.uuid,
+            "doc_uuid": i.doc_uuid,
             "word": i.word,
-            "entity_id": i.entity_id,
+            "entity_uuid": i.entity_uuid,
             "source": i.source,
-            "create_by": i.create_by,
+            "create_by_uuid": i.create_by_uuid,
             "create_time": i.create_time.strftime("%Y-%m-%d %H:%M:%S") if i.create_time else None,
-            "update_by": i.create_by,
+            "update_by_uuid": i.create_by_uuid,
             "update_time": i.update_time.strftime("%Y-%m-%d %H:%M:%S") if i.update_time else None,
-            "entity_type_id": Entity.get_category_id(i.entity_id),
+            "entity_type_uuid": Entity.get_category_id(i.entity_uuid),
             "appear_index_in_text": i.appear_index_in_text
         } for i in doc_mark_entity_list])
 
@@ -87,35 +86,29 @@ def get_doc_mark_entity_by_doc_id():
 @blue_print.route('/add_doc_mark_entity', methods=['POST'])
 def add_doc_mark_entity():
     try:
-        doc_id = request.json.get("doc_id", 0)
+        doc_uuid = request.json.get("doc_uuid", '')
         word = request.json.get("word", "")
-        entity_id = request.json.get("entity_id", 0)
+        entity_uuid = request.json.get("entity_uuid", '')
         source = request.json.get("source", 0)
-        create_by = request.json.get("create_by", 0)
+        create_by_uuid = request.json.get("create_by_uuid", '')
         create_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-        update_by = request.json.get("update_by", 0)
+        update_by_uuid = request.json.get("update_by_uuid", '')
         update_time = request.json.get("update_time", None)
         appear_index_in_text = request.json.get("appear_index_in_text", [])
 
-        if not (isinstance(doc_id, int) and isinstance(entity_id, int) and isinstance(source, int)
-                and isinstance(create_by, int) and isinstance(update_by, int)):
-            res = fail_res(msg="参数 \"doc_id\"、 \"entity_id\"、\"source\"、\"create_by\"、"
-                               "\"update_by\"应是整数类型")
-
+        doc_mark_entity_same = DocMarkEntity.query.filter_by(doc_uuid=doc_uuid, word=word,
+                                                             entity_uuid=entity_uuid, valid=1).first()
+        if doc_mark_entity_same:
+            res = fail_res(msg="相同标注实体已存在")
         else:
-            doc_mark_entity_same = DocMarkEntity.query.filter_by(doc_id=doc_id, word=word,
-                                                                 entity_id=entity_id, valid=1).first()
-            if doc_mark_entity_same:
-                res = fail_res(msg="相同标注实体已存在")
-            else:
-                doc_mark_entity = DocMarkEntity(doc_id=doc_id, word=word, entity_id=entity_id, source=source,
-                                                create_by=create_by, create_time=create_time,
-                                                update_by=update_by, update_time=update_time,
-                                                appear_index_in_text=appear_index_in_text,
-                                                valid=1)
-                db.session.add(doc_mark_entity)
-                db.session.commit()
-                res = success_res(data={"id": doc_mark_entity.id})
+            doc_mark_entity = DocMarkEntity(uuid=uuid.uuid1(),doc_uuid=doc_uuid, word=word, entity_uuid=entity_uuid, source=source,
+                                            create_by_uuid=create_by_uuid, create_time=create_time,
+                                            update_by_uuid=update_by_uuid, update_time=update_time,
+                                            appear_index_in_text=appear_index_in_text,
+                                            valid=1)
+            db.session.add(doc_mark_entity)
+            db.session.commit()
+            res = success_res(data={"uuid": doc_mark_entity.uuid})
 
     except Exception as e:
         print(str(e))
@@ -129,51 +122,46 @@ def add_doc_mark_entity():
 @blue_print.route('/modify_doc_mark_entity', methods=['PUT'])
 def modify_doc_mark_entity():
     try:
-        id = request.json.get("id", 0)
-        doc_id = request.json.get("doc_id", 0)
+        uuid = request.json.get("uuid", '')
+        doc_uuid = request.json.get("doc_uuid", '')
         word = request.json.get("word", "")
-        entity_id = request.json.get("entity_id", 0)
+        entity_uuid = request.json.get("entity_uuid", '')
         source = request.json.get("source", 0)
-        create_by = request.json.get("create_by", 0)
+        create_by_uuid = request.json.get("create_by_uuid", '')
         create_time = request.json.get("create_time", None)
-        update_by = request.json.get("update_by", 0)
+        update_by_uuid = request.json.get("update_by_uuid", '')
         update_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         appear_index_in_text = request.json.get("appear_index_in_text", [])
 
-        if not (isinstance(id, int) and isinstance(doc_id, int) and isinstance(entity_id, int)
-                and isinstance(source, int) and isinstance(create_by, int) and isinstance(update_by, int)):
-            res = fail_res(msg="参数 \"id\"、\"doc_id\"、\"entity_id\"、\"source\"、\"create_by\"、\"update_by\"应是整数类型")
-
+        doc_mark_entity_same = DocMarkEntity.query.filter_by(doc_uuid=doc_uuid, word=word,
+                                                             entity_uuid=entity_uuid, valid=1).first()
+        if doc_mark_entity_same:
+            res = fail_res(msg="相同标注实体已存在")
         else:
-            doc_mark_entity_same = DocMarkEntity.query.filter_by(doc_id=doc_id, word=word,
-                                                                 entity_id=entity_id, valid=1).first()
-            if doc_mark_entity_same:
-                res = fail_res(msg="相同标注实体已存在")
+            doc_mark_entity = DocMarkEntity.query.filter_by(uuid=uuid, valid=1).first()
+            if doc_mark_entity:
+                if doc_uuid:
+                    doc_mark_entity.doc_uuid = doc_uuid
+                if word:
+                    doc_mark_entity.word = word
+                if entity_uuid:
+                    doc_mark_entity.entity_uuid = entity_uuid
+                if source:
+                    doc_mark_entity.source = source
+                if create_by_uuid:
+                    doc_mark_entity.create_by_uuid = create_by_uuid
+                if create_time:
+                    doc_mark_entity.create_time = create_time
+                if update_by_uuid:
+                    doc_mark_entity.update_by_uuid = update_by_uuid
+                if update_time:
+                    doc_mark_entity.update_time = update_time
+                if appear_index_in_text:
+                    doc_mark_entity.appear_index_in_text = appear_index_in_text
+                db.session.commit()
+                res = success_res()
             else:
-                doc_mark_entity = DocMarkEntity.query.filter_by(id=id, valid=1).first()
-                if doc_mark_entity:
-                    if doc_id:
-                        doc_mark_entity.doc_id = doc_id
-                    if word:
-                        doc_mark_entity.word = word
-                    if entity_id:
-                        doc_mark_entity.entity_id = entity_id
-                    if source:
-                        doc_mark_entity.source = source
-                    if create_by:
-                        doc_mark_entity.create_by = create_by
-                    if create_time:
-                        doc_mark_entity.create_time = create_time
-                    if update_by:
-                        doc_mark_entity.update_by = update_by
-                    if update_time:
-                        doc_mark_entity.update_time = update_time
-                    if appear_index_in_text:
-                        doc_mark_entity.appear_index_in_text = appear_index_in_text
-                    db.session.commit()
-                    res = success_res()
-                else:
-                    res = fail_res(msg="实体数据不存在")
+                res = fail_res(msg="实体数据不存在")
 
     except Exception as e:
         print(str(e))
@@ -187,16 +175,13 @@ def modify_doc_mark_entity():
 @blue_print.route('/delete_doc_mark_entity_by_id', methods=['POST'])
 def delete_doc_mark_entity_by_id():
     try:
-        id = request.json.get("id", 0)
-        if isinstance(id, int):
-            doc_mark_entity = DocMarkEntity.query.filter_by(id=id, valid=1).first()
-            if doc_mark_entity:
-                doc_mark_entity.valid = 0
-                res = success_res()
-            else:
-                res = fail_res(msg="实体数据不存在")
+        uuid = request.json.get("uuid", '')
+        doc_mark_entity = DocMarkEntity.query.filter_by(uuid=uuid, valid=1).first()
+        if doc_mark_entity:
+            doc_mark_entity.valid = 0
+            res = success_res()
         else:
-            res = fail_res(msg="参数 \"id\" 应是整数类型")
+            res = fail_res(msg="实体数据不存在")
 
     except Exception as e:
         print(str(e))

@@ -534,10 +534,10 @@ def sync_yc_add_name(name, entity_uuid, category_uuid, mark_category, longitude=
             header = {"Content-Type": "application/json; charset=UTF-8"}
             url = YC_ROOT_URL_PYTHON + "/api/redis/add"
             item = {
-                "entity_uuid": entity_uuid,
+                "entity_id": entity_uuid,
                 "name": name,
                 "type": 1,  # 1主体；2别名
-                "category_uuid": category_uuid
+                "category_id": category_uuid
             }
 
             if longitude:
@@ -566,10 +566,10 @@ def sync_yc_add_synonyms(synonyms, entity_uuid, category_uuid, mark_category, lo
                 entity = Entity.query.filter(Entity.synonyms.has_key(synonym),
                                              Entity.category_uuid == category_uuid, Entity.valid == 1).first()
                 item = {
-                    "entity_uuid": entity_uuid,
+                    "entity_id": entity_uuid,
                     "name": synonym,
                     "type": 2,  # 1主体；2别名
-                    "category_uuid": category_uuid
+                    "category_id": category_uuid
                 }
                 if longitude:
                     item['lon'] = longitude
@@ -600,7 +600,7 @@ def sync_yc_update_name(old_name, new_name, entity_uuid, mark_category, longitud
             yc_update_item = {
                 "old_name": old_name,
                 "new_name": new_name,
-                "entity_uuid": entity_uuid,
+                "entity_id": entity_uuid,
                 "type": 1  # 1主体；2别名
             }
             if longitude:
@@ -626,8 +626,8 @@ def sync_yc_update_category_id(entity_uuid, old_category_id, new_category_uuid, 
         # 雨辰同步
         if sync and YC_ROOT_URL:
             for type in ["1", "2"]:
-                yc_update_item = {"entity_uuid": entity_uuid,
-                                  "category_uuid": new_category_uuid,
+                yc_update_item = {"entity_id": entity_uuid,
+                                  "category_id": new_category_uuid,
                                   "type": type}
                 if longitude:
                     yc_update_item['lon'] = longitude
@@ -651,7 +651,7 @@ def sync_yc_del_name(name, entity_uuid, mark_category, sync=1):
             header = {"Content-Type": "application/json; charset=UTF-8"}
             url = YC_ROOT_URL_PYTHON + "/api/redis/del"
             data = {"entity_data": [{"name": name,
-                                     "entity_uuid": entity_uuid}],
+                                     "entity_id": entity_uuid}],
                     "mark_category": mark_category}
             yc_res = requests.post(url=url, data=data, headers=header)
     except Exception as e:
@@ -665,7 +665,7 @@ def sync_yc_del_synonyms(del_synonyms, entity_uuid, mark_category, sync=1):
             header = {"Content-Type": "application/json; charset=UTF-8"}
             url = YC_ROOT_URL_PYTHON + "/api/redis/del"
             sync_yc_redis_data = {"entity_data": [{"name": i,
-                                                   "entity_uuid": entity_uuid} for i in del_synonyms],
+                                                   "entity_id": entity_uuid} for i in del_synonyms],
                                   "mark_category": mark_category}
             data = json.dumps(sync_yc_redis_data)
             yc_res = requests.post(url=url, data=data, headers=header)
