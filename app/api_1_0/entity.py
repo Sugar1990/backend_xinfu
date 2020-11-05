@@ -902,7 +902,7 @@ def get_entity_info():
             res = {'uuid': entity.uuid, 'name': entity.name,
                    'synonyms': entity.synonyms if entity.synonyms else [],
                    'props': entity.props if entity.props else {},
-                   'category_id': entity.category_id,
+                   'category_uuid': entity.category_uuid,
                    'category': entity.category_name(),
                    'summary': entity.summary if entity.summary else '',
                    'longitude': entity.longitude,
