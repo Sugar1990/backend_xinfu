@@ -1,7 +1,5 @@
 # -*- coding: UTF-8 -*-
 from flask import jsonify, request
-from sqlalchemy import or_, and_
-
 from . import api_doc_mark_comment as blue_print
 from ..models import DocMarkComment
 from .. import db
