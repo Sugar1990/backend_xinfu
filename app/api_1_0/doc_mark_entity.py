@@ -1,7 +1,6 @@
 # -*- coding: UTF-8 -*-
 from flask import jsonify, request
 from sqlalchemy import or_, and_
-
 from . import api_doc_mark_entity as blue_print
 from ..models import DocMarkEntity, Entity
 from .. import db
