@@ -6,7 +6,7 @@ from ..models import EventClass
 from ..models import EventCategory
 from .. import db
 from .utils import success_res, fail_res
-
+import uuid
 
 @blue_print.route('/get_event_classes', methods=['GET'])
 def get_event_classes():
@@ -16,7 +16,7 @@ def get_event_classes():
             res = []
         else:
             res = [{
-                "id": i.id,
+                "uuid": i.uuid,
                 "name": i.name
             } for i in event_class]
     except Exception as e:
@@ -29,16 +29,16 @@ def get_event_classes():
 @blue_print.route('/get_one_event_class', methods=['GET'])
 def get_one_event_class():
     try:
-        event_id = request.args.get('id', 0)
-        event_class = EventClass.query.filter_by(id=event_id, valid=1).first()
+        event_uuid = request.args.get('uuid', '')
+        event_class = EventClass.query.filter_by(uuid=event_uuid, valid=1).first()
         res = {
-            "id": event_class.id,
+            "uuid": event_class.uuid,
             "name": event_class.name
         }
     except Exception as e:
         print(str(e))
         res = {
-            "id": -1,
+            "uuid": "-1",
             "name": ""
         }
     return jsonify(res)
@@ -52,7 +52,7 @@ def add_event_class():
         if event_class:
             res = fail_res(msg="事件类别已存在!")
         else:
-            eventClass = EventClass(name=name, valid=1)
+            eventClass = EventClass(uuid=uuid.uuid1(), name=name, valid=1)
             db.session.add(eventClass)
             db.session.commit()
             res = success_res()
@@ -67,11 +67,11 @@ def add_event_class():
 @blue_print.route('/modify_event_class', methods=['PUT'])
 def modify_event_class():
     try:
-        event_id = request.json.get('id')
+        event_uuid = request.json.get('uuid')
         name = request.json.get('name')
-        event_class = EventClass.query.filter_by(id=event_id, valid=1).first()
+        event_class = EventClass.query.filter_by(uuid=event_uuid, valid=1).first()
         if event_class:
-            event_class1 = EventClass.query.filter_by(name=name,valid=1).first()
+            event_class1 = EventClass.query.filter_by(name=name, valid=1).first()
             if event_class1:
                 res = fail_res(msg="相同事件类别已存在")
             else:
@@ -80,7 +80,7 @@ def modify_event_class():
                 db.session.commit()
                 res = success_res()
         else:
-            res = fail_res(msg="事件类别id不存在!")
+            res = fail_res(msg="事件类别uuid不存在!")
     except Exception as e:
         print(str(e))
         db.session.rollback()
@@ -91,10 +91,10 @@ def modify_event_class():
 @blue_print.route('/delete_event_class', methods=['POST'])
 def delete_event_class():
     try:
-        event_id = request.json.get("id", 0)
-        event_class = EventClass.query.filter_by(id=event_id, valid=1).first()
+        event_uuid = request.json.get("uuid", '')
+        event_class = EventClass.query.filter_by(uuid=event_uuid, valid=1).first()
         if event_class:
-            event_category = EventCategory.query.filter_by(event_class_id=event_class.id, valid=1).first()
+            event_category = EventCategory.query.filter_by(event_class_uuid=event_class.uuid, valid=1).first()
             if event_category:
                 res = fail_res(msg="该类型下有事件类型，不能删除！")
             else:
@@ -111,12 +111,12 @@ def delete_event_class():
 @blue_print.route('/delete_event_class_by_ids', methods=['POST'])
 def delete_event_class_by_ids():
     try:
-        event_ids = request.json.get("ids", [])
+        event_uuids = request.json.get("uuids", [])
         res_flag = True
-        for event_id in event_ids:
-            event_class = EventClass.query.filter_by(id=event_id, valid=1).first()
+        for event_uuid in event_uuids:
+            event_class = EventClass.query.filter_by(uuid=event_uuid, valid=1).first()
             if event_class:
-                event_category = EventCategory.query.filter_by(event_class_id=event_class.id, valid=1).first()
+                event_category = EventCategory.query.filter_by(event_class_uuid=event_class.uuid, valid=1).first()
                 if event_category:
                     flag = False
                     res_flag = res_flag & flag
@@ -144,14 +144,14 @@ def get_event_class_paginate():
         current_page = request.args.get('cur_page', 1, type=int)
         page_size = request.args.get('page_size', 15, type=int)
         # 注意下面的order_by:(目前可以只实现以id排序查看，后续可能实现多种排序方式)
-        pagination = EventClass.query.filter(EventClass.name.like('%' + search + '%'), EventClass.valid == 1).order_by(
-            EventClass.id.desc()).paginate(current_page, page_size, False)
+        pagination = EventClass.query.filter(EventClass.name.like('%' + search + '%'), EventClass.valid == 1).paginate(
+            current_page, page_size, False)
 
         data = []
         for item in pagination.items:
             data.append({
                 ## 对应models.py中的字段
-                "id": item.id,
+                "uuid": item.uuid,
                 "name": item.name
             })
         data = {

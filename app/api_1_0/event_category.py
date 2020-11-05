@@ -5,25 +5,25 @@ from ..models import EventClass
 from ..models import EventCategory
 from .. import db
 from .utils import success_res, fail_res
-
+import uuid
 
 @blue_print.route('/add_event_category', methods=['POST'])
 def add_event_category():
     try:
         name = request.json.get('name')
-        event_class_id = request.json.get("event_class_id", 0)
-        event_class_id_find = EventClass.query.filter_by(id=event_class_id, valid=1).all()
+        event_class_uuid = request.json.get("event_class_uuid", 0)
+        event_class_id_find = EventClass.query.filter_by(uuid=event_class_uuid, valid=1).all()
         if event_class_id_find:
-            event_category = EventCategory.query.filter_by(name=name, event_class_id=event_class_id, valid=1).first()
+            event_category = EventCategory.query.filter_by(name=name, event_class_uuid=event_class_uuid, valid=1).first()
             if event_category:
                 res = fail_res(msg="事件类型已存在!")
             else:
-                eventCategory = EventCategory(name=name, event_class_id=event_class_id, valid=1)
+                eventCategory = EventCategory(uuid=uuid.uuid1(), name=name, event_class_uuid=event_class_uuid, valid=1)
                 db.session.add(eventCategory)
                 db.session.commit()
                 res = success_res()
         else:
-            res = fail_res(msg="event_class_id找不到，无法插入")
+            res = fail_res(msg="event_class_uuid找不到，无法插入")
     except Exception as e:
         print(str(e))
         db.session.rollback()
@@ -35,12 +35,12 @@ def add_event_category():
 @blue_print.route('/delete_event_category', methods=['POST'])
 def delete_event_category():
     try:
-        event_category_id = request.json.get("id", 0)
+        event_category_uuid = request.json.get("uuid", '')
 
-        if not event_category_id:
-            res = fail_res(msg='event_category_id为空')
+        if not event_category_uuid:
+            res = fail_res(msg='event_category_uuid为空')
         else:
-            catalog_id_frist = EventCategory.query.filter_by(id=event_category_id, valid=1).first()
+            catalog_id_frist = EventCategory.query.filter_by(uuid=event_category_uuid, valid=1).first()
 
             if catalog_id_frist and catalog_id_frist.valid:
                 try:
@@ -64,13 +64,13 @@ def delete_event_category():
 @blue_print.route('/delete_event_category_by_ids', methods=['POST'])
 def delete_event_category_by_ids():
     try:
-        event_category_ids = request.json.get("ids", [])
+        event_category_uuids = request.json.get("uuids", [])
 
-        if not event_category_ids:
-            res = fail_res(msg='event_category_ids为空')
+        if not event_category_uuids:
+            res = fail_res(msg='event_category_uuids为空')
         else:
-            for event_category_id in event_category_ids:
-                catalog_id_frist = EventCategory.query.filter_by(id=event_category_id, valid=1).first()
+            for event_category_uuid in event_category_uuids:
+                catalog_id_frist = EventCategory.query.filter_by(uuid=event_category_uuid, valid=1).first()
 
                 if catalog_id_frist and catalog_id_frist.valid:
                     try:
@@ -94,19 +94,19 @@ def delete_event_category_by_ids():
 @blue_print.route('/modify_event_category', methods=['PUT'])
 def modify_event_category():
     try:
-        event_category_id = request.json.get('id', 0)
+        event_category_uuid = request.json.get('uuid', 0)
         event_category_name = request.json.get('name', '')
-        event_class_id = request.json.get('event_class_id', 0)
+        event_class_uuid = request.json.get('event_class_uuid', 0)
 
-        event_category_find = EventCategory.query.filter_by(id=event_category_id, valid=1).first()
+        event_category_find = EventCategory.query.filter_by(uuid=event_category_uuid, valid=1).first()
         if event_category_find:
             event_category_find1 = EventCategory.query.filter_by(name=event_category_name,
-                                                                 event_class_id=event_class_id, valid=1).first()
+                                                                 event_class_uuid=event_class_uuid, valid=1).first()
             if event_category_find1:
                 res = fail_res(msg="同名实体类型已存在")
             else:
                 event_category_find.name = event_category_name
-                event_category_find.event_class_id = event_class_id
+                event_category_find.event_class_uuid = event_class_uuid
                 db.session.commit()
                 res = success_res()
         else:
@@ -123,20 +123,20 @@ def modify_event_category():
 @blue_print.route('/get_one_event_category', methods=['GET'])
 def get_one_event_category():
     try:
-        event_category_id = request.args.get('id', 0)
+        event_category_uuid = request.args.get('uuid', '')
 
-        eventCategory_find = EventCategory.query.filter_by(id=event_category_id, valid=1).first()
+        eventCategory_find = EventCategory.query.filter_by(uuid=event_category_uuid, valid=1).first()
         res = {
-            "id": eventCategory_find.id,
+            "uuid": eventCategory_find.uuid,
             "name": eventCategory_find.name,
-            "event_class_id": eventCategory_find.event_class_id
+            "event_class_uuid": eventCategory_find.event_class_uuid
         }
     except Exception as e:
         print(str(e))
         res = {
-            "id": -1,
+            "uuid": "-1",
             "name": "",
-            "event_class_id": -1
+            "event_class_uuid": "-1"
         }
 
     return jsonify(res)
@@ -148,9 +148,9 @@ def get_event_categories():
         eventCategory_find = EventCategory.query.filter_by(valid=1).all()
 
         res = [{
-            "id": i.id,
+            "uuid": i.uuid,
             "name": i.name,
-            "event_class_id": i.event_class_id,
+            "event_class_uuid": i.event_class_uuid,
         } for i in eventCategory_find]
     except Exception as e:
         print(str(e))
@@ -166,16 +166,15 @@ def get_event_category_paginate():
         current_page = request.args.get('cur_page', 1, type=int)
         page_size = request.args.get('page_size', 15, type=int)
         pagination = EventCategory.query.filter(EventCategory.name.like('%' + search + '%'),
-                                                EventCategory.valid == 1).order_by(
-            EventCategory.id.desc()).paginate(current_page, page_size, False)
+                                                EventCategory.valid == 1).paginate(current_page, page_size, False)
 
         data = []
         for item in pagination.items:
             data.append({
-                "id": item.id,
+                "uuid": item.uuid,
                 "name": item.name,
-                "event_class_id": item.event_class_id,
-                "event_class_name": EventClass.get_classname(item.event_class_id)
+                "event_class_uuid": item.event_class_uuid,
+                "event_class_name": EventClass.get_classname(item.event_class_uuid)
             })
         data = {
             "total_count": pagination.total,
@@ -198,11 +197,11 @@ def get_event_category_paginate():
 @blue_print.route('/get_event_categories_by_classid', methods=['GET'])
 def get_event_categories_by_classid():
     try:
-        class_id = request.args.get('class_id', 0, type=int)
+        class_uuid = request.args.get('class_uuid', '')
 
-        categories = EventCategory.query.filter_by(event_class_id=class_id, valid=1).all()
+        categories = EventCategory.query.filter_by(event_class_uuid=class_uuid, valid=1).all()
         res = [{
-            "id": i.id,
+            "uuid": i.uuid,
             "name": i.name,
         } for i in categories]
     except Exception as e:
