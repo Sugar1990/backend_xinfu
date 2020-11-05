@@ -10,6 +10,6 @@ def get_leader_ids():
 
     if permission_ids:
         leaders = Customer.query.filter(Customer.permission_id.in_(permission_ids), Customer.valid == 1).all()
-        leader_ids = [i.id for i in leaders]
+        leader_ids = [str(i.uuid) for i in leaders]
 
     return leader_ids
