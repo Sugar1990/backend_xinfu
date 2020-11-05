@@ -167,6 +167,7 @@ class Catalog(db.Model):
     create_time = db.Column(db.DateTime)
     tagging_tabs = db.Column(db.JSON)
     _source = db.Column(db.String)
+    sort = db.Column(db.Integer)
 
     @staticmethod
     def get_name_by_id(catalog_uuid):
@@ -219,8 +220,8 @@ class Permission(db.Model):
 
     @staticmethod
     def judge_power(customer_id, doc_id):
-        doc = Document.query.filter_by(id=doc_id).first()
-        cus = Customer.query.filter_by(id=customer_id).first()
+        doc = Document.query.filter_by(uuid=doc_id).first()
+        cus = Customer.query.filter_by(uuid=customer_id).first()
         doc_power = doc.get_power() if doc else 0
         cus_power = cus.get_power() if cus else 0
         if cus_power and doc_power <= cus_power:
