@@ -132,8 +132,9 @@ class Customer(db.Model):
     valid = db.Column(db.Integer)
     token = db.Column(db.String)
     _source = db.Column(db.String)
-    mark_doc_ids = db.Column(db.JSON)
+    # mark_doc_ids = db.Column(db.JSON)
     power_score = db.Column(db.Float)
+    troop_number = db.Column(db.String)
 
     @staticmethod
     def get_username_by_id(uuid):
@@ -477,7 +478,7 @@ class DocMarkPlace(db.Model):
     _source = db.Column(db.String)
 
     def __repr__(self):
-        return '<DocumentRecords %r>' % self.doc_uuid
+        return '<DocMarkPlace %r>' % self.uuid
 
 
 class DocMarkTimeTag(db.Model):
@@ -502,7 +503,7 @@ class DocMarkTimeTag(db.Model):
     _source = db.Column(db.String)
 
     def __repr__(self):
-        return '<DocumentRecords %r>' % self.doc_uuid
+        return '<DocMarkTimeTag %r>' % self.uuid
 
 
 class DocMarkRelationProperty(db.Model):
