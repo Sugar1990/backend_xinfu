@@ -41,7 +41,7 @@ def modify_doc_mark_mind():
         parent_uuid = request.json.get('parent_uuid', 0)
         doc_uuid = request.json.get('doc_uuid', 0)
         if isinstance(doc_mark_mind_uuid, int):
-            doc_mark_mind = DocMarkMind.query.filter_by(id=doc_mark_mind_uuid, valid=1).first()
+            doc_mark_mind = DocMarkMind.query.filter_by(uuid=doc_mark_mind_uuid, valid=1).first()
             if doc_mark_mind:
                 doc_mark_mind_same = DocMarkMind.query.filter_by(doc_uuid=doc_uuid, name=name, parent_uuid=parent_uuid,
                                                                  valid=1).first()
@@ -73,7 +73,7 @@ def delete_doc_mark_mind():
     try:
         doc_mark_mind_uuid = request.json.get("uuid", 0)
         if isinstance(doc_mark_mind_uuid, int):
-            doc_mark_mind = DocMarkMind.query.filter_by(id=doc_mark_mind_uuid, valid=1).first()
+            doc_mark_mind = DocMarkMind.query.filter_by(uuid=doc_mark_mind_uuid, valid=1).first()
             if doc_mark_mind:
                 doc_mark_mind.valid = 0
                 res = success_res()
