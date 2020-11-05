@@ -8,7 +8,7 @@ import time
 import uuid
 
 # 按id查询
-@blue_print.route('/get_doc_mark_comment_by_uuid', methods=['GET'])
+@blue_print.route('/get_doc_mark_comment_by_id', methods=['GET'])
 def get_doc_mark_comment_by_uuid():
     try:
         uuid = request.args.get("uuid", '')
@@ -48,7 +48,7 @@ def get_doc_mark_comment_by_uuid():
 
 
 # 按doc_id查询
-@blue_print.route('/get_doc_mark_comment_by_doc_uuid', methods=['GET'])
+@blue_print.route('/get_doc_mark_comment_by_doc_id', methods=['GET'])
 def get_doc_mark_comment_by_doc_uuid():
     try:
         doc_uuid = request.args.get("doc_uuid", '')
@@ -153,7 +153,7 @@ def modify_doc_mark_comment():
 
 
 # delete
-@blue_print.route('/delete_doc_mark_comment_by_uuid', methods=['POST'])
+@blue_print.route('/delete_doc_mark_comment_by_id', methods=['POST'])
 def delete_doc_mark_comment_by_uuid():
     try:
         uuid = request.json.get("uuid", '')
