@@ -11,29 +11,35 @@ from .. import db
 from .utils import success_res, fail_res
 from ..conf import TAG_TABS
 from .document import delete_doc_in_pg_es, modify_doc_es_doc_type, move_source_docs_to_target_catalog
+import uuid
 
 
 @blue_print.route('/insert_catalog', methods=['POST'])
 def insert_catalog():
     try:
         name = request.json.get("name", "")
-        customer_id = request.json.get("customer_id", 0)
-        catalog_pid = request.json.get("catalog_pid", 0)
+        customer_uuid = request.json.get("customer_uuid", "")
+        catalog_pid = request.json.get("catalog_pid", "")
 
-        catalog = Catalog.query.filter_by(name=name, create_by=customer_id, parent_id=catalog_pid).first()
+        catalog = Catalog.query.filter_by(name=name, create_by_uuid=customer_uuid, parent_uuid=catalog_pid).first()
 
         if catalog:
             res = fail_res(msg="目录已存在")
         else:
-            catalog = Catalog(name=name, create_by=customer_id, parent_id=catalog_pid,
-                              create_time=datetime.datetime.now())
+            sort = Catalog.query.filter_by(parent_uuid="").order_by(Catalog.sort.desc()).first()
+            if sort:
+                sort = sort + 1
+            else:
+                sort = 0
+            catalog = Catalog(uuid=uuid.uuid1(), name=name, create_by_uuid=customer_uuid, parent_uuid=catalog_pid,
+                              create_time=datetime.datetime.now(), sort=sort)
             db.session.add(catalog)
             db.session.commit()
             res = success_res()
     except Exception as e:
         print(str(e))
         db.session.rollback()
-        res = fail_res()
+        res = fail_res(msg=str(e))
 
     return jsonify(res)
 
@@ -41,15 +47,15 @@ def insert_catalog():
 @blue_print.route('/del_catalog', methods=['POST'])
 def del_catalog():
     try:
-        catalog_id = request.json.get("catalog_id", 0)
-        customer_id = request.json.get("customer_id", 0)
+        catalog_uuid = request.json.get("catalog_uuid", "")
+        customer_uuid = request.json.get("customer_uuid", "")
 
-        flag, msg = judge_del_catalog_permission(customer_id, catalog_id)
+        flag, msg = judge_del_catalog_permission(customer_uuid, catalog_uuid)
         print(flag, msg)
 
         if flag:
-            catalog_res = Catalog.query.filter_by(id=catalog_id).first()
-            del_catalog_recursive(catalog_id)
+            catalog_res = Catalog.query.filter_by(uuid=catalog_uuid).first()
+            del_catalog_recursive(catalog_uuid)
 
             db.session.delete(catalog_res)
             db.session.commit()
@@ -65,13 +71,13 @@ def del_catalog():
 
 
 # 判断用户是否有删除权限
-def judge_del_catalog_permission(customer_id, catalog_id):
+def judge_del_catalog_permission(customer_uuid, catalog_uuid):
     try:
-        catalog_res = Catalog.query.filter_by(id=catalog_id).first()
-        customer = Customer.query.filter_by(id=customer_id).first()
+        catalog_res = Catalog.query.filter_by(uuid=catalog_uuid).first()
+        customer = Customer.query.filter_by(uuid=customer_uuid).first()
 
-        catalog = Catalog.query.filter_by(create_by=customer_id).all()
-        document = Document.query.filter_by(catalog_id=catalog_id).all()
+        catalog = Catalog.query.filter_by(create_by_uuid=customer_uuid).all()
+        document = Document.query.filter_by(catalog_uuid=catalog_uuid).all()
 
         if not customer:
             return False, "当前无效用户，没有删除权限"
@@ -86,24 +92,24 @@ def judge_del_catalog_permission(customer_id, catalog_id):
         catalog_dictory = {}
         # 构建目录字典
         for i in catalog:
-            if i.parent_id not in catalog_dictory.keys():
-                catalog_dictory[i.parent_id] = [{i.id: i.name}]
+            if i.parent_uuid not in catalog_dictory.keys():
+                catalog_dictory[i.parent_uuid] = [{i.uuid: i.name}]
             else:
-                catalog_dictory[i.parent_id].append({i.id: i.name})
+                catalog_dictory[i.parent_uuid].append({i.uuid: i.name})
 
         # 递归检测下级目录有没有删除权限
-        def get_subdir(id, data_dic):
-            if not id:
-                return 0
-            if id not in data_dic:
-                document = Document.query.filter_by(catalog_id=id).all()
+        def get_subdir(uuid, data_dic):
+            if not uuid:
+                return ""
+            if uuid not in data_dic:
+                document = Document.query.filter_by(catalog_uuid=uuid).all()
                 for i in document:
                     if i.get_power() > customer.get_power():
                         return 0
                 return 1
             for dic in data_dic[id]:
                 for key, value in dic.items():
-                    document = Document.query.filter_by(catalog_id=key).all()
+                    document = Document.query.filter_by(catalog_uuid=key).all()
                     for i in document:
                         if i.get_power() > customer.get_power():
                             temp = get_subdir(False, data_dic)
@@ -111,29 +117,29 @@ def judge_del_catalog_permission(customer_id, catalog_id):
                     temp = get_subdir(key, data_dic)
             return temp
 
-        res = get_subdir(catalog_res.id, catalog_dictory)
+        res = get_subdir(catalog_res.uuid, catalog_dictory)
 
         if res == 0:
             return False, "没有删除权限"
 
         # 递归检测下级目录有没有已标文档
-        def get_descendants_docs(catalog_id):
-            if not catalog_id:
+        def get_descendants_docs(catalog_uuid):
+            if not catalog_uuid:
                 return False
             else:
-                docs = Document.query.filter_by(catalog_id=catalog_id).all()
+                docs = Document.query.filter_by(catalog_uuid=catalog_uuid).all()
                 for i in docs:
                     if i.status > 1:
                         return False
 
-                catalog_children = Catalog.query.filter_by(parent_id=catalog_id).all()
+                catalog_children = Catalog.query.filter_by(parent_uuid=catalog_uuid).all()
                 for catalog_child in catalog_children:
-                    if not get_descendants_docs(catalog_child.id):
+                    if not get_descendants_docs(catalog_child.uuid):
                         return False
 
                 return True
 
-        res = get_descendants_docs(catalog_res.id)
+        res = get_descendants_docs(catalog_res.uuid)
         if not res:
             return False, "目录下存在已标文档，不能删除"
         else:
@@ -143,19 +149,19 @@ def judge_del_catalog_permission(customer_id, catalog_id):
 
 
 # 彻底删除目录下子目录和所有文件
-def del_catalog_recursive(catalog_id):
+def del_catalog_recursive(catalog_uuid):
     try:
-        docs = Document.query.filter_by(catalog_id=catalog_id).all()
-        del_doc_ids = [i.id for i in docs]
+        docs = Document.query.filter_by(catalog_uuid=catalog_uuid).all()
+        del_doc_ids = [i.uuid for i in docs]
         delete_doc_in_pg_es(del_doc_ids)
 
-        catalog = Catalog.query.filter_by(id=catalog_id).first()
+        catalog = Catalog.query.filter_by(uuid=catalog_uuid).first()
         db.session.delete(catalog)
         db.session.commit()
 
-        catalog_children = Catalog.query.filter_by(parent_id=catalog_id).all()
+        catalog_children = Catalog.query.filter_by(parent_uuid=catalog_uuid).all()
         for catalog_child in catalog_children:
-            del_catalog_recursive(catalog_child.id)
+            del_catalog_recursive(catalog_child.uuid)
     except Exception as e:
         print(str(e))
         pass
@@ -164,15 +170,16 @@ def del_catalog_recursive(catalog_id):
 @blue_print.route('/get_all', methods=['GET'])
 def get_all():
     try:
-        catalog = Catalog.query.order_by(Catalog.id.asc()).all()
+        # catalog = Catalog.query.order_by(Catalog.sort.asc()).all()
+        catalog = Catalog.query.all()
 
         catalog_dictory = {}
         # 构建目录字典
         for i in catalog:
-            if i.parent_id not in catalog_dictory.keys():
-                catalog_dictory[i.parent_id] = [{i.id: i.name}]
+            if i.parent_uuid not in catalog_dictory.keys():
+                catalog_dictory[i.parent_uuid] = [{i.uuid: i.name}]
             else:
-                catalog_dictory[i.parent_id].append({i.id: i.name})
+                catalog_dictory[i.parent_uuid].append({i.uuid: i.name})
 
         # 递归获取所有的目录
         def get_subdir(id, data_dic):
@@ -182,14 +189,14 @@ def get_all():
             for dic in data_dic[id]:
                 sub_result = {}
                 for key, value in dic.items():
-                    sub_result = {'id': key, 'name': value, 'children': []}
+                    sub_result = {'uuid': key, 'name': value, 'children': []}
                     temp = get_subdir(key, data_dic)
                     if temp:
                         sub_result['children'].extend(temp)
                 result.append(sub_result)
             return result
 
-        res = get_subdir(0, catalog_dictory)
+        res = get_subdir(None, catalog_dictory)
     except Exception as e:
         print(str(e))
         res = []
@@ -199,11 +206,11 @@ def get_all():
 
 @blue_print.route('/get_favorite_files', methods=['GET'])
 def get_favorite_files():
-    customer_id = request.args.get("customer_id", 0, type=int)
+    customer_uuid = request.args.get("customer_uuid", "")
 
     try:
         docs = Document.query.all()
-        customer = Customer.query.filter_by(id=customer_id).first()
+        customer = Customer.query.filter_by(uuid=customer_uuid).first()
 
         if not customer:
             res = fail_res(msg="无效用户")
@@ -212,16 +219,16 @@ def get_favorite_files():
                 leader_ids = get_leader_ids()
                 res = {
                     "files": [{
-                        "id": d.id,
+                        "uuid": d.uuid,
                         "name": d.name,
                         "create_time": d.create_time,
-                        "create_username": Customer.get_username_by_id(d.create_by),
+                        "create_username": Customer.get_username_by_id(d.create_by_uuid),
                         "extension": d.category.replace('\n\"', ""),
                         'tag_flag': 1 if d.status == 1 else 0,
                         "status": d.get_status_name(),
-                        "permission": 1 if Permission.judge_power(customer_id, d.id) else 0,
-                        "leader_operate":  1 if DocMarkComment.query.filter(DocMarkComment.doc_id == d.id,
-                                                    DocMarkComment.create_by.in_(leader_ids),
+                        "permission": 1 if Permission.judge_power(customer_uuid, d.uuid) else 0,
+                        "leader_operate":  1 if DocMarkComment.query.filter(DocMarkComment.doc_uuid == d.uuid,
+                                                    DocMarkComment.create_by_uuid.in_(leader_ids),
                                                     DocMarkComment.valid == 1).all() else 0
 
                     } for d in docs if d.is_favorite == 1],
@@ -238,13 +245,13 @@ def get_favorite_files():
 
 @blue_print.route('/get_catalog_files', methods=['GET'])
 def get_catalog_files():
-    catalog_id = request.args.get("catalog_id", 0, type=int)
-    customer_id = request.args.get("customer_id", 0, type=int)
+    catalog_uuid = request.args.get("catalog_uuid", "")
+    customer_uuid = request.args.get("customer_uuid", "")
 
     try:
-        docs = Document.query.filter_by(catalog_id=catalog_id).all()
-        customer = Customer.query.filter_by(id=customer_id).first()
-        catalogs = Catalog.query.filter_by(parent_id=catalog_id).all()
+        docs = Document.query.filter_by(catalog_uuid=catalog_uuid).all()
+        customer = Customer.query.filter_by(uuid=customer_uuid).first()
+        catalogs = Catalog.query.filter_by(parent_uuid=catalog_uuid).all()
 
         if not customer:
             res = fail_res(msg="无效用户")
@@ -255,16 +262,16 @@ def get_catalog_files():
                 if leader_ids:
                     for d in docs:
                         doc_json = {}
-                        doc_json["id"] = d.id
+                        doc_json["id"] = d.uuid
                         doc_json["name"] = d.name
                         doc_json["create_time"] = d.create_time
-                        doc_json["create_username"] = Customer.get_username_by_id(d.create_by)
+                        doc_json["create_username"] = Customer.get_username_by_id(d.create_by_uuid)
                         doc_json["extension"] = d.category.replace('\n\"', "")
                         doc_json["tag_flag"] = 1 if d.status == 1 else 0
                         doc_json["status"] = d.get_status_name()
-                        doc_json["permission"] = 1 if Permission.judge_power(customer_id, d.id) else 0
-                        doc_mark_comments = DocMarkComment.query.filter(DocMarkComment.doc_id == d.id,
-                                                                        DocMarkComment.create_by.in_(leader_ids),
+                        doc_json["permission"] = 1 if Permission.judge_power(customer_uuid, d.uuid) else 0
+                        doc_mark_comments = DocMarkComment.query.filter(DocMarkComment.doc_uuid == d.uuid,
+                                                                        DocMarkComment.create_by_uuid.in_(leader_ids),
                                                                         DocMarkComment.valid==1).all()
                         doc_json["leader_operate"] = 1 if doc_mark_comments else 0
 
@@ -273,7 +280,7 @@ def get_catalog_files():
                     res = {
                         "files": doc_list,
                         "catalogs": [{
-                            'id': i.id,
+                            'id': i.uuid,
                             'name': i.name
                         } for i in catalogs]
                     }
@@ -318,7 +325,7 @@ def batch_del_catalog():
                 msg = msg
 
             if flag:
-                catalog_res = Catalog.query.filter_by(id=catalog_id).first()
+                catalog_res = Catalog.query.filter_by(uuid=catalog_id).first()
                 del_catalog_recursive(catalog_id)
 
                 db.session.delete(catalog_res)
