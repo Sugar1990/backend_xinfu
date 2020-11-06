@@ -47,14 +47,14 @@ def add_relation_category():
                         elif (input_source_ids_set == source_ids_db) and input_target_ids_set != target_ids_db:
                             target_ids_result = list(input_target_ids_set.union(target_ids_db))
                             item.target_entity_category_uuids = target_ids_result
-                            res = success_res(data={"id": item.uuid})
+                            res = success_res(data={"uuid": item.uuid})
                             break
 
                         # update--目标ids相等 and 源ids不相等  update源ids  取并集
                         elif (input_source_ids_set != source_ids_db) and input_target_ids_set == target_ids_db:
                             source_ids_result = list(input_source_ids_set.union(source_ids_db))
                             item.source_entity_category_uuids = source_ids_result
-                            res = success_res(data={"id": item.uuid})
+                            res = success_res(data={"uuid": item.uuid})
                             break
 
                         # update--库里已有数据是输入数据的子集
@@ -62,7 +62,7 @@ def add_relation_category():
                                 input_source_ids_set) and target_ids_db.issubset(input_target_ids_set):
                             item.source_entity_category_uuids = source_entity_category_ids
                             item.target_entity_category_uuids = target_entity_category_ids
-                            res = success_res(data={"id": item.uuid})
+                            res = success_res(data={"uuid": item.uuid})
                             break
 
                         # insert--
@@ -73,7 +73,7 @@ def add_relation_category():
                                                   valid=1)
                             db.session.add(rc)
                             db.session.commit()
-                            res = success_res(data={"id": rc.uuid})
+                            res = success_res(data={"uuid": rc.uuid})
                             break
                 else:
                     rc = RelationCategory(uuid=uuid.uuid1(), source_entity_category_uuids=source_entity_category_ids,
@@ -81,7 +81,7 @@ def add_relation_category():
                                           valid=1)
                     db.session.add(rc)
                     db.session.commit()
-                    res = success_res(data={"id": rc.uuid})
+                    res = success_res(data={"uuid": rc.uuid})
 
             else:
                 res = fail_res(msg="关联名称不得为空")
@@ -134,7 +134,7 @@ def delete_relation_category_by_ids():
     except Exception as e:
         print(str(e))
         db.session.rollback()
-        res = fail_res(msg="关系记录不存在")
+        res = fail_res()
 
     return jsonify(res)
 
@@ -152,7 +152,9 @@ def modify_relation_category():
         if not relation_category:
             res = fail_res(msg="关系记录不存在!")
         else:
-            relation_category_same = RelationCategory.query.filter_by(relation_name=name, valid=1).all()
+            relation_category_same = RelationCategory.query.filter(RelationCategory.relation_name==name,
+                                                                   RelationCategory.valid==1,
+                                                                   RelationCategory.uuid!=uuid).all()
 
             if relation_category_same:
                 flag = True
@@ -228,7 +230,7 @@ def get_relation_categories():
 @blue_print.route('/get_one_relation_category', methods=['GET'])
 def get_one_relation_category():
     try:
-        id = request.args.get('id', "")
+        id = request.args.get('uuid', "")
         relation_category = RelationCategory.query.filter_by(uuid=id, valid=1).first()
         if relation_category:
             data = {
@@ -259,9 +261,11 @@ def get_relation_category_paginate():
         current_page = request.args.get('cur_page', 1, type=int)
         page_size = request.args.get('page_size', 15, type=int)
         search = request.args.get("search", "")
+        # pagination = RelationCategory.query.filter(RelationCategory.relation_name.like('%' + search + '%'),
+        #                                            RelationCategory.valid == 1).order_by(
+        #     RelationCategory.id.desc()).paginate(current_page, page_size, False)
         pagination = RelationCategory.query.filter(RelationCategory.relation_name.like('%' + search + '%'),
-                                                   RelationCategory.valid == 1).order_by(
-            RelationCategory.id.desc()).paginate(current_page, page_size, False)
+                                                   RelationCategory.valid == 1).paginate(current_page, page_size, False)
 
         data = [{
             "uuid": item.uuid,
