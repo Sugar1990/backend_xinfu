@@ -605,6 +605,7 @@ def del_doc():
     status_flag = False
     try:
         customer = Customer.query.filter_by(uuid=customer_uuid).first()
+        print(customer.uuid)
         if customer:
             del_doc_ids = []
             for doc_uuid in doc_uuids:
@@ -728,7 +729,7 @@ def get_info():
 
         if not doc:
             doc_info = {
-                "id": "",
+                "uuid": "",
                 "name": "",
                 "category": "",
                 "create_time": "",
@@ -772,14 +773,14 @@ def get_info():
                 "category": doc.category,
                 "create_time": doc.create_time.strftime('%Y-%m-%d %H:%M:%S'),
                 "keywords": doc.keywords if doc.keywords else [],
-                "pre_doc_id": documentPrevious.id if documentPrevious else 0,
-                "next_doc_id": documentNext.id if documentNext else 0,
+                "pre_doc_id": documentPrevious.uuid if documentPrevious else None,
+                "next_doc_id": documentNext.uuid if documentNext else None,
                 "tagging_tabs": ancestorn_catalog_tagging_tabs if flag else [],
                 "favorite": doc.is_favorite
             }
     except Exception as e:
         print(str(e))
-        doc_info = {"id": "",
+        doc_info = {"uuid": "",
                     "name": "",
                     "category": "",
                     "create_time": "",
@@ -849,7 +850,7 @@ def get_entity_in_list_pagination():
                                 #i["leader_operate"] = 1 if doc_mark_comments else 0
                                 res = {
                                     "name": doc.name,
-                                    "create_username": Customer.get_username_by_id(doc.create_by),
+                                    "create_username": Customer.get_username_by_id(doc.create_by_uuid),
                                     'path': doc.get_full_path() if doc.get_full_path() else '已失效',
                                     'extension': doc.category,
                                     "tag_flag": 1 if doc.status == 1 else 0,
