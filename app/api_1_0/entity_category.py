@@ -175,7 +175,7 @@ def delete_entity_category_by_ids():
         if res_flag:
             res = success_res()
         else:
-            res = fail_res(msg="部分数据无法删除")
+            res = fail_res(msg=msg)
     except Exception as e:
         print(str(e))
         db.session.rollback()
@@ -367,7 +367,7 @@ def delete_entity_idea_by_ids():
         if res_flag:
             res = success_res()
         else:
-            res = fail_res(msg="部分数据无法删除")
+            res = fail_res(msg=msg)
     except Exception as e:
         print(str(e))
         db.session.rollback()
