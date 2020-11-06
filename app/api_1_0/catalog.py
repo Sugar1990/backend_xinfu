@@ -102,7 +102,7 @@ def judge_del_catalog_permission(customer_uuid, catalog_uuid):
                     if i.get_power() > customer.get_power():
                         return 0
                 return 1
-            for dic in data_dic[id]:
+            for dic in data_dic[uuid]:
                 for key, value in dic.items():
                     document = Document.query.filter_by(catalog_uuid=key).all()
                     for i in document:
@@ -147,7 +147,7 @@ def judge_del_catalog_permission(customer_uuid, catalog_uuid):
 def del_catalog_recursive(catalog_uuid):
     try:
         docs = Document.query.filter_by(catalog_uuid=catalog_uuid).all()
-        del_doc_ids = [i.uuid for i in docs]
+        del_doc_ids = [str(i.uuid) for i in docs]
         delete_doc_in_pg_es(del_doc_ids)
 
         catalog = Catalog.query.filter_by(uuid=catalog_uuid).first()
@@ -309,7 +309,7 @@ def get_catalog_files():
 @blue_print.route('/batch_del_catalog', methods=['POST'])
 def batch_del_catalog():
     del_catalog_list = request.json.get('uuids', [])
-    customer_uuid = request.json.get('customer_uuid', 0)
+    customer_uuid = request.json.get('customer_uuid', "")
 
     try:
         msg = ""
@@ -341,12 +341,14 @@ def insert_1stfloor_catalog():
         name = request.json.get("name", "")
         customer_uuid = request.json.get("customer_uuid", "")
         tabs = request.json.get("tabs", [])
-        catalog = Catalog.query.filter_by(name=name, create_by_uuid=customer_uuid, parent_uuid=None, tagging_tabs=tabs).first()
 
+        # 数据库tagging_tabs改为jsonb
+        catalog = Catalog.query.filter(Catalog.name == name, Catalog.create_by_uuid == customer_uuid,
+                                       Catalog.parent_uuid == None, Catalog.tagging_tabs==tabs).first()
         if catalog:
             res = fail_res(msg="相同根目录已存在")
         else:
-            sort = Catalog.query.filter_by(parent_uuid="").order_by(Catalog.sort.desc()).first()
+            sort = Catalog.query.filter_by(parent_uuid=None).order_by(Catalog.sort.desc()).first().sort
             if sort:
                 sort = sort + 1
             else:
@@ -476,10 +478,10 @@ def get_1stfloor_catalog():
         if not cataloges:
             res = []
         else:
-            res = [{"catalog_id": catalog.uuid,
+            res = [{"catalog_uuid": catalog.uuid,
                     "name": catalog.name,
-                    "parent_id": catalog.parent_uuid,
-                    "create_by": catalog.create_by_uuid,
+                    "parent_uuid": catalog.parent_uuid,
+                    "create_by_uuid": catalog.create_by_uuid,
                     "create_time": catalog.create_time,
                     "tagging_tabs": catalog.tagging_tabs if catalog.tagging_tabs else []
                     } for catalog in cataloges]
