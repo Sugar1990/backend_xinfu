@@ -39,8 +39,8 @@ import zipfile
 # @swag_from(get_all_dict)
 def get_all():
     ### 重要参数:(当前页和每页条目数)
-    current_page = request.args.get('cur_page', 0, type=int)
-    page_size = request.args.get('page_size', 0, type=int)
+    current_page = request.args.get('cur_page', 1, type=int)
+    page_size = request.args.get('page_size', 15, type=int)
     category_uuid = request.args.get('category_uuid', '')
     type = request.args.get('type', 0, type=int)
 
@@ -55,12 +55,11 @@ def get_all():
             conditions.append(Entity.category_uuid == category_uuid)
         else:
             category_uuids = EntityCategory.query.with_entities(EntityCategory.uuid).filter_by(type=type, valid=1).all()
-            category_uuids = [i[0] for i in category_uuids]
+            category_uuids = [str(i[0]) for i in category_uuids]
             conditions.append(Entity.category_uuid.in_(category_uuids))
 
         conditions = tuple(conditions)
         pagination = Entity.query.filter(and_(*conditions)).paginate(current_page, page_size, False)
-
 
         data = [{
             "uuid": item.uuid,
@@ -240,7 +239,7 @@ def update_entity():
             if name:
                 # <editor-fold desc="yc update name">
                 if name != entity.name:
-                    sync_yc_update_name(entity.name, name, entity.id, entity.get_yc_mark_category(), longitude,
+                    sync_yc_update_name(entity.name, name, entity.uuid, entity.get_yc_mark_category(), longitude,
                                         latitude)
                 # </editor-fold>
                 entity.name = name
@@ -280,7 +279,7 @@ def update_entity():
             url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
             header = {"Content-Type": "application/json; charset=UTF-8"}
             search_json = {
-                "id": {"type": "id", "value": entity.id}
+                "id": {"type": "uuid", "value": str(entity.uuid)}
             }
             es_id_para = {"search_index": "entity", "search_json": search_json}
 
@@ -335,7 +334,7 @@ def delete_entity():
             url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
             header = {"Content-Type": "application/json; charset=UTF-8"}
             search_json = {
-                "id": {"type": "id", "value": id}
+                "id": {"type": "uuid", "value": str(uuid)}
             }
             es_id_para = {"search_index": "entity", "search_json": search_json}
             search_result = requests.post(url + '/searchId', data=json.dumps(es_id_para), headers=header)
@@ -403,15 +402,15 @@ def delete_entity_by_ids():
                     for entity_item in doc_mark_entity:
                         entity_item.valid = 0
                 # feedback.add(category_place.name)
-                res = success_res("全部成功删除！")
+                res = success_res()
             except:
                 pass
-        db.session.commit()
+        # db.session.commit()
 
         url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
         for id in valid_uuids:
             search_json = {
-                'id': {'type': 'id', 'value': id}}
+                'id': {'type': 'uuid', 'value': str(uuid)}}
             header_es = {"Content-Type": "application/json; charset=UTF-8"}
             es_id_para = {"search_index": "entity", "search_json": search_json}
             search_result = requests.post(url + '/searchId', data=json.dumps(es_id_para), headers=header_es)
@@ -460,7 +459,7 @@ def add_synonyms():
         url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
         header = {"Content-Type": "application/json; charset=UTF-8"}
         search_json = {
-            "id": {"type": "id", "value": entity.id}
+            "id": {"type": "uuid", "value": str(entity.uuid)}
         }
         es_id_para = {"search_index": "entity", "search_json": search_json}
         search_result = requests.post(url + '/searchId', data=json.dumps(es_id_para), headers=header)
@@ -503,7 +502,7 @@ def delete_synonyms():
             url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
             header = {"Content-Type": "application/json; charset=UTF-8"}
             search_json = {
-                "id": {"type": "id", "value": entity.id}
+                "id": {"type": "uuid", "value": str(entity.uuid)}
             }
             es_id_para = {"search_index": "entity", "search_json": search_json}
             search_result = requests.post(url + '/searchId', data=json.dumps(es_id_para), headers=header)
