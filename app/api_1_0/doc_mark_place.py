@@ -212,7 +212,7 @@ def add_doc_mark_place():
 def modify_doc_mark_place():
     try:
         uuid = request.json.get('uuid', '')
-        doc_uuid = request.json.get('doc_id', '')
+        doc_uuid = request.json.get('doc_uuid', '')
         word = request.json.get('word', '')
         type = request.json.get('type', 0)
         place_uuid = request.json.get('place_uuid', '')
