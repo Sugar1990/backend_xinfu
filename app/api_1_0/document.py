@@ -965,95 +965,95 @@ def get_search_pagination():
     return jsonify(res)
 
 
-# 高级搜索
-@blue_print.route('/search_advanced', methods=['POST'])
-# @swag_from('../swagger/search_advanced.yml')
-def search_advanced():
-    try:
-        start_date = request.json.get('start_date', "")
-        end_date = request.json.get('end_date', "")
-        # 时间参数
-        date = request.json.get('date', [])
-        time_range = request.json.get('time_range', [])
-        time_period = request.json.get('time_period', [])
-        frequency = request.json.get('frequency', [])
-        # 地点参数
-        place = request.json.get('place', [])
-        place_direction_distance = request.json.get('place_direction_distance', [])
-        location = request.json.get('location', [])
-        degrees = request.json.get('degrees', [])
-        length = request.json.get('length', [])
-        route = request.json.get('route', [])
-
-        dates = request.json.get('dates', {})
-
-        if dates.get("date_type", False):
-            date_type = dates.get("date_type", "")
-            date_value = dates.get("value", None)
-            if date_type == 'date':
-                date = date_value
-            elif date_type == 'time_range':
-                time_range = date_value
-            elif date_type == 'time_period':
-                time_period = date_value
-            elif date_type == 'frequency':
-                frequency = date_value
-
-        places = request.json.get('places', {})
-        if places.get("place_type", False):
-            place_type = places.get("place_type", "")
-            place_value = places.get("value", None)
-            if place_type == 'place':
-                place = place_value
-            elif place_type == 'place_direction_distance':
-                place_direction_distance = place_value
-            elif place_type == 'location':
-                location = place_value
-            elif place_type == 'degrees':
-                degrees = place_value
-            elif place_type == 'length':
-                length = place_value
-            elif place_type == 'route':
-                route = place_value
-
-        # 搜索内容无关参数
-        customer_uuid = request.json.get('customer_uuid', "")
-
-        # 其他搜索参数
-        entities = request.json.get('entities', [])
-        keywords = request.json.get('keywords', [])
-        event_categories = request.json.get('event_categories', {})
-        notes = request.json.get('notes', [])
-        notes_content = request.json.get('notes_content', [])
-        doc_type = request.json.get('doc_type', 0)
-        content = request.json.get('content', "")
-        url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
-        data_screen = get_es_doc(url, customer_uuid=customer_uuid, date=date, time_range=time_range,
-                                 time_period=time_period, frequency=frequency,
-                                 place=place, place_direction_distance=place_direction_distance, location=location,
-                                 degrees=degrees, length=length, route=route, entities=entities, keywords=keywords,
-                                 event_categories=event_categories,
-                                 notes=notes, doc_type=doc_type, content=content, notes_content=notes_content)
-
-        # 组装ids，和结构化数据
-        ids = []
-        for data in data_screen:
-            if data.get("uuid", False):
-                ids.append(data["uuid"])
-
-        event_list = get_event_list_from_docs()
-
-        final_data = {
-            "doc": data_screen,
-            "event_list": event_list
-        }
-    except Exception as e:
-        print("Exception: ", str(e))
-        final_data = {
-            "doc": [],
-            "event_list": []
-        }
-    return jsonify(final_data)  # doc:原来格式数据 event_list:事件数据
+# # 高级搜索
+# @blue_print.route('/search_advanced', methods=['POST'])
+# # @swag_from('../swagger/search_advanced.yml')
+# def search_advanced():
+#     try:
+#         start_date = request.json.get('start_date', "")
+#         end_date = request.json.get('end_date', "")
+#         # 时间参数
+#         date = request.json.get('date', [])
+#         time_range = request.json.get('time_range', [])
+#         time_period = request.json.get('time_period', [])
+#         frequency = request.json.get('frequency', [])
+#         # 地点参数
+#         place = request.json.get('place', [])
+#         place_direction_distance = request.json.get('place_direction_distance', [])
+#         location = request.json.get('location', [])
+#         degrees = request.json.get('degrees', [])
+#         length = request.json.get('length', [])
+#         route = request.json.get('route', [])
+#
+#         dates = request.json.get('dates', {})
+#
+#         if dates.get("date_type", False):
+#             date_type = dates.get("date_type", "")
+#             date_value = dates.get("value", None)
+#             if date_type == 'date':
+#                 date = date_value
+#             elif date_type == 'time_range':
+#                 time_range = date_value
+#             elif date_type == 'time_period':
+#                 time_period = date_value
+#             elif date_type == 'frequency':
+#                 frequency = date_value
+#
+#         places = request.json.get('places', {})
+#         if places.get("place_type", False):
+#             place_type = places.get("place_type", "")
+#             place_value = places.get("value", None)
+#             if place_type == 'place':
+#                 place = place_value
+#             elif place_type == 'place_direction_distance':
+#                 place_direction_distance = place_value
+#             elif place_type == 'location':
+#                 location = place_value
+#             elif place_type == 'degrees':
+#                 degrees = place_value
+#             elif place_type == 'length':
+#                 length = place_value
+#             elif place_type == 'route':
+#                 route = place_value
+#
+#         # 搜索内容无关参数
+#         customer_uuid = request.json.get('customer_uuid', "")
+#
+#         # 其他搜索参数
+#         entities = request.json.get('entities', [])
+#         keywords = request.json.get('keywords', [])
+#         event_categories = request.json.get('event_categories', {})
+#         notes = request.json.get('notes', [])
+#         notes_content = request.json.get('notes_content', [])
+#         doc_type = request.json.get('doc_type', 0)
+#         content = request.json.get('content', "")
+#         url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+#         data_screen = get_es_doc(url, customer_uuid=customer_uuid, date=date, time_range=time_range,
+#                                  time_period=time_period, frequency=frequency,
+#                                  place=place, place_direction_distance=place_direction_distance, location=location,
+#                                  degrees=degrees, length=length, route=route, entities=entities, keywords=keywords,
+#                                  event_categories=event_categories,
+#                                  notes=notes, doc_type=doc_type, content=content, notes_content=notes_content)
+#
+#         # 组装ids，和结构化数据
+#         ids = []
+#         for data in data_screen:
+#             if data.get("uuid", False):
+#                 ids.append(data["uuid"])
+#
+#         event_list = get_event_list_from_docs()
+#
+#         final_data = {
+#             "doc": data_screen,
+#             "event_list": event_list
+#         }
+#     except Exception as e:
+#         print("Exception: ", str(e))
+#         final_data = {
+#             "doc": [],
+#             "event_list": []
+#         }
+#     return jsonify(final_data)  # doc:原来格式数据 event_list:事件数据
 
 
 # 高级搜索 doc_type
@@ -1172,13 +1172,13 @@ def get_event_list_from_docs(doc_uuids=[], start_date='1000-01-01', end_date='99
     # <editor-fold desc="construct into event_list from docs order by event_time">
     event_list = []
     if doc_uuids:
-        events = DocMarkEvent.query.filter(DocMarkEvent.doc_uuid.in_(doc_uuids)).all()
+        events = DocMarkEvent.query.filter(DocMarkEvent.doc_uuid.in_(doc_uuids),DocMarkEvent.valid == 1).all()
         for i in events:
             if i.event_address and isinstance(i.event_address, list):
                 place_uuids = DocMarkPlace.query.with_entities(DocMarkPlace.place_uuid).filter(
-                    DocMarkPlace.uuid.in_(i.event_address)).all()
+                    DocMarkPlace.uuid.in_(i.event_address),DocMarkPlace.valid == 1).all()
                 if place_uuids:
-                    place_uuids = [i[0] for i in place_uuids]
+                    place_uuids = [str(i[0]) for i in place_uuids]
                     places = Entity.query.filter(Entity.uuid.in_(place_uuids), Entity.valid == 1).all()
                     if places:
                         objects, subjects, form_time = [], [], ""
@@ -1188,9 +1188,9 @@ def get_event_list_from_docs(doc_uuids=[], start_date='1000-01-01', end_date='99
                             if i.event_subject:
                                 object_id_list.extend(i.event_subject)
                             object_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_uuid).filter(
-                                DocMarkEntity.uuid.in_(object_id_list)).all()
+                                DocMarkEntity.uuid.in_(object_id_list),DocMarkEntity.valid == 1).all()
                             if object_ids:
-                                object_ids = [i[0] for i in object_ids]
+                                object_ids = [str(i[0]) for i in object_ids]
                                 objects = Entity.query.filter(Entity.uuid.in_(object_ids), Entity.valid == 1).all()
 
                         # subject和object结合，返回给前端
@@ -1199,7 +1199,7 @@ def get_event_list_from_docs(doc_uuids=[], start_date='1000-01-01', end_date='99
                             if i.event_time and isinstance(i.event_time, list):
                                 mark_time_ids = i.event_time
                                 times = DocMarkTimeTag.query.with_entities(DocMarkTimeTag.format_date, DocMarkTimeTag.format_date_end).filter(
-                                    DocMarkTimeTag.uuid.in_(mark_time_ids),
+                                    DocMarkTimeTag.uuid.in_(mark_time_ids),DocMarkTimeTag.valid == 1,
                                     or_(and_(DocMarkTimeTag.format_date.between(start_date, end_date),
                                              DocMarkTimeTag.time_type == 1),
                                         and_(DocMarkTimeTag.format_date > start_date,
@@ -1237,7 +1237,7 @@ def get_event_list_from_docs_group_by_entities(doc_ids=[]):
     event_list = []
     if doc_ids:
         event_dict = {}
-        events = DocMarkEvent.query.filter(DocMarkEvent.doc_uuid.in_(doc_ids)).all()
+        events = DocMarkEvent.query.filter(DocMarkEvent.doc_uuid.in_(doc_ids),DocMarkEvent.valid == 1).all()
         for i in events:
             if i.event_address and isinstance(i.event_address, list):
                 place_ids = DocMarkPlace.query.with_entities(DocMarkPlace.place_uuid).filter(
@@ -1251,14 +1251,14 @@ def get_event_list_from_docs_group_by_entities(doc_ids=[]):
 
                         if i.event_object and isinstance(i.event_object, list):
                             object_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_uuid).filter(
-                                DocMarkEntity.uuid.in_(i.event_object)).all()
+                                DocMarkEntity.uuid.in_(i.event_object),DocMarkEntity.valid == 1).all()
                             if object_ids:
                                 object_ids = [str(i[0]) for i in object_ids]
                                 objects = Entity.query.filter(Entity.uuid.in_(object_ids), Entity.valid == 1).all()
 
                         if i.event_subject and isinstance(i.event_subject, list):
                             subject_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_uuid).filter(
-                                DocMarkEntity.uuid.in_(i.event_subject)).all()
+                                DocMarkEntity.uuid.in_(i.event_subject),DocMarkEntity.valid == 1).all()
                             if subject_ids:
                                 subject_ids = [str(i[0]) for i in subject_ids]
                                 subjects = Entity.query.filter(Entity.uuid.in_(subject_ids), Entity.valid == 1).all()
@@ -1269,7 +1269,7 @@ def get_event_list_from_docs_group_by_entities(doc_ids=[]):
                             if i.event_time and isinstance(i.event_time, list):
                                 mark_time_ids = i.event_time
                                 times = DocMarkTimeTag.query.with_entities(DocMarkTimeTag.format_date, DocMarkTimeTag.format_date_end).filter(
-                                    DocMarkTimeTag.uuid.in_(mark_time_ids),
+                                    DocMarkTimeTag.uuid.in_(mark_time_ids),DocMarkTimeTag.valid == 1,
                                     DocMarkTimeTag.time_type.in_(['1', '2'])).all()
                                 if times[0]:
                                     form_time.append(times[0])
