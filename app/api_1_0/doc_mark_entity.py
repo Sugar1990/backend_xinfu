@@ -14,7 +14,7 @@ import uuid
 @blue_print.route('/get_doc_mark_entity_by_id', methods=['GET'])
 def get_doc_mark_entity_by_id():
     try:
-        uuid = request.args.get("uuid",'')
+        uuid = request.args.get("uuid", None)
         doc_mark_entity = DocMarkEntity.query.filter_by(uuid=uuid, valid=1).first()
         if doc_mark_entity:
             res = success_res(data={
@@ -58,7 +58,7 @@ def get_doc_mark_entity_by_id():
 @blue_print.route('/get_doc_mark_entity_by_doc_id', methods=['GET'])
 def get_doc_mark_entity_by_doc_id():
     try:
-        doc_uuid = request.args.get("doc_uuid", 0, type=int)
+        doc_uuid = request.args.get("doc_uuid", None)
         doc_mark_entity_list = DocMarkEntity.query.filter_by(doc_uuid=doc_uuid, valid=1).all()
 
         res = success_res(data=[{
@@ -86,13 +86,13 @@ def get_doc_mark_entity_by_doc_id():
 @blue_print.route('/add_doc_mark_entity', methods=['POST'])
 def add_doc_mark_entity():
     try:
-        doc_uuid = request.json.get("doc_uuid", '')
+        doc_uuid = request.json.get("doc_uuid", None)
         word = request.json.get("word", "")
-        entity_uuid = request.json.get("entity_uuid", '')
+        entity_uuid = request.json.get("entity_uuid", None)
         source = request.json.get("source", 0)
-        create_by_uuid = request.json.get("create_by_uuid", '')
+        create_by_uuid = request.json.get("create_by_uuid", None)
         create_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-        update_by_uuid = request.json.get("update_by_uuid", '')
+        update_by_uuid = request.json.get("update_by_uuid", None)
         update_time = request.json.get("update_time", None)
         appear_index_in_text = request.json.get("appear_index_in_text", [])
 
@@ -122,14 +122,14 @@ def add_doc_mark_entity():
 @blue_print.route('/modify_doc_mark_entity', methods=['PUT'])
 def modify_doc_mark_entity():
     try:
-        uuid = request.json.get("uuid", '')
-        doc_uuid = request.json.get("doc_uuid", '')
+        uuid = request.json.get("uuid", None)
+        doc_uuid = request.json.get("doc_uuid", None)
         word = request.json.get("word", "")
-        entity_uuid = request.json.get("entity_uuid", '')
+        entity_uuid = request.json.get("entity_uuid", None)
         source = request.json.get("source", 0)
-        create_by_uuid = request.json.get("create_by_uuid", '')
+        create_by_uuid = request.json.get("create_by_uuid", None)
         create_time = request.json.get("create_time", None)
-        update_by_uuid = request.json.get("update_by_uuid", '')
+        update_by_uuid = request.json.get("update_by_uuid", None)
         update_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         appear_index_in_text = request.json.get("appear_index_in_text", [])
 
@@ -175,7 +175,7 @@ def modify_doc_mark_entity():
 @blue_print.route('/delete_doc_mark_entity_by_id', methods=['POST'])
 def delete_doc_mark_entity_by_id():
     try:
-        uuid = request.json.get("uuid", '')
+        uuid = request.json.get("uuid", None)
         doc_mark_entity = DocMarkEntity.query.filter_by(uuid=uuid, valid=1).first()
         if doc_mark_entity:
             doc_mark_entity.valid = 0
