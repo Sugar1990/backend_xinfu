@@ -86,13 +86,13 @@ def get_doc_mark_relation_property_by_docId():
 def add_doc_mark_relation_property():
     try:
         doc_uuid = request.json.get('doc_uuid', '')
-        nid = request.json.get('nid', 0)
+        nid = request.json.get('nid', '')
         relation_uuid = request.json.get('relation_uuid', '')
-        relation_name = request.json.get('relation_name', 0)
+        relation_name = request.json.get('relation_name', '')
         start_time = request.json.get('start_time', None)
         start_type = request.json.get('start_type', '')
         end_time = request.json.get('end_time', None)
-        end_type = request.json.get('end_type', '')
+        end_type = request.json.get('end_type', 1)
         source_entity_uuid = request.json.get("source_entity_uuid", '')
         target_entity_uuid = request.json.get("target_entity_uuid", '')
         source_entity = Entity.query.filter_by(uuid=source_entity_uuid, valid=1).first()
@@ -129,13 +129,13 @@ def modify_doc_mark_relation_property():
     try:
         doc_mark_relation_property_uuid = request.json.get('uuid', '')
         doc_uuid = request.json.get('doc_uuid', '')
-        nid = request.json.get('nid', 0)
+        nid = request.json.get('nid', '')
         relation_uuid = request.json.get('relation_uuid', '')
-        relation_name = request.json.get('relation_name', 0)
+        relation_name = request.json.get('relation_name', '')
         start_time = request.json.get('start_time', None)
         start_type = request.json.get('start_type', '')
         end_time = request.json.get('end_time', None)
-        end_type = request.json.get('end_type', '')
+        end_type = request.json.get('end_type', 1)
         source_entity_uuid = request.json.get("source_entity_uuid", '')
         target_entity_uuid = request.json.get("target_entity_uuid", '')
 
