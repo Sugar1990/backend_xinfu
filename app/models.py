@@ -383,8 +383,8 @@ class DocMarkEvent(db.Model):
 
     def get_subject_entity_names(self):
         subject_entity_names = []
-        if self.event_subject_uuid:
-            doc_mark_entities = DocMarkEntity.query.filter(DocMarkEntity.uuid.in_(self.event_subject_uuid)).all()
+        if self.event_subject:
+            doc_mark_entities = DocMarkEntity.query.filter(DocMarkEntity.uuid.in_(self.event_subject)).all()
             doc_mark_entities_entity_uuids = [i.entity_uuid for i in doc_mark_entities]
             if doc_mark_entities_entity_uuids:
                 entities = Entity.query.filter(Entity.uuid.in_(doc_mark_entities_entity_uuids)).all()
@@ -393,8 +393,8 @@ class DocMarkEvent(db.Model):
 
     def get_object_entity_names(self):
         object_entity_names = []
-        if self.event_object_uuid:
-            doc_mark_entities = DocMarkEntity.query.filter(DocMarkEntity.uuid.in_(self.event_object_uuid)).all()
+        if self.event_object:
+            doc_mark_entities = DocMarkEntity.query.filter(DocMarkEntity.uuid.in_(self.event_object)).all()
             doc_mark_entities_entity_uuids = [i.entity_uuid for i in doc_mark_entities]
             if doc_mark_entities_entity_uuids:
                 entities = Entity.query.filter(Entity.uuid.in_(doc_mark_entities_entity_uuids)).all()
@@ -403,8 +403,8 @@ class DocMarkEvent(db.Model):
 
     def get_places(self):
         places = []
-        if self.event_address_uuid:
-            places = DocMarkPlace.query.filter(DocMarkPlace.uuid.in_(self.event_address_uuid)).all()
+        if self.event_address:
+            places = DocMarkPlace.query.filter(DocMarkPlace.uuid.in_(self.event_address)).all()
         return places
 
     def __repr__(self):
