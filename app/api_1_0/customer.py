@@ -325,11 +325,11 @@ def update_all_power_score():
     try:
         for uuid in customer_uuids:
             uuid = uuid[0]
-            customer = db.session.query(Customer).filter(and_(Customer.uuid == uuid, Customer.valid == 1)).first()
+            customer = db.session.query(Customer).filter(and_(Customer.uuid == str(uuid), Customer.valid == 1)).first()
             if customer:
                 connection = db.engine.raw_connection()
                 cursor = connection.cursor()
-                cursor.callproc('get_customer_power',[uuid])
+                cursor.callproc('get_customer_power',[str(uuid)])
                 customer.power_score = cursor.fetchall()[0][0]
             else:
                 pass
