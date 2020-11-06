@@ -314,7 +314,7 @@ def upload_doc():
                                                 db.session.commit()
                                                 print(doc_mark_event.uuid)
 
-                                                event_id_list.append(doc_mark_event.uuid)
+                                                event_id_list.append(str(doc_mark_event.uuid))
                                                 data_insert_event.append(event_json)
                                         else:
                                             res = fail_res(msg="调用event_extraction接口失败")
@@ -328,8 +328,16 @@ def upload_doc():
                                         body = {"docId": doc.uuid, "eventIds": eventIds}
                                         data = json.dumps(body)
                                         yc_res_event = requests.post(url=url, data=data, headers=header)
-
                                         print("yc_res_event.status_code", yc_res_event.status_code)
+                                        if event_extraction_res.status_code in (200, 201):
+                                            res_html_path = yc_res_event.json()["data"]
+                                            doc_html = Document.query.filter_by(uuid=doc.uuid, catalog_uuid=catalog_uuid).first()
+                                            doc_html.html_path = res_html_path
+                                            print("res_html_path", res_html_path, doc_html.html_path)
+                                            db.session.commit()
+                                        else:
+                                            res = fail_res(msg="调用doc_preprocess接口失败")
+                                            return res
                                         #</editor-fold>
                                     else:
                                         res = fail_res(msg="上传成功，但预处理失败")
