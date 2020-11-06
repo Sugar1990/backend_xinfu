@@ -11,8 +11,8 @@ import uuid
 def add_event_category():
     try:
         name = request.json.get('name')
-        event_class_uuid = request.json.get("event_class_uuid", 0)
-        event_class_id_find = EventClass.query.filter_by(uuid=event_class_uuid, valid=1).all()
+        event_class_uuid = request.json.get("event_class_uuid", '')
+        event_class_id_find = EventClass.query.filter_by(uuid=event_class_uuid, valid=1).first()
         if event_class_id_find:
             event_category = EventCategory.query.filter_by(name=name, event_class_uuid=event_class_uuid, valid=1).first()
             if event_category:
@@ -94,9 +94,9 @@ def delete_event_category_by_ids():
 @blue_print.route('/modify_event_category', methods=['PUT'])
 def modify_event_category():
     try:
-        event_category_uuid = request.json.get('uuid', 0)
+        event_category_uuid = request.json.get('uuid', '')
         event_category_name = request.json.get('name', '')
-        event_class_uuid = request.json.get('event_class_uuid', 0)
+        event_class_uuid = request.json.get('event_class_uuid', '')
 
         event_category_find = EventCategory.query.filter_by(uuid=event_category_uuid, valid=1).first()
         if event_category_find:
