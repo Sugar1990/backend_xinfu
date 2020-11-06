@@ -26,13 +26,8 @@ def insert_catalog():
         if catalog:
             res = fail_res(msg="目录已存在")
         else:
-            sort = Catalog.query.filter_by(parent_uuid="").order_by(Catalog.sort.desc()).first()
-            if sort:
-                sort = sort + 1
-            else:
-                sort = 0
             catalog = Catalog(uuid=uuid.uuid1(), name=name, create_by_uuid=customer_uuid, parent_uuid=catalog_pid,
-                              create_time=datetime.datetime.now(), sort=sort)
+                              create_time=datetime.datetime.now())
             db.session.add(catalog)
             db.session.commit()
             res = success_res()
