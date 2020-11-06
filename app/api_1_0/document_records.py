@@ -17,16 +17,15 @@ from .utils import success_res, fail_res
 @blue_print.route('/insert_records', methods=['POST'])
 def insert_records():
     try:
-        #doc_id = request.json.get('doc_id', 0)
         doc_uuid = request.json.get('doc_uuid', '')
         create_by_uuid = request.json.get('create_by_uuid', '')
         operate_type = request.json.get('operate_type', 0)
         document = Document.query.filter_by(uuid=doc_uuid).first()
         customer = Customer.query.filter_by(uuid=create_by_uuid).first()
         if not document:
-            res = fail_res(msg="文档id不存在!")
+            res = fail_res(msg="文档uuid不存在!")
         elif not customer:
-            res = fail_res(msg="用户id不存在!")
+            res = fail_res(msg="用户uuid不存在!")
         else:
             documentRecords = DocumentRecords(doc_uuid=doc_uuid,
                                               uuid=uuid.uuid1(),
@@ -47,7 +46,6 @@ def insert_records():
 @blue_print.route('/get_doc_records', methods=['GET'])
 def get_doc_records():
     try:
-        #doc_id = request.args.get('doc_id', 0)
         doc_uuid = request.args.get('doc_uuid', '')
         doc_records = DocumentRecords.query.filter(DocumentRecords.doc_uuid == doc_uuid).order_by(
             DocumentRecords.create_time.desc())
