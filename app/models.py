@@ -8,12 +8,10 @@ from .conf import PLACE_BASE_NAME
 class Entity(db.Model):
     __tablename__ = 'entity'
     __table_args__ = {"schema": "public"}
-    id = db.Column(db.Integer, primary_key=True)
-    uuid = db.Column(db.String)
+    uuid = db.Column(db.String, primary_key=True)
     name = db.Column(db.Text)
     synonyms = db.Column(JSONB)
     props = db.Column(JSONB)
-    category_id = db.Column(db.Integer)
     category_uuid = db.Column(db.String)
     summary = db.Column(db.Text)
     valid = db.Column(db.Integer)
@@ -67,15 +65,12 @@ class Entity(db.Model):
 class Document(db.Model):
     __tablename__ = 'document'
     __table_args__ = {"schema": "public"}
-    id = db.Column(db.Integer, primary_key=True)
-    uuid = db.Column(db.String)
+    uuid = db.Column(db.String, primary_key=True)
     name = db.Column(db.Text)
     category = db.Column(db.Text)
     savepath = db.Column(db.Text)
     content = db.Column(db.JSON)
-    catalog_id = db.Column(db.Integer)
     catalog_uuid = db.Column(db.String)
-    create_by = db.Column(db.Integer)
     create_by_uuid = db.Column(db.String)
     create_time = db.Column(db.DateTime)
     permission_id = db.Column(db.Integer)
@@ -107,11 +102,8 @@ class Document(db.Model):
 class DocumentRecords(db.Model):
     __tablename__ = 'document_records'
     __table_args__ = {"schema": "public"}
-    id = db.Column(db.Integer, primary_key=True)
-    uuid = db.Column(db.String)
-    doc_id = db.Column(db.Integer)
+    uuid = db.Column(db.String, primary_key=True)
     doc_uuid = db.Column(db.String)
-    create_by = db.Column(db.Integer)
     create_by_uuid = db.Column(db.String)
     create_time = db.Column(db.DateTime)
     operate_type = db.Column(db.Integer)
@@ -124,8 +116,7 @@ class DocumentRecords(db.Model):
 class Customer(db.Model):
     __tablename__ = 'customer'
     __table_args__ = {"schema": "public"}
-    id = db.Column(db.Integer, primary_key=True)
-    uuid = db.Column(db.String)
+    uuid = db.Column(db.String, primary_key=True)
     username = db.Column(db.Text)
     pwd = db.Column(db.Text)
     permission_id = db.Column(db.Integer)
@@ -157,12 +148,9 @@ class Customer(db.Model):
 class Catalog(db.Model):
     __tablename__ = 'catalog'
     __table_args__ = {"schema": "public"}
-    id = db.Column(db.Integer, primary_key=True)
-    uuid = db.Column(db.String)
+    uuid = db.Column(db.String, primary_key=True)
     name = db.Column(db.Text)
-    parent_id = db.Column(db.Integer)
     parent_uuid = db.Column(db.String)
-    create_by = db.Column(db.Integer)
     create_by_uuid = db.Column(db.String)
     create_time = db.Column(db.DateTime)
     tagging_tabs = db.Column(db.JSON)
@@ -237,8 +225,7 @@ class Permission(db.Model):
 class EntityCategory(db.Model):
     __tablename__ = 'entity_category'
     __table_args__ = {"schema": "public"}
-    id = db.Column(db.Integer, primary_key=True)
-    uuid = db.Column(db.String)
+    uuid = db.Column(db.String, primary_key=True)
     name = db.Column(db.Text)
     valid = db.Column(db.Integer)  # 取值0或1，0表示已删除，1表示正常
     type = db.Column(db.Integer)  # 1：实体（地名、国家、人物...）；2：概念（条约公约、战略、战法...）
@@ -267,10 +254,8 @@ class EntityCategory(db.Model):
 class EventCategory(db.Model):
     __tablename__ = 'event_category'
     __table_args__ = {"schema": "public"}
-    id = db.Column(db.Integer, primary_key=True)
-    uuid = db.Column(db.String)
+    uuid = db.Column(db.String, primary_key=True)
     name = db.Column(db.Text)
-    event_class_id = db.Column(db.Integer)  # connect to EventClass.id, not null
     event_class_uuid = db.Column(db.String)
     valid = db.Column(db.Integer)
     _source = db.Column(db.String)
@@ -283,8 +268,7 @@ class EventCategory(db.Model):
 class EventClass(db.Model):
     __tablename__ = 'event_class'
     __table_args__ = {"schema": "public"}
-    id = db.Column(db.Integer, primary_key=True)
-    uuid = db.Column(db.String)
+    uuid = db.Column(db.String, primary_key=True)
     name = db.Column(db.Text)
     valid = db.Column(db.Integer)
     _source = db.Column(db.String)
@@ -302,10 +286,7 @@ class EventClass(db.Model):
 class RelationCategory(db.Model):
     __tablename__ = 'relation_category'
     __table_args__ = {"schema": "public"}
-    id = db.Column(db.Integer, primary_key=True)
-    uuid = db.Column(db.String)
-    source_entity_category_ids = db.Column(db.JSON)  # NOTE: not null
-    target_entity_category_ids = db.Column(db.JSON)  # NOTE: not null
+    uuid = db.Column(db.String, primary_key=True)
     source_entity_category_uuids = db.Column(db.JSON)  # NOTE: not null
     target_entity_category_uuids = db.Column(db.JSON)
     relation_name = db.Column(db.Text)
@@ -331,17 +312,13 @@ class RelationCategory(db.Model):
 class DocMarkComment(db.Model):
     __tablename__ = 'doc_mark_comment'
     __table_args__ = {"schema": "public"}
-    id = db.Column(db.Integer, primary_key=True)
-    uuid = db.Column(db.String)
-    doc_id = db.Column(db.Integer)
+    uuid = db.Column(db.String, primary_key=True)
     doc_uuid = db.Column(db.String)
     name = db.Column(db.Text)
     position = db.Column(db.String)
     comment = db.Column(db.String)
-    create_by = db.Column(db.Integer)
     create_by_uuid = db.Column(db.String)
     create_time = db.Column(db.TIMESTAMP)
-    update_by = db.Column(db.Integer)
     update_by_uuid = db.Column(db.String)
     update_time = db.Column(db.TIMESTAMP)
     valid = db.Column(db.Integer)
@@ -354,18 +331,13 @@ class DocMarkComment(db.Model):
 class DocMarkEntity(db.Model):
     __tablename__ = 'doc_mark_entity'
     __table_args__ = {"schema": "public"}
-    id = db.Column(db.Integer, primary_key=True)
-    uuid = db.Column(db.String)
-    doc_id = db.Column(db.Integer)
+    uuid = db.Column(db.String, primary_key=True)
     doc_uuid = db.Column(db.String)
     word = db.Column(db.String)
-    entity_id = db.Column(db.Integer)
     entity_uuid = db.Column(db.String)
     source = db.Column(db.Integer)
-    create_by = db.Column(db.Integer)
     create_by_uuid = db.Column(db.String)
     create_time = db.Column(db.TIMESTAMP)
-    update_by = db.Column(db.Integer)
     update_by_uuid = db.Column(db.String)
     update_time = db.Column(db.TIMESTAMP)
     appear_index_in_text = db.Column(db.JSON)
@@ -379,39 +351,30 @@ class DocMarkEntity(db.Model):
 class DocMarkEvent(db.Model):
     __tablename__ = 'doc_mark_event'
     __table_args__ = {"schema": "public"}
-    id = db.Column(db.Integer, primary_key=True)
-    uuid = db.Column(db.String)
+    uuid = db.Column(db.String, primary_key=True)
     event_id = db.Column(db.String)
     event_desc = db.Column(db.String)
     event_subject = db.Column(db.JSON)
-    event_subject_uuid = db.Column(db.JSON)
     event_predicate = db.Column(db.String)
     event_object = db.Column(db.JSON)
-    event_object_uuid = db.Column(db.JSON)
+
     event_time = db.Column(db.JSON)
-    event_time_uuid = db.Column(db.JSON)
+
     event_address = db.Column(db.JSON)
-    event_address_uuid = db.Column(db.JSON)
+
     event_why = db.Column(db.String)
     event_result = db.Column(db.String)
     event_conduct = db.Column(db.String)
     event_talk = db.Column(db.String)
     event_how = db.Column(db.String)
-    doc_id = db.Column(db.Integer)
     doc_uuid = db.Column(db.String)
-    customer_id = db.Column(db.Integer)
     customer_uuid = db.Column(db.String)
-    parent_id = db.Column(db.Integer)
     parent_uuid = db.Column(db.String)
     title = db.Column(db.String)
-    event_class_id = db.Column(db.Integer)
     event_class_uuid = db.Column(db.String)
-    event_type_id = db.Column(db.Integer)
     event_type_uuid = db.Column(db.String)
-    create_by = db.Column(db.Integer)
     create_by_uuid = db.Column(db.String)
     create_time = db.Column(db.TIMESTAMP)
-    update_by = db.Column(db.Integer)
     update_by_uuid = db.Column(db.String)
     update_time = db.Column(db.TIMESTAMP)
     add_time = db.Column(db.TIMESTAMP)
@@ -451,13 +414,10 @@ class DocMarkEvent(db.Model):
 class DocMarkPlace(db.Model):
     __tablename__ = 'doc_mark_place'
     __table_args__ = {"schema": "public"}
-    id = db.Column(db.Integer, primary_key=True)
-    uuid = db.Column(db.String)
-    doc_id = db.Column(db.Integer)
+    uuid = db.Column(db.String, primary_key=True)
     doc_uuid = db.Column(db.String)
     word = db.Column(db.Text)
     type = db.Column(db.Integer)
-    place_id = db.Column(db.Integer)
     place_uuid = db.Column(db.String)
     direction = db.Column(db.Text)
     place_lon = db.Column(db.Text)
@@ -467,10 +427,8 @@ class DocMarkPlace(db.Model):
     dms = db.Column(db.JSON)
     distance = db.Column(db.Integer)
     relation = db.Column(db.Text)
-    create_by = db.Column(db.Integer)
     create_by_uuid = db.Column(db.String)
     create_time = db.Column(db.DateTime)
-    update_by = db.Column(db.Integer)
     update_by_uuid = db.Column(db.String)
     update_time = db.Column(db.DateTime)
     valid = db.Column(db.Integer)
@@ -485,9 +443,7 @@ class DocMarkPlace(db.Model):
 class DocMarkTimeTag(db.Model):
     __tablename__ = 'doc_mark_time_tag'
     __table_args__ = {"schema": "public"}
-    id = db.Column(db.Integer, primary_key=True)
-    uuid = db.Column(db.String)
-    doc_id = db.Column(db.Integer)
+    uuid = db.Column(db.String, primary_key=True)
     doc_uuid = db.Column(db.String)
     word = db.Column(db.Text)
     format_date = db.Column(db.DateTime)
@@ -497,7 +453,6 @@ class DocMarkTimeTag(db.Model):
     reserve_fields = db.Column(db.Text)
     valid = db.Column(db.Integer)
     arab_time = db.Column(db.Text)
-    update_by = db.Column(db.Integer)
     update_by_uuid = db.Column(db.String)
     update_time = db.Column(db.DateTime)
     appear_index_in_text = db.Column(db.JSON)
@@ -510,21 +465,16 @@ class DocMarkTimeTag(db.Model):
 class DocMarkRelationProperty(db.Model):
     __tablename__ = 'doc_mark_relation_property'
     __table_args__ = {"schema": "public"}
-    id = db.Column(db.Integer, primary_key=True)
-    uuid = db.Column(db.String)
-    doc_id = db.Column(db.Integer)
+    uuid = db.Column(db.String, primary_key=True)
     doc_uuid = db.Column(db.String)
     nid = db.Column(db.Text)
-    relation_id = db.Column(db.Integer)
     relation_uuid = db.Column(db.String)
     relation_name = db.Column(db.Text)
     start_time = db.Column(db.DateTime)
     start_type = db.Column(db.Text)
     end_time = db.Column(db.DateTime)
     end_type = db.Column(db.Text)
-    source_entity_id = db.Column(db.Integer)
     source_entity_uuid = db.Column(db.String)
-    target_entity_id = db.Column(db.Integer)
     target_entity_uuid = db.Column(db.String)
     valid = db.Column(db.Integer)
     _source = db.Column(db.String)
@@ -536,12 +486,9 @@ class DocMarkRelationProperty(db.Model):
 class DocMarkMind(db.Model):
     __tablename__ = 'doc_mark_mind'
     __table_args__ = {"schema": "public"}
-    id = db.Column(db.Integer, primary_key=True)
-    uuid = db.Column(db.String)
+    uuid = db.Column(db.String, primary_key=True)
     name = db.Column(db.Text)
-    parent_id = db.Column(db.Integer)
     parent_uuid = db.Column(db.String)
-    doc_id = db.Column(db.Integer)
     doc_uuid = db.Column(db.String)
     valid = db.Column(db.Integer)
     _source = db.Column(db.String)
