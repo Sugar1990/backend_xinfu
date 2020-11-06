@@ -90,20 +90,7 @@ def upload_doc():
                                 res = fail_res(data=url, msg="{0}文档已存在\n".format(path[-1]))
                             else:
                                 datetime_now = datetime.datetime.now()
-                                doc = Document(name=path[-1],
-                                               category=os.path.splitext(filename)[1],
-                                               savepath='/static/{0}'.format(save_filename),
-                                               catalog_id=catalog_id,
-                                               content=content_list,
-                                               create_by=uid,
-                                               create_time=datetime_now,
-                                               permission_id=permission_id,
-                                               status=0,
-                                               keywords=keywords,
-                                               md5=file_md5)
 
-                                db.session.add(doc)
-                                db.session.commit()
 
                                 if YC_ROOT_URL_PYTHON:
 
@@ -121,9 +108,23 @@ def upload_doc():
                                         res_place = yc_res["place"]
                                         res_time = yc_res["time"]
                                         res_concept = yc_res["concept"]
-                                        # print("res_entity", res_entity)
-                                        # print("res_place", res_place)
-                                        # print("res_time", res_time)
+                                        res_html_path = yc_res["html_path"]
+
+                                        doc = Document(name=path[-1],
+                                                       category=os.path.splitext(filename)[1],
+                                                       savepath='/static/{0}'.format(save_filename),
+                                                       catalog_id=catalog_id,
+                                                       content=content_list,
+                                                       create_by=uid,
+                                                       create_time=datetime_now,
+                                                       permission_id=permission_id,
+                                                       status=0,
+                                                       keywords = keywords,
+                                                       md5 = file_md5,
+                                                       html_path = res_html_path)
+
+                                        db.session.add(doc)
+                                        db.session.commit()
 
                                         data_insert_entity = []
                                         for index, item_entity in enumerate(res_entity):
@@ -735,7 +736,8 @@ def get_info():
                 "keywords": [],
                 "pre_doc_id": 0,
                 "next_doc_id": 0,
-                "favorite": 0
+                "favorite": 0,
+                "html_path":""
             }
         else:
 
@@ -775,7 +777,8 @@ def get_info():
                 "pre_doc_id": documentPrevious.id if documentPrevious else 0,
                 "next_doc_id": documentNext.id if documentNext else 0,
                 "tagging_tabs": ancestorn_catalog_tagging_tabs if flag else [],
-                "favorite": doc.is_favorite
+                "favorite": doc.is_favorite,
+                "html_path": doc.html_path
             }
     except Exception as e:
         print(str(e))
