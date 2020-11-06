@@ -682,7 +682,7 @@ def sync_yc_del_synonyms(del_synonyms, entity_uuid, mark_category, sync=1):
 def get_linking_entity():
     try:
         entity_name = request.args.get('search', '')
-        category_uuid = request.args.get('category_uuid','')
+        category_uuid = request.args.get('category_uuid', '')
         entity = Entity.query.filter(
             and_(Entity.valid == 1, or_(Entity.name == entity_name, Entity.synonyms.has_key(entity_name))))
 
@@ -1094,7 +1094,7 @@ def import_entity_excel():
                         # es 插入操作
                         data_insert_json = [{
                             'name': ex_name,
-                            'category_uuid': category_uuid,
+                            'category_id': category_uuid,
                             'summary': ex_summary,
                             'props': ex_props,
                             'synonyms': ex_synonyms
@@ -1118,11 +1118,11 @@ def import_entity_excel():
                         # es 插入操作
                         data_insert_json = [{
                             'name': ex_name,
-                            'category_uuid': category_uuid,
+                            'category_id': category_uuid,
                             'summary': ex_summary,
                             'props': ex_props,
                             'synonyms': ex_synonyms,
-                            'id': entity.id
+                            'id': entity.uuid
                         }]
                         url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
 
@@ -1134,8 +1134,8 @@ def import_entity_excel():
                         # print(search_result.text, flush=True)
 
                         # <editor-fold desc="yc insert name & synonyms">
-                        sync_yc_add_name(ex_name, entity.id, entity.category_id, entity.get_yc_mark_category())
-                        sync_yc_add_synonyms(ex_synonyms, entity.id, entity.category_id, entity.get_yc_mark_category())
+                        sync_yc_add_name(ex_name, entity.uuid, entity.category_uuid, entity.get_yc_mark_category())
+                        sync_yc_add_synonyms(ex_synonyms, entity.uuid, entity.category_uuid, entity.get_yc_mark_category())
                         # </editor-fold>
 
             except Exception as e:
@@ -1524,10 +1524,10 @@ def post_json_data_path_to_yc():
 
 
 
-def insert_entity_to_pg_and_es(name, category_id, summary, props={}, synonyms=[]):
+def insert_entity_to_pg_and_es(name, category_uuid, summary, props={}, synonyms=[]):
     try:
 
-        category = EntityCategory.query.filter_by(id=category_id, valid=1).first()
+        category = EntityCategory.query.filter_by(uuid=category_uuid, valid=1).first()
         if not category:
             res = fail_res(msg="实体类型不存在，添加失败！")
             return jsonify(res)
@@ -1540,19 +1540,19 @@ def insert_entity_to_pg_and_es(name, category_id, summary, props={}, synonyms=[]
             return jsonify(res)
 
         entity = Entity.query.filter(Entity.name == name, Entity.valid == 1,
-                                     Entity.category_id == category_id).first()
+                                     Entity.category_uuid == category_uuid).first()
 
         if not entity:
             props = props if props else {}
             if name in synonyms:
                 synonyms.remove(name)
-            entity = Entity(name=name, category_id=category_id, props=props, synonyms=synonyms, summary=summary,
+            entity = Entity(name=name, category_uuid=category_uuid, props=props, synonyms=synonyms, summary=summary,
                             valid=1)
 
             # es 插入操作
             longitude, latitude = 0, 0
             # 地名实体获取经纬度
-            if EntityCategory.get_category_name(category_id) == PLACE_BASE_NAME:
+            if EntityCategory.get_category_name(category_uuid) == PLACE_BASE_NAME:
                 longitude = request.json.get('longitude', 0)
                 latitude = request.json.get('latitude', 0)
                 if longitude:
