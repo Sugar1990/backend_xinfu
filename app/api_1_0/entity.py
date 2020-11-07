@@ -41,7 +41,7 @@ def get_all():
     ### 重要参数:(当前页和每页条目数)
     current_page = request.args.get('cur_page', 1, type=int)
     page_size = request.args.get('page_size', 15, type=int)
-    category_uuid = request.args.get('category_uuid', '')
+    category_uuid = request.args.get('category_uuid', None)
     type = request.args.get('type', 0, type=int)
 
     category = EntityCategory.query.filter_by(uuid=category_uuid, name=PLACE_BASE_NAME, valid=1).first()
@@ -186,9 +186,9 @@ def insert_entity():
 # @swag_from(update_entity_dict)
 def update_entity():
     try:
-        uuid = request.json.get('uuid', '')
+        uuid = request.json.get('uuid', None)
         name = request.json.get('name', '')
-        category_uuid = request.json.get('category_uuid', 0)
+        category_uuid = request.json.get('category_uuid', None)
         props = request.json.get('props', {})
         synonyms = request.json.get('synonyms', [])
         summary = request.json.get('summary', '')
@@ -308,7 +308,7 @@ def update_entity():
 # @swag_from(delete_entity_dict)
 def delete_entity():
     try:
-        uuid = request.json.get('uuid', '')
+        uuid = request.json.get('uuid', None)
 
         entity = Entity.query.filter_by(uuid=uuid, valid=1).first()
         if entity:
@@ -502,7 +502,7 @@ def delete_synonyms():
             url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
             header = {"Content-Type": "application/json; charset=UTF-8"}
             search_json = {
-                "id": {"type": "uuid", "value": str(entity.uuid)}
+                "uuid": {"type": "id", "value": str(entity.uuid)}
             }
             es_id_para = {"search_index": "entity", "search_json": search_json}
             search_result = requests.post(url + '/searchId', data=json.dumps(es_id_para), headers=header)
@@ -514,7 +514,7 @@ def delete_synonyms():
             search_result = requests.post(url + '/updatebyId', params=json.dumps(inesert_para), headers=header)
 
             # <editor-fold desc="sync yc del synonmys">
-            sync_yc_del_synonyms(synonyms, entity.id, entity.get_yc_mark_category())
+            sync_yc_del_synonyms(synonyms, entity.uuid, entity.get_yc_mark_category())
             # </editor-fold>
             res = success_res()
         else:
@@ -682,7 +682,7 @@ def sync_yc_del_synonyms(del_synonyms, entity_uuid, mark_category, sync=1):
 def get_linking_entity():
     try:
         entity_name = request.args.get('search', '')
-        category_uuid = request.args.get('category_uuid', '')
+        category_uuid = request.args.get('category_uuid', None)
         entity = Entity.query.filter(
             and_(Entity.valid == 1, or_(Entity.name == entity_name, Entity.synonyms.has_key(entity_name))))
 
@@ -733,7 +733,7 @@ def get_search_panigation():
         search = request.args.get('search', "")
         page_size = request.args.get('page_size', 10, type=int)
         cur_page = request.args.get('cur_page', 1, type=int)
-        category_uuid = request.args.get('category_uuid', 0, type=int)
+        category_uuid = request.args.get('category_uuid', None)
         data, total_count = get_search_panigation_es(search=search, page_size=page_size, cur_page=cur_page,
                                                      category_uuid=category_uuid)
         res = {
@@ -807,7 +807,7 @@ def get_search_entity():
         search = request.args.get('search', "")
         # page_size = request.args.get('page_size', 10, type=int)
         # cur_page = request.args.get('cur_page', 1, type=int)
-        category_uuid = request.args.get('category_uuid', '')
+        category_uuid = request.args.get('category_uuid', None)
         data, total_count = get_search_es(search=search,
                                           category_uuid=category_uuid)
         res = {
@@ -896,7 +896,7 @@ def get_entity_data_es():
 # @swag_from(get_entity_info_dict)
 def get_entity_info():
     try:
-        uuid = request.args.get('uuid', '')
+        uuid = request.args.get('uuid', None)
         entity = Entity.query.filter_by(uuid=uuid, valid=1).first()
         if entity:
             res = {'uuid': entity.uuid, 'name': entity.name,
@@ -963,7 +963,7 @@ def get_entity_data():
 def get_top_list():
     try:
         search = request.args.get('search', '')
-        category_uuid = request.args.get('category_uuid', '')
+        category_uuid = request.args.get('category_uuid', None)
         data, _ = get_search_panigation_es(search=search, category_uuid=category_uuid, page_size=5, cur_page=1)
         res = data
     except Exception as e:
