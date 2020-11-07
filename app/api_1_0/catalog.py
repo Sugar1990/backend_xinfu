@@ -18,8 +18,8 @@ import uuid
 def insert_catalog():
     try:
         name = request.json.get("name", "")
-        customer_uuid = request.json.get("customer_uuid", "")
-        catalog_pid = request.json.get("catalog_pid", "")
+        customer_uuid = request.json.get("customer_uuid", None)
+        catalog_pid = request.json.get("catalog_pid", None)
 
         catalog = Catalog.query.filter_by(name=name, create_by_uuid=customer_uuid, parent_uuid=catalog_pid).first()
 
@@ -42,8 +42,8 @@ def insert_catalog():
 @blue_print.route('/del_catalog', methods=['POST'])
 def del_catalog():
     try:
-        catalog_uuid = request.json.get("catalog_uuid", "")
-        customer_uuid = request.json.get("customer_uuid", "")
+        catalog_uuid = request.json.get("catalog_uuid", None)
+        customer_uuid = request.json.get("customer_uuid", None)
 
         flag, msg = judge_del_catalog_permission(customer_uuid, catalog_uuid)
         print(flag, msg)
@@ -201,7 +201,7 @@ def get_all():
 
 @blue_print.route('/get_favorite_files', methods=['GET'])
 def get_favorite_files():
-    customer_uuid = request.args.get("customer_uuid", "")
+    customer_uuid = request.args.get("customer_uuid", None)
 
     try:
         docs = Document.query.all()
@@ -240,8 +240,8 @@ def get_favorite_files():
 
 @blue_print.route('/get_catalog_files', methods=['GET'])
 def get_catalog_files():
-    catalog_uuid = request.args.get("catalog_uuid", "")
-    customer_uuid = request.args.get("customer_uuid", "")
+    catalog_uuid = request.args.get("catalog_uuid", None)
+    customer_uuid = request.args.get("customer_uuid", None)
 
     try:
         docs = Document.query.filter_by(catalog_uuid=catalog_uuid).all()
@@ -309,7 +309,7 @@ def get_catalog_files():
 @blue_print.route('/batch_del_catalog', methods=['POST'])
 def batch_del_catalog():
     del_catalog_list = request.json.get('uuids', [])
-    customer_uuid = request.json.get('customer_uuid', "")
+    customer_uuid = request.json.get('customer_uuid', None)
 
     try:
         msg = ""
@@ -339,7 +339,7 @@ def batch_del_catalog():
 def insert_1stfloor_catalog():
     try:
         name = request.json.get("name", "")
-        customer_uuid = request.json.get("customer_uuid", "")
+        customer_uuid = request.json.get("customer_uuid", None)
         tabs = request.json.get("tabs", [])
 
         # 数据库tagging_tabs改为jsonb
@@ -368,8 +368,8 @@ def insert_1stfloor_catalog():
 
 @blue_print.route('/modify_catalog', methods=['PUT'])
 def modify_catalog():
-    catalog_uuid = request.json.get('catalog_uuid', "")
-    parent_uuid = request.json.get('parent_uuid', "")
+    catalog_uuid = request.json.get('catalog_uuid', None)
+    parent_uuid = request.json.get('parent_uuid', None)
     name = request.json.get('name', '')
     tabs = request.json.get('tabs', [])
     try:
@@ -399,8 +399,8 @@ def modify_catalog():
 
 @blue_print.route('/move_catalog', methods=['PUT'])
 def move_catalog():
-    catalog_uuid = request.json.get('catalog_uuid', "")
-    parent_uuid = request.json.get('parent_uuid', "")
+    catalog_uuid = request.json.get('catalog_uuid', None)
+    parent_uuid = request.json.get('parent_uuid', None)
 
     try:
         if not parent_uuid:
