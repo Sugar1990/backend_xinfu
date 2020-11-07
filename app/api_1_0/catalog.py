@@ -257,7 +257,7 @@ def get_catalog_files():
                 if leader_ids:
                     for d in docs:
                         doc_json = {}
-                        doc_json["id"] = d.uuid
+                        doc_json["uuid"] = d.uuid
                         doc_json["name"] = d.name
                         doc_json["create_time"] = d.create_time
                         doc_json["create_username"] = Customer.get_username_by_id(d.create_by_uuid)
@@ -275,7 +275,7 @@ def get_catalog_files():
                     res = {
                         "files": doc_list,
                         "catalogs": [{
-                            'id': i.uuid,
+                            'uuid': i.uuid,
                             'name': i.name
                         } for i in catalogs]
                     }
