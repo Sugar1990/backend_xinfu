@@ -858,6 +858,7 @@ def get_entity_in_list_pagination():
                                 #i["leader_operate"] = 1 if doc_mark_comments else 0
                                 res = {
                                     "name": doc.name,
+                                    "create_time":doc.create_time.strftime('%Y-%m-%d %H:%M:%S'),
                                     "create_username": Customer.get_username_by_id(doc.create_by_uuid),
                                     'path': doc.get_full_path() if doc.get_full_path() else '已失效',
                                     'extension': doc.category,
@@ -870,6 +871,35 @@ def get_entity_in_list_pagination():
                     res = {"data": data,
                            "page_count": int(len(data) / page_size) + 1,
                            "total_count": len(data)}
+        else:
+            data = []
+            leader_ids = get_leader_ids()
+
+            pagination = Document.query.filter().order_by(Document.create_time.desc()).paginate(cur_page, page_size, False)
+            #pagination = Document.query.filter().order_by(Document.create_time.desc()).limit(100).offset(100).all()
+            if leader_ids:
+                for doc in pagination.items:
+                    doc_mark_comments = DocMarkComment.query.filter(DocMarkComment.doc_uuid == doc.uuid,
+                                                                    DocMarkComment.create_by_uuid.in_(leader_ids),
+                                                                    DocMarkComment.valid == 1).all()
+
+
+                    data_res = {
+                        "name": doc.name,
+                        "create_time": doc.create_time.strftime('%Y-%m-%d %H:%M:%S'),
+                        "create_username": Customer.get_username_by_id(doc.create_by_uuid) if doc.create_by_uuid else "",
+                        'path': doc.get_full_path() if doc.get_full_path() else '已失效',
+                        'extension': doc.category,
+                        "tag_flag": 1 if doc.status == 1 else 0,
+                        'status': doc.get_status_name(),
+                        'permission': 1 if Permission.judge_power(customer_uuid, doc.uuid) else 0,
+                        'leader_operate': 1 if doc_mark_comments else 0
+                    }
+                    data.append(data_res)
+
+                res = {"data": data,
+                       "page_count": int(len(data) / page_size) + 1,
+                       "total_count": len(data)}
 
     except Exception as e:
         print(str(e))
