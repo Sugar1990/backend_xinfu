@@ -21,7 +21,7 @@ def insert_catalog():
         customer_uuid = request.json.get("customer_uuid", None)
         catalog_pid = request.json.get("catalog_pid", None)
 
-        catalog = Catalog.query.filter_by(name=name, create_by_uuid=customer_uuid, parent_uuid=catalog_pid).first()
+        catalog = Catalog.query.filter_by(name=name, parent_uuid=catalog_pid).first()
 
         if catalog:
             res = fail_res(msg="目录已存在")
