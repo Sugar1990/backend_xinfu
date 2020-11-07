@@ -11,7 +11,8 @@ from ..models import DocMarkEvent, DocMarkTimeTag, DocMarkEntity, DocMarkPlace, 
 from .. import db
 from .utils import success_res, fail_res
 from .document import get_event_list_from_docs
-from ..conf import ES_SERVER_IP, ES_SERVER_PORT
+from ..conf import ES_SERVER_IP, ES_SERVER_PORT, PLACE_BASE_NAME
+
 
 # doc_mark_event表中删除了parent_name字段，保留了parent_id字段
 
@@ -535,10 +536,13 @@ def get_advanced_search_of_events():
             place_value = places.get("value", None)
             if place_type == "place":
                 place = place_value
-                entity = Entity.query.filter_by(name=place, category_uuid="87d323a1-b233-4a82-9883-981da29d7b13", valid=1).first()
-                if entity:
-                    doc_mark_places = DocMarkPlace.query.filter_by(place_uuid=entity.uuid, valid=1).all() # multi
-                    doc_mark_place_ids = [str(i.uuid) for i in doc_mark_places]
+                # entity = Entity.query.filter_by(name=place, category_uuid="87d323a1-b233-4a82-9883-981da29d7b13", valid=1).first()
+                entities = Entity.query.filter_by(name=place, valid=1).all()
+                for entity in entities:
+                    if entity.category_name() == PLACE_BASE_NAME:
+                        doc_mark_places = DocMarkPlace.query.filter_by(place_uuid=entity.uuid, valid=1).all() # multi
+                        doc_mark_place_ids = [str(i.uuid) for i in doc_mark_places]
+                        break
 
             elif place_type == "degrees":
                 degrees = place_value
@@ -548,21 +552,25 @@ def get_advanced_search_of_events():
                     if lon.get("degrees",0) and lon.get("direction", 0) and lon.get("distance", 0) and lat.get("degrees",0) and lat.get("direction", 0) and lat.get("distance", 0):
                         lon = dfm_convert(lon.get("degrees"), lon.get("direction"), lon.get("distance", 0))
                         lat = dfm_convert(lat.get("degrees"), lat.get("direction"), lat.get("distance", 0))
-                        entity = Entity.query.filter_by(longitude=lon, latitude=lat, category_uuid="87d323a1-b233-4a82-9883-981da29d7b13", valid=1).first()
-
-                        if entity:
-                            doc_mark_places = DocMarkPlace.query.filter_by(place_uuid=entity.uuid, valid=1).all()
-                            doc_mark_place_ids = [str(i.uuid) for i in doc_mark_places]
+                        # entity = Entity.query.filter_by(longitude=lon, latitude=lat, category_uuid="87d323a1-b233-4a82-9883-981da29d7b13", valid=1).first()
+                        entities = Entity.query.filter_by(longitude=lon, latitude=lat, valid=1).all()
+                        for entity in entities:
+                            if entity.category_name() == PLACE_BASE_NAME:
+                                doc_mark_places = DocMarkPlace.query.filter_by(place_uuid=entity.uuid, valid=1).all()
+                                doc_mark_place_ids = [str(i.uuid) for i in doc_mark_places]
+                                break
 
             elif place_type == 'location':
                 location = place_value
                 if location.get("lon", None) and location.get("lat", None):
                     lon = location["lon"]
                     lat = location["lat"]
-                    entity = Entity.query.filter_by(longitude=lon, latitude=lat, category_uuid="87d323a1-b233-4a82-9883-981da29d7b13", valid=1).first()
-                    if entity:
-                        doc_mark_places = DocMarkPlace.query.filter_by(place_uuid=entity.uuid, valid=1).all()
-                        doc_mark_place_ids = [str(i.uuid) for i in doc_mark_places]
+                    # entity = Entity.query.filter_by(longitude=lon, latitude=lat, category_uuid="87d323a1-b233-4a82-9883-981da29d7b13", valid=1).first()
+                    entities = Entity.query.filter_by(longitude=lon, latitude=lat, valid=1).all()
+                    for entity in entities:
+                        if entity.category_name() == PLACE_BASE_NAME:
+                            doc_mark_places = DocMarkPlace.query.filter_by(place_uuid=entity.uuid, valid=1).all()
+                            doc_mark_place_ids = [str(i.uuid) for i in doc_mark_places]
 
         object = request.json.get("object", {})
         doc_mark_entity_ids = []
