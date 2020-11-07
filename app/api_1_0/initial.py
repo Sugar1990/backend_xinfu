@@ -67,27 +67,28 @@ def pg_insert_es():
     try:
         if pg_table == 'entity':
             es_mapping_dict = {
-                "id": "id",
+                #"id": "id",
                 "name": "ik_keyword",
                 # "synonyms": "ik",
                 # "props": "ik",
                 "summary": "ik",
-                "category_id": "id",
+                # "category_uuid": "id",
                 "latitude": "id",
                 "longitude": "id",
                 "location": "location"
             }
-            pg_dict = {"id": {"col_type": "align", "entity": "id"},
+            pg_dict = {"uuid": {"col_type": "align", "entity": "uuid"},
                        "name": {"col_type": "", "entity": "name"},
                        "synonyms": {"col_type": "", "entity": "synonyms"},
                        "props": {"col_type": "", "entity": "props"},
-                       "category_id": {"col_type": "", "entity": "category_id"},
+                       "category_uuid": {"col_type": "", "entity": "category_uuid"},
                        "summary": {"col_type": "", "entity": "summary"},
                        "latitude": {"col_type": "", "entity": "latitude"},
                        "longitude": {"col_type": "", "entity": "longitude"}}
+
         elif pg_table == 'document':
             es_mapping_dict = {
-                "id": "id",
+                #"id": "id",
                 "name": "ik_keyword",
                 # "content": "ik",
                 # "keywords": "ik",
@@ -96,10 +97,10 @@ def pg_insert_es():
                 # "places": "ik",  # 多个地点
                 # "entities": "ik",  # [{name: category_id}, …]  # 多个实体，含名称和类型id
                 # "event_categories": "ik",  # [{event_class: event_category}, …]
-                "doc_type": "id",
+                "doc_type": "ik_keyword",
                 # "notes": "ik"
             }
-            pg_dict = {"id": {"col_type": "align", "document": "id"},
+            pg_dict = {"uuid": {"col_type": "align", "document": "uuid"},
                        "name": {"col_type": "", "document": "name"},
                        "content": {"col_type": "", "document": "content"},
                        "keywords": {"col_type": "", "document": "keywords"},
