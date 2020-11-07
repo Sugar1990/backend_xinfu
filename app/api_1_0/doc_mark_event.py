@@ -704,9 +704,9 @@ def get_during_time_event():
         for doc_mark_event in doc_mark_events:
             if set(doc_mark_event.event_time) & doc_mark_time_tag_ids_set:
                 time_id = list(set(doc_mark_event.event_time) & doc_mark_time_tag_ids_set)[0]
-                datetime = [DocMarkTimeTag.query.filter_by(uuid=time_id, valid=1).first().format_date]
+                datetime = [DocMarkTimeTag.query.filter_by(uuid=time_id, valid=1).first().format_date.strftime('%Y-%m-%d %H:%M:%S')]
                 try:
-                    datetime.append(DocMarkTimeTag.query.filter_by(uuid=time_id, valid=1).first().format_date_end)
+                    datetime.append(DocMarkTimeTag.query.filter_by(uuid=time_id, valid=1).first().format_date_end.strftime('%Y-%m-%d %H:%M:%S'))
                 except:
                     pass
                 event_id = doc_mark_event.uuid
@@ -782,9 +782,9 @@ def get_during_time_event_by_entities():
         for doc_mark_event in doc_mark_events:
             if set(doc_mark_event.event_time) & doc_mark_time_tag_ids_set:
                 time_id = list(set(doc_mark_event.event_time) & doc_mark_time_tag_ids_set)[0]
-                datetime = [DocMarkTimeTag.query.filter_by(uuid=time_id, valid=1).first().format_date]
+                datetime = [DocMarkTimeTag.query.filter_by(uuid=time_id, valid=1).first().format_date.strftime('%Y-%m-%d %H:%M:%S')]
                 try:
-                    datetime.append(DocMarkTimeTag.query.filter_by(uuid=time_id, valid=1).first().format_date_end)
+                    datetime.append(DocMarkTimeTag.query.filter_by(uuid=time_id, valid=1).first().format_date_end.strftime('%Y-%m-%d %H:%M:%S'))
                 except:
                     pass
                 event_id = doc_mark_event.uuid
