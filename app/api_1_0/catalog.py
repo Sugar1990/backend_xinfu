@@ -372,6 +372,7 @@ def modify_catalog():
     parent_uuid = request.json.get('parent_uuid', None)
     name = request.json.get('name', '')
     tabs = request.json.get('tabs', [])
+    sort = request.json.get('sort')
     try:
         catalog = Catalog.query.filter_by(uuid=catalog_uuid).first()
         if catalog:
@@ -386,6 +387,14 @@ def modify_catalog():
                     catalog.parent_uuid = parent_uuid
                 if tabs:
                     catalog.tagging_tabs = tabs
+                if sort:
+                    cataloges = Catalog.query.all()
+                    sorts = [i.sort for i in cataloges]
+                    if sort in sorts:
+                        res = fail_res(msg="同级目录已存在")
+                        return jsonify(res)
+                    else:
+                        catalog.sort = sort
                 db.session.commit()
                 res = success_res()
         else:
