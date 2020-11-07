@@ -197,7 +197,11 @@ def modify_relation_category():
                     else:
                         res = fail_res(msg="实体类型不存在!")
             else:
-                res = fail_res(msg="关系记录不存在!")
+                relation_category.relation_name = name
+                relation_category.source_entity_category_uuids = source_entity_category_uuids
+                relation_category.target_entity_category_uuids = target_entity_category_uuids
+                db.session.commit()
+                res = success_res()
 
     except Exception as e:
         print(str(e))
