@@ -492,7 +492,8 @@ def get_1stfloor_catalog():
                     "parent_uuid": catalog.parent_uuid,
                     "create_by_uuid": catalog.create_by_uuid,
                     "create_time": catalog.create_time,
-                    "tagging_tabs": catalog.tagging_tabs if catalog.tagging_tabs else []
+                    "tagging_tabs": catalog.tagging_tabs if catalog.tagging_tabs else [],
+                    "sort": catalog.sort
                     } for catalog in cataloges]
     except Exception as e:
         print(str(e))
