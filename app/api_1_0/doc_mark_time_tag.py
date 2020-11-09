@@ -263,7 +263,8 @@ def get_time_tag_by_type_and_docId():
             "update_by_uuid": doc_mark_time_tag.update_by_uuid,
             "update_time": doc_mark_time_tag.update_time.strftime(
                 '%Y-%m-%d %H:%M:%S') if doc_mark_time_tag.update_time else None,
-            "appear_index_in_text": doc_mark_time_tag.appear_index_in_text
+            "appear_index_in_text": doc_mark_time_tag.appear_index_in_text,
+            "_source": doc_mark_time_tag._source
         } for doc_mark_time_tag in doc_mark_time_tags])
     except Exception as e:
         print(str(e))
@@ -271,8 +272,8 @@ def get_time_tag_by_type_and_docId():
     return jsonify(res)
 
 
-@blue_print.route('/get_one_doc_mark_time_tag_by_ids', methods=['GET'])
-def get_one_doc_mark_time_tag_by_ids():
+@blue_print.route('/get_doc_mark_time_tags_by_ids', methods=['GET'])
+def get_doc_mark_time_tags_by_ids():
     try:
         ids = request.args.get('Ids', [])
         ids = eval(ids)
@@ -294,7 +295,8 @@ def get_one_doc_mark_time_tag_by_ids():
                 "update_by_uuid": doc_mark_time_tag.update_by_uuid,
                 "update_time": doc_mark_time_tag.update_time.strftime(
                     '%Y-%m-%d %H:%M:%S') if doc_mark_time_tag.update_time else None,
-                "appear_index_in_text": doc_mark_time_tag.appear_index_in_text
+                "appear_index_in_text": doc_mark_time_tag.appear_index_in_text,
+                "_source": doc_mark_time_tag._source
             } for doc_mark_time_tag in doc_mark_time_tags])
         else:
             res = fail_res(msg="参数不能为空")

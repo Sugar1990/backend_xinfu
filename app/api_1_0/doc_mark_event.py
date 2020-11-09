@@ -923,7 +923,8 @@ def search_events_by_docId_pagination():
                 "create_time": i.create_time.strftime("%Y-%m-%d %H:%M:%S") if i.create_time else None,
                 "update_by_uuid": i.update_by_uuid,
                 "update_time": i.update_time.strftime("%Y-%m-%d %H:%M:%S") if i.update_time else None,
-                "add_time": i.add_time.strftime("%Y-%m-%d %H:%M:%S") if i.add_time else None
+                "add_time": i.add_time.strftime("%Y-%m-%d %H:%M:%S") if i.add_time else None,
+                "_source": i._source
             } for i in pagination.items]
         res = success_res(data={
             "total_count": pagination.total,
@@ -1010,7 +1011,8 @@ def get_advanced_search_of_events_pagination():
             "create_time": i.create_time.strftime("%Y-%m-%d %H:%M:%S") if i.create_time else None,
             "update_by_uuid": i.update_by_uuid,
             "update_time": i.update_time.strftime("%Y-%m-%d %H:%M:%S") if i.update_time else None,
-            "add_time": i.add_time.strftime("%Y-%m-%d %H:%M:%S") if i.add_time else None
+            "add_time": i.add_time.strftime("%Y-%m-%d %H:%M:%S") if i.add_time else None,
+            "_source": i._source
         } for i in pagination.items]
         res = success_res(data={
             "total_count": pagination.total,
