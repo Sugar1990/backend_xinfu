@@ -12,13 +12,14 @@ def add_event_category():
     try:
         name = request.json.get('name')
         event_class_uuid = request.json.get("event_class_uuid", '')
+        source = request.json.get('source', '')
         event_class_id_find = EventClass.query.filter_by(uuid=event_class_uuid, valid=1).first()
         if event_class_id_find:
             event_category = EventCategory.query.filter_by(name=name, event_class_uuid=event_class_uuid, valid=1).first()
             if event_category:
                 res = fail_res(msg="事件类型已存在!")
             else:
-                eventCategory = EventCategory(uuid=uuid.uuid1(), name=name, event_class_uuid=event_class_uuid, valid=1)
+                eventCategory = EventCategory(uuid=uuid.uuid1(), name=name, event_class_uuid=event_class_uuid, valid=1, _source=source)
                 db.session.add(eventCategory)
                 db.session.commit()
                 res = success_res()

@@ -857,6 +857,7 @@ def get_entity_in_list_pagination():
                                                                                 DocMarkComment.valid == 1).all()
                                 #i["leader_operate"] = 1 if doc_mark_comments else 0
                                 res = {
+                                    "uuid": doc.uuid,
                                     "name": doc.name,
                                     "create_time":doc.create_time.strftime('%Y-%m-%d %H:%M:%S'),
                                     "create_username": Customer.get_username_by_id(doc.create_by_uuid),

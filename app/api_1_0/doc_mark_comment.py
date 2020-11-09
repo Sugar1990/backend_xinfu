@@ -9,7 +9,7 @@ import uuid
 
 # 按id查询
 @blue_print.route('/get_doc_mark_comment_by_id', methods=['GET'])
-def get_doc_mark_comment_by_uuid():
+def get_doc_mark_comment_by_id():
     try:
         uuid = request.args.get("uuid", '')
         doc_mark_comment = DocMarkComment.query.filter_by(uuid=uuid, valid=1).first()
@@ -49,7 +49,7 @@ def get_doc_mark_comment_by_uuid():
 
 # 按doc_id查询
 @blue_print.route('/get_doc_mark_comment_by_doc_id', methods=['GET'])
-def get_doc_mark_comment_by_doc_uuid():
+def get_doc_mark_comment_by_doc_id():
     try:
         doc_uuid = request.args.get("doc_uuid", '')
         doc_mark_comment_list = DocMarkComment.query.filter_by(doc_uuid=doc_uuid, valid=1).all()
@@ -154,7 +154,7 @@ def modify_doc_mark_comment():
 
 # delete
 @blue_print.route('/delete_doc_mark_comment_by_id', methods=['POST'])
-def delete_doc_mark_comment_by_uuid():
+def delete_doc_mark_comment_by_id():
     try:
         uuid = request.json.get("uuid", '')
         doc_mark_comment = DocMarkComment.query.filter_by(uuid=uuid, valid=1).first()
