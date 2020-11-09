@@ -1,11 +1,12 @@
 # -*- coding: UTF-8 -*-
 from flask import jsonify, request
 from . import api_doc_mark_advise as blue_print
-from ..models import DocMarkAdvise, DocMarkTimeTag, DocMarkEntity, DocMarkPlace, DocMarkComment
+from ..models import DocMarkAdvise, DocMarkTimeTag, DocMarkEntity, DocMarkPlace, DocMarkComment, Customer
 from .. import db
 from .utils import success_res, fail_res
 import time
 import uuid
+from ..conf import ADMIN_ROLE_POWER
 
 # 按id查询
 @blue_print.route('/get_doc_mark_advise_by_id', methods=['GET'])
@@ -75,15 +76,21 @@ def get_doc_mark_advise_by_doc_id():
     return jsonify(res)
 
 
-# 查询全部
-@blue_print.route('/get_doc_mark_advises', methods=['GET'])
-def get_doc_mark_advises():
+# 根据用户信息查询建议
+@blue_print.route('/get_doc_mark_advise_by_create_by_id', methods=['GET'])
+def get_doc_mark_advise_by_create_by_id():
     try:
-        doc_mark_advises = DocMarkAdvise.query.filter_by(valid=1).all()
+        create_by_uuid = request.args.get("create_by_uuid", '')
+        doc_uuid = request.args.get("doc_uuid", '')
+        customer = Customer.query.filter_by(uuid=create_by_uuid, valid=1).first()
+        if customer.get_power() != ADMIN_ROLE_POWER:
+            doc_mark_advises = DocMarkAdvise.query.filter_by(create_by_uuid=create_by_uuid, doc_uuid=doc_uuid, valid=1).all()
+        else:
+            doc_mark_advises = DocMarkAdvise.query.filter_by(doc_uuid=doc_uuid, valid=1).all()
         if not doc_mark_advises:
             res = []
         else:
-            res = [{
+            res = success_res(data=[{
                 "uuid": doc_mark_advise.uuid,
                 "doc_uuid": doc_mark_advise.doc_uuid,
                 "mark_uuid": doc_mark_advise.mark_uuid,
@@ -95,7 +102,7 @@ def get_doc_mark_advises():
                 "update_by_uuid": doc_mark_advise.update_by_uuid,
                 "update_time": doc_mark_advise.update_time.strftime(
                     "%Y-%m-%d %H:%M:%S") if doc_mark_advise.update_time else None
-            } for doc_mark_advise in doc_mark_advises]
+            } for doc_mark_advise in doc_mark_advises])
     except Exception as e:
         print(str(e))
         res = []
@@ -113,6 +120,9 @@ def add_doc_mark_advise():
         content = request.json.get("content", "")
         create_by_uuid = request.json.get("create_by_uuid", None)
         create_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+        update_by_uuid = request.json.get("update_by_uuid", None)
+        update_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+
         doc_mark_advise_same = DocMarkAdvise.query.filter_by(doc_uuid=doc_uuid, mark_uuid=mark_uuid, type=type,
                                                                content=content, valid=1).first()
         if doc_mark_advise_same:
@@ -156,6 +166,8 @@ def add_doc_mark_advise():
                                                 content=content,
                                                 create_by_uuid=create_by_uuid,
                                                 create_time=create_time,
+                                                update_by_uuid=update_by_uuid,
+                                                update_time=update_time,
                                                 valid=1)
                 db.session.add(doc_mark_advise)
                 db.session.commit()

@@ -6,6 +6,7 @@ from ..models import DocMarkPlace
 from .. import db
 from .utils import success_res, fail_res
 import uuid
+import time
 
 @blue_print.route('/get_doc_mark_place_by_doc_id', methods=['GET'])
 def get_doc_mark_place_by_doc_id():
@@ -170,9 +171,9 @@ def add_doc_mark_place():
         distance = request.json.get('distance', 0.0)
         relation = request.json.get('relation', '')
         create_by_uuid = request.json.get('create_by_uuid', '')
-        create_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        create_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         update_by_uuid = request.json.get("update_by_uuid", '')
-        update_time = request.json.get("update_time", None)
+        update_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         entity_or_sys = request.json.get('entity_or_sys', 0)
         appear_index_in_text = request.json.get('appear_index_in_text', [])
         if not isinstance(dms, list):
