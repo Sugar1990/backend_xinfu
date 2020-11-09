@@ -3,6 +3,8 @@ import datetime
 import uuid
 
 from flask import jsonify, request
+from sqlalchemy import and_
+
 from . import api_doc_mark_time_tag as blue_print
 from ..models import DocMarkTimeTag
 from .. import db
@@ -231,4 +233,72 @@ def delete_doc_mark_time_tag():
         db.session.rollback()
         res = fail_res(msg="删除失败！")
 
+    return jsonify(res)
+
+
+@blue_print.route('/get_time_tag_by_type_and_docId', methods=['GET'])
+def get_time_tag_by_type_and_docId():
+    try:
+        time_type = request.args.get("type", 0)
+        doc_uuid = request.args.get("docId", None)
+        condition = [DocMarkTimeTag.valid==1]
+        if time_type:
+            condition.append(DocMarkTimeTag.time_type==time_type)
+        if doc_uuid:
+            condition.append(DocMarkTimeTag.doc_uuid==doc_uuid)
+        condition = tuple(condition)
+        doc_mark_time_tags = DocMarkTimeTag.query.filter(and_(*condition)).all()
+        res = success_res(data=[{
+            "uuid": doc_mark_time_tag.uuid,
+            "doc_uuid": doc_mark_time_tag.doc_uuid,
+            "word": doc_mark_time_tag.word,
+            "format_date": doc_mark_time_tag.format_date.strftime(
+                '%Y-%m-%d %H:%M:%S') if doc_mark_time_tag.format_date else None,
+            "format_date_end": doc_mark_time_tag.format_date_end.strftime(
+                '%Y-%m-%d %H:%M:%S') if doc_mark_time_tag.format_date_end else None,
+            "mark_position": doc_mark_time_tag.mark_position,
+            "time_type": doc_mark_time_tag.time_type,
+            "reserve_fields": doc_mark_time_tag.reserve_fields,
+            "arab_time": doc_mark_time_tag.arab_time,
+            "update_by_uuid": doc_mark_time_tag.update_by_uuid,
+            "update_time": doc_mark_time_tag.update_time.strftime(
+                '%Y-%m-%d %H:%M:%S') if doc_mark_time_tag.update_time else None,
+            "appear_index_in_text": doc_mark_time_tag.appear_index_in_text
+        } for doc_mark_time_tag in doc_mark_time_tags])
+    except Exception as e:
+        print(str(e))
+        res = fail_res(data=[])
+    return jsonify(res)
+
+
+@blue_print.route('/get_one_doc_mark_time_tag_by_ids', methods=['GET'])
+def get_one_doc_mark_time_tag_by_ids():
+    try:
+        ids = request.args.get('Ids', [])
+        ids = eval(ids)
+        if ids:
+            doc_mark_time_tags = DocMarkTimeTag.query.filter(DocMarkTimeTag.uuid.in_(ids),
+                                                            DocMarkTimeTag.valid==1).all()
+            res = success_res(data=[{
+                "uuid": doc_mark_time_tag.uuid,
+                "doc_uuid": doc_mark_time_tag.doc_uuid,
+                "word": doc_mark_time_tag.word,
+                "format_date": doc_mark_time_tag.format_date.strftime(
+                    '%Y-%m-%d %H:%M:%S') if doc_mark_time_tag.format_date else None,
+                "format_date_end": doc_mark_time_tag.format_date_end.strftime(
+                    '%Y-%m-%d %H:%M:%S') if doc_mark_time_tag.format_date_end else None,
+                "mark_position": doc_mark_time_tag.mark_position,
+                "time_type": doc_mark_time_tag.time_type,
+                "reserve_fields": doc_mark_time_tag.reserve_fields,
+                "arab_time": doc_mark_time_tag.arab_time,
+                "update_by_uuid": doc_mark_time_tag.update_by_uuid,
+                "update_time": doc_mark_time_tag.update_time.strftime(
+                    '%Y-%m-%d %H:%M:%S') if doc_mark_time_tag.update_time else None,
+                "appear_index_in_text": doc_mark_time_tag.appear_index_in_text
+            } for doc_mark_time_tag in doc_mark_time_tags])
+        else:
+            res = fail_res(msg="参数不能为空")
+    except Exception as e:
+        print(str(e))
+        res = fail_res(data=[])
     return jsonify(res)
