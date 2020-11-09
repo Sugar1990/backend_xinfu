@@ -6,6 +6,8 @@ import math
 import os
 import time
 import re
+import uuid
+
 import requests
 # from flasgger import swag_from
 from flask import jsonify, request
@@ -39,10 +41,10 @@ def doc_adc():
 # @swag_from(upload_doc_dict)
 def upload_doc():
     try:
-        catalog_id = request.form.get('catalog_id', 0)
-        uid = request.form.get('uid', 0)
+        catalog_uuid = request.form.get('catalog_uuid', "")
+        uid = request.form.get('uid', "")
         file_list = request.files.getlist('file', None)
-        catalog_id = int(catalog_id)
+        # catalog_id = int(catalog_id)
 
         for file_obj in file_list:
             path_filename = file_obj.filename
@@ -51,9 +53,9 @@ def upload_doc():
                 path_catalog_name_list = [i.strip() for i in path[:-1]]
                 if path_catalog_name_list:
                     with lock:
-                        catalog_id = find_leaf_catalog_id(catalog_id, path_catalog_name_list, uid)
+                        catalog_uuid = find_leaf_catalog_id(catalog_uuid, path_catalog_name_list, uid)
 
-                if catalog_id:
+                if catalog_uuid:
                     filename = secure_filename(''.join(lazy_pinyin(path[-1])))
                     save_filename = "{0}{1}{2}".format(os.path.splitext(filename)[0],
                                                        datetime.datetime.now().strftime('%Y%m%d%H%M%S'),
@@ -68,7 +70,7 @@ def upload_doc():
                         keywords = get_keywords(content_list)
 
                     permission_id = 0
-                    customer = Customer.query.filter_by(id=uid).first()
+                    customer = Customer.query.filter_by(uuid=uid).first()
                     if customer:
                         permission = Permission.query.filter_by(id=customer.permission_id).first()
                         if permission:
@@ -79,9 +81,9 @@ def upload_doc():
                             file_md5 = md5_hash.hexdigest()
 
                         if file_md5:
-                            doc = Document.query.filter_by(md5=file_md5, catalog_id=catalog_id).first()
+                            doc = Document.query.filter_by(md5=file_md5, catalog_uuid=catalog_uuid).first()
                             if doc:
-                                url = YC_TAGGING_PAGE_URL + "?doc_id={0}&uid={1}".format(doc.id, uid)
+                                url = YC_TAGGING_PAGE_URL + "?doc_id={0}&uid={1}".format(doc.uuid, uid)
                                 doc_power = doc.get_power() if doc else 0
                                 cus_power = customer.get_power() if customer else 0
                                 if cus_power:
@@ -90,7 +92,20 @@ def upload_doc():
                                 res = fail_res(data=url, msg="{0}文档已存在\n".format(path[-1]))
                             else:
                                 datetime_now = datetime.datetime.now()
+                                doc = Document(uuid=uuid.uuid1(),name=path[-1],
+                                               category=os.path.splitext(filename)[1],
+                                               savepath='/static/{0}'.format(save_filename),
+                                               catalog_uuid=catalog_uuid,
+                                               content=content_list,
+                                               create_by_uuid=uid,
+                                               create_time=datetime_now,
+                                               permission_id=permission_id,
+                                               status=0,
+                                               keywords=keywords,
+                                               md5=file_md5)
 
+                                db.session.add(doc)
+                                db.session.commit()
 
                                 if YC_ROOT_URL_PYTHON:
 
@@ -108,34 +123,17 @@ def upload_doc():
                                         res_place = yc_res["place"]
                                         res_time = yc_res["time"]
                                         res_concept = yc_res["concept"]
-                                        res_html_path = yc_res["html_path"]
-
-                                        doc = Document(name=path[-1],
-                                                       category=os.path.splitext(filename)[1],
-                                                       savepath='/static/{0}'.format(save_filename),
-                                                       catalog_id=catalog_id,
-                                                       content=content_list,
-                                                       create_by=uid,
-                                                       create_time=datetime_now,
-                                                       permission_id=permission_id,
-                                                       status=0,
-                                                       keywords = keywords,
-                                                       md5 = file_md5,
-                                                       html_path = res_html_path)
-
-                                        db.session.add(doc)
-                                        db.session.commit()
 
                                         data_insert_entity = []
                                         for index, item_entity in enumerate(res_entity):
                                             entity_json = {}
-                                            doc_mark_entity = DocMarkEntity(doc_id=doc.id, valid=1)
+                                            doc_mark_entity = DocMarkEntity(uuid=uuid.uuid1(), doc_uuid=doc.uuid, valid=1)
                                             if item_entity.get("word", ""):
                                                 doc_mark_entity.word = item_entity["word"]
                                                 entity_json["name"] = item_entity["word"]
-                                            if item_entity.get("entity_id", 0):
-                                                doc_mark_entity.entity_id = item_entity["entity_id"]
-                                            if item_entity.get("entity_type_id", 0):
+                                            if item_entity.get("entity_id", ""):
+                                                doc_mark_entity.entity_uuid = item_entity["entity_id"]
+                                            if item_entity.get("entity_type_id", ""):
                                                 entity_json["category_id"] = item_entity["entity_type_id"]
                                             if item_entity.get("word_count", ""):
                                                 word_count_list = list(item_entity["word_count"].split(','))
@@ -143,19 +141,19 @@ def upload_doc():
 
                                             db.session.add(doc_mark_entity)
                                             db.session.commit()
-                                            item_entity["doc_mark_id"] = doc_mark_entity.id
+                                            item_entity["doc_mark_id"] = doc_mark_entity.uuid
                                             data_insert_entity.append(entity_json)
                                         # print("doc_mark_entity数据插入成功")
 
                                         for index, item_entity in enumerate(res_concept):
                                             entity_json = {}
-                                            doc_mark_entity = DocMarkEntity(doc_id=doc.id, valid=1)
+                                            doc_mark_entity = DocMarkEntity(uuid=uuid.uuid1(), doc_uuid=doc.uuid, valid=1)
                                             if item_entity.get("word", ""):
                                                 doc_mark_entity.word = item_entity["word"]
                                                 entity_json["name"] = item_entity["word"]
-                                            if item_entity.get("concept_id", 0):
-                                                doc_mark_entity.entity_id = item_entity["concept_id"]
-                                            if item_entity.get("concept_type_id", 0):
+                                            if item_entity.get("concept_id", ""):
+                                                doc_mark_entity.entity_uuid = item_entity["concept_id"]
+                                            if item_entity.get("concept_type_id", ""):
                                                 entity_json["category_id"] = item_entity["concept_type_id"]
                                             if item_entity.get("word_count", ""):
                                                 word_count_list = list(item_entity["word_count"].split(','))
@@ -163,21 +161,21 @@ def upload_doc():
 
                                             db.session.add(doc_mark_entity)
                                             db.session.commit()
-                                            item_entity["doc_mark_id"] = doc_mark_entity.id
+                                            item_entity["doc_mark_id"] = doc_mark_entity.uuid
                                             data_insert_entity.append(entity_json)
 
                                         data_insert_place = []
                                         # data_insert_location = []
                                         for index, item_place in enumerate(res_place):
                                             # location_json = {}
-                                            doc_mark_place = DocMarkPlace(doc_id=doc.id, valid=1)
+                                            doc_mark_place = DocMarkPlace(uuid=uuid.uuid1(), doc_uuid=doc.uuid, valid=1)
                                             if item_place.get("word", ""):
                                                 doc_mark_place.word = item_place["word"]
                                                 # data_insert_place.append(item_place["word"])
                                             if item_place.get("type", 0):
                                                 doc_mark_place.type = item_place["type"]
                                             if item_place.get("place_id", 0):
-                                                doc_mark_place.place_id = item_place["place_id"]
+                                                doc_mark_place.place_uuid = item_place["place_id"]
 
                                             # doc_mark_place是经纬度时必须含有lon和lat
                                             if doc_mark_place.type == 2:
@@ -212,13 +210,13 @@ def upload_doc():
                                                 if doc_mark_place.place_lon and doc_mark_place.place_lat:
                                                     db.session.add(doc_mark_place)
                                                     db.session.commit()
-                                                    item_place["doc_mark_id"] = doc_mark_place.id
+                                                    item_place["doc_mark_id"] = doc_mark_place.uuid
                                                     # 合格的地名才同步es
                                                     data_insert_place.append(doc_mark_place.word)
                                             else:
                                                 db.session.add(doc_mark_place)
                                                 db.session.commit()
-                                                item_place["doc_mark_id"] = doc_mark_place.id
+                                                item_place["doc_mark_id"] = doc_mark_place.uuid
 
                                                 data_insert_place.append(doc_mark_place.word)
 
@@ -230,7 +228,7 @@ def upload_doc():
                                         data_insert_time_period = []
                                         for index, item_time in enumerate(res_time):
                                             time_range_json = {}
-                                            doc_mark_time_tag = DocMarkTimeTag(doc_id=doc.id, valid=1)
+                                            doc_mark_time_tag = DocMarkTimeTag(uuid=uuid.uuid1(), doc_uuid=doc.uuid, valid=1)
                                             if item_time.get("time_type", 0):
                                                 doc_mark_time_tag.time_type = item_time["time_type"]
                                             if item_time.get("word", ""):
@@ -265,7 +263,7 @@ def upload_doc():
 
                                             db.session.add(doc_mark_time_tag)
                                             db.session.commit()
-                                            item_time["doc_mark_id"] = doc_mark_time_tag.id
+                                            item_time["doc_mark_id"] = doc_mark_time_tag.uuid
                                         # print("doc_mark_time_tag插入成功")
 
                                         doc.status = 2
@@ -273,7 +271,7 @@ def upload_doc():
 
                                         print("yc_res: ", yc_res)
 
-                                        # <editor-fold desc="返回event带解析封装接口">
+                                        #<editor-fold desc="返回event带解析封装接口">
                                         event_id_list = []
                                         event_res = {}
                                         event_res['content'] = doc.content
@@ -291,14 +289,14 @@ def upload_doc():
 
                                             for item in event_extraction_res.json()["result"]:
                                                 event_json = {}
-                                                doc_mark_event = DocMarkEvent(doc_id=doc.id, valid=1)
+                                                doc_mark_event = DocMarkEvent(uuid=uuid.uuid1(), doc_uuid=doc.uuid, valid=1)
                                                 if item.get("event_address", []):
                                                     doc_mark_event.event_address = item["event_address"]
                                                 if item.get("event_class_id", 0):
-                                                    doc_mark_event.event_class_id = item["event_class_id"]
+                                                    doc_mark_event.event_class_uuid = item["event_class_id"]
                                                     event_json["event_class_id"] = item["event_class_id"]
                                                 if item.get("event_category_id", 0):
-                                                    doc_mark_event.event_type_id = item["event_category_id"]
+                                                    doc_mark_event.event_type_uuid = item["event_category_id"]
                                                     event_json["category_id"] = item["event_category_id"]
                                                 if item.get("event_desc", ""):
                                                     doc_mark_event.event_desc = item["event_desc"]
@@ -314,32 +312,40 @@ def upload_doc():
                                                     doc_mark_event.title = item["title"]
                                                 db.session.add(doc_mark_event)
                                                 db.session.commit()
-                                                print(doc_mark_event.id)
+                                                print(doc_mark_event.uuid)
 
-                                                event_id_list.append(doc_mark_event.id)
+                                                event_id_list.append(str(doc_mark_event.uuid))
                                                 data_insert_event.append(event_json)
                                         else:
                                             res = fail_res(msg="调用event_extraction接口失败")
                                             return res
-                                        # </editor-fold>
+                                        #</editor-fold>
 
-                                        # <editor-fold desc="调用yc文档预处理接口,eventIds暂时为空列表">
+                                        #<editor-fold desc="调用yc文档预处理接口,eventIds暂时为空列表">
                                         eventIds = event_id_list
                                         header = {"Content-Type": "application/json; charset=UTF-8"}
                                         url = YC_ROOT_URL + '/doc/preprocess'
-                                        body = {"docId": doc.id, "eventIds": eventIds}
+                                        body = {"docId": doc.uuid, "eventIds": eventIds}
                                         data = json.dumps(body)
                                         yc_res_event = requests.post(url=url, data=data, headers=header)
-
                                         print("yc_res_event.status_code", yc_res_event.status_code)
-                                        # </editor-fold>
+                                        if event_extraction_res.status_code in (200, 201):
+                                            res_html_path = yc_res_event.json()["data"]
+                                            doc_html = Document.query.filter_by(uuid=doc.uuid, catalog_uuid=catalog_uuid).first()
+                                            doc_html.html_path = res_html_path
+                                            print("res_html_path", res_html_path, doc_html.html_path)
+                                            db.session.commit()
+                                        else:
+                                            res = fail_res(msg="调用doc_preprocess接口失败")
+                                            return res
+                                        #</editor-fold>
                                     else:
                                         res = fail_res(msg="上传成功，但预处理失败")
                                         return res
 
-                                # 抽取id、name、content插入es数据库中
+                                #抽取id、name、content插入es数据库中
                                 data_insert_json = [{
-                                    "id": doc.id,
+                                    "id": doc.uuid,
                                     "name": doc.name,
                                     "content": doc.content,
                                     "create_time": datetime_now.isoformat(),
@@ -352,8 +358,8 @@ def upload_doc():
                                     "entities": data_insert_entity,
                                     "event_categories": data_insert_event
                                 }]
-                                an_catalog = Catalog.get_ancestorn_catalog(catalog_id)
-                                doc_type_id = an_catalog.id if an_catalog else 0
+                                an_catalog = Catalog.get_ancestorn_catalog(catalog_uuid)
+                                doc_type_id = an_catalog.uuid if an_catalog else ""
                                 if doc_type_id:
                                     data_insert_json[0]["doc_type"] = doc_type_id
 
@@ -365,7 +371,7 @@ def upload_doc():
                                 insert_result = requests.post(url + '/dataInsert', data=json.dumps(para),
                                                               headers=header)
 
-                                url = YC_TAGGING_PAGE_URL + "?doc_id={0}&uid={1}".format(doc.id, uid)
+                                url = YC_TAGGING_PAGE_URL + "?doc_id={0}&uid={1}".format(doc.uuid, uid)
                                 doc_power = doc.get_power() if doc else 0
                                 cus_power = customer.get_power() if customer else 0
                                 if cus_power:
@@ -391,26 +397,26 @@ def upload_doc():
 def find_leaf_catalog_id(parent_catalog_id, path_catalog_name_list, uid):
     if len(path_catalog_name_list) == 1:
         path_name = path_catalog_name_list[0]
-        catalog = Catalog.query.filter_by(name=path_name).filter_by(parent_id=parent_catalog_id).first()
+        catalog = Catalog.query.filter_by(name=path_name).filter_by(parent_uuid=parent_catalog_id).first()
         if catalog:
-            return catalog.id
+            return catalog.uuid
         else:
-            catalog = Catalog(name=path_name, parent_id=parent_catalog_id, create_by=uid,
+            catalog = Catalog(name=path_name, parent_uuid=parent_catalog_id, create_by_uuid=uid,
                               create_time=datetime.datetime.now())
             db.session.add(catalog)
             db.session.commit()
-            return catalog.id
+            return catalog.uuid
     else:
         path_name = path_catalog_name_list.pop(0)
-        catalog = Catalog.query.filter_by(name=path_name).filter_by(parent_id=parent_catalog_id).first()
+        catalog = Catalog.query.filter_by(name=path_name).filter_by(parent_uuid=parent_catalog_id).first()
         if catalog:
-            return find_leaf_catalog_id(catalog.id, path_catalog_name_list, uid)
+            return find_leaf_catalog_id(catalog.uuid, path_catalog_name_list, uid)
         else:
-            catalog = Catalog(name=path_name, parent_id=parent_catalog_id, create_by=uid,
+            catalog = Catalog(name=path_name, parent_uuid=parent_catalog_id, create_by_uuid=uid,
                               create_time=datetime.datetime.now())
             db.session.add(catalog)
             db.session.commit()
-            return find_leaf_catalog_id(catalog.id, path_catalog_name_list, uid)
+            return find_leaf_catalog_id(catalog.uuid, path_catalog_name_list, uid)
 
 
 # 获得文档路径
@@ -418,8 +424,8 @@ def find_leaf_catalog_id(parent_catalog_id, path_catalog_name_list, uid):
 # @swag_from(get_doc_realpath_dict)
 def get_doc_realpath():
     try:
-        doc_id = request.args.get('doc_id', 0, type=int)
-        doc = Document.query.filter_by(id=doc_id).first()
+        doc_uuid = request.args.get('doc_uuid', "")
+        doc = Document.query.filter_by(uuid=doc_uuid).first()
 
         res = doc.savepath.replace('\n\"', '') if doc else ""
     except Exception as e:
@@ -434,7 +440,7 @@ def get_doc_realpath():
 def update_es_doc_type():
     try:
         docs = Document.query.all()
-        doc_ids = [i.id for i in docs]
+        doc_ids = [str(i.uuid) for i in docs]
         res = modify_doc_es_doc_type(doc_ids)
     except Exception as e:
         print(str(e))
@@ -446,13 +452,13 @@ def update_es_doc_type():
 def modify_doc_es_doc_type(doc_ids):
     try:
         if isinstance(doc_ids, list):
-            doc_list = Document.query.filter(Document.id.in_(doc_ids)).all()
+            doc_list = Document.query.filter(Document.uuid.in_(doc_ids)).all()
             for doc in doc_list:
                 # 获得es对应doc
                 url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
                 header = {"Content-Type": "application/json; charset=UTF-8"}
                 search_json = {
-                    "id": {"type": "id", "value": doc.id}
+                    "id": {"type": "id", "value": doc.uuid}
                 }
 
                 es_id_para = {"search_index": "document", "search_json": search_json}
@@ -464,8 +470,8 @@ def modify_doc_es_doc_type(doc_ids):
                     es_id = ''
 
                 # 替换doc_type 修改es已有doc
-                an_catalog = Catalog.get_ancestorn_catalog(doc.catalog_id)
-                doc_type = an_catalog.id if an_catalog else 0
+                an_catalog = Catalog.get_ancestorn_catalog(doc.catalog_uuid)
+                doc_type = an_catalog.uuid if an_catalog else ""
                 key_value_json = {'doc_type': doc_type}
                 inesert_para = {"update_index": 'document',
                                 "data_update_json": [{es_id: key_value_json}]}
@@ -483,20 +489,20 @@ def modify_doc_es_doc_type(doc_ids):
 # 移动文件到指定目录
 @blue_print.route('/move_doc_to_catalog', methods=['POST'])
 def move_doc_to_catalog():
-    catalog_id = request.json.get('catalog_id', 0)
-    doc_ids = request.json.get('doc_ids', [])
+    catalog_uuid = request.json.get('catalog_uuid', '')
+    doc_uuids = request.json.get('doc_uuids', [])
 
     try:
 
-        catalog = Catalog.query.filter_by(id=catalog_id).first()
+        catalog = Catalog.query.filter_by(uuid=catalog_uuid).first()
         if not catalog:
             res = fail_res(msg="目标目录不存在")
         else:
-            docs = Document.query.filter(Document.id.in_(doc_ids)).all()
+            docs = Document.query.filter(Document.uuid.in_(doc_uuids)).all()
             if docs:
                 for doc in docs:
-                    document_same = Document.query.filter(Document.md5 == doc.md5, Document.id != doc.id).first()
-                    move_source_docs_to_target_catalog([doc], catalog_id)
+                    document_same = Document.query.filter(Document.md5 == doc.md5, Document.uuid != doc.uuid).first()
+                    move_source_docs_to_target_catalog([doc], catalog_uuid)
                     res = success_res()
             else:
                 res = fail_res(msg="移动文档不存在")
@@ -509,26 +515,26 @@ def move_doc_to_catalog():
 
 # 移动文件到指定目录
 def move_source_docs_to_target_catalog(source_docs=[], target_catalog_id=0):
-    target_docs = Document.query.filter_by(catalog_id=target_catalog_id).all()
+    target_docs = Document.query.filter_by(catalog_uuid=target_catalog_id).all()
 
     # 重名：判断和处理重名文件；否则直接移动
     del_doc_id = []
-    save_target_docs_dict = {i.md5: i for i in target_docs if i.md5 and i.id}
+    save_target_docs_dict = {i.md5: i for i in target_docs if i.md5 and i.uuid}
     for source_doc_item in source_docs:
         if source_doc_item.md5 in save_target_docs_dict:
             target_doc_item = save_target_docs_dict[source_doc_item.md5]
             if target_doc_item.status < 2 and source_doc_item.status > 1:
                 # 目标文件未标注，移动文件已标注，删除目标文件
-                del_doc_id.append(target_doc_item.id)
-                source_doc_item.catalog_id = target_catalog_id
-                modify_doc_es_doc_type([source_doc_item.id])
+                del_doc_id.append(target_doc_item.uuid)
+                source_doc_item.catalog_uuid = target_catalog_id
+                modify_doc_es_doc_type([str(source_doc_item.uuid)])
                 db.session.commit()
             else:
                 # 目标文件已标注，删除移动文件
-                del_doc_id.append(source_doc_item.id)
+                del_doc_id.append(source_doc_item.uuid)
         else:
-            source_doc_item.catalog_id = target_catalog_id
-            modify_doc_es_doc_type([source_doc_item.id])
+            source_doc_item.catalog_uuid = target_catalog_id
+            modify_doc_es_doc_type([str(source_doc_item.uuid)])
             db.session.commit()
     delete_doc_in_pg_es(del_doc_id)
 
@@ -538,8 +544,8 @@ def move_source_docs_to_target_catalog(source_docs=[], target_catalog_id=0):
 # @swag_from(get_content_dict)
 def get_content():
     try:
-        doc_id = request.args.get('doc_id')
-        doc = Document.query.filter_by(id=doc_id).first()
+        doc_uuid = request.args.get('doc_uuid')
+        doc = Document.query.filter_by(uuid=doc_uuid).first()
         res = doc.content if doc else []
     except Exception as e:
         print(str(e))
@@ -552,11 +558,11 @@ def get_content():
 # @swag_from(modify_doc_info_dict)
 def modify_doc_info():
     try:
-        doc_id = request.json.get('doc_id', 0)
+        doc_uuid = request.json.get('doc_uuid', "")
         name = request.json.get('name', '')
         status = request.json.get('status', 0)
 
-        doc = Document.query.filter_by(id=doc_id).first()
+        doc = Document.query.filter_by(uuid=doc_uuid).first()
         if not doc:
             res = fail_res()
         else:
@@ -570,7 +576,7 @@ def modify_doc_info():
             url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
             header = {"Content-Type": "application/json; charset=UTF-8"}
             search_json = {
-                "id": {"type": "id", "value": doc_id}
+                "uuid": {"type": "id", "value": doc_uuid}
             }
 
             es_id_para = {"search_index": "document", "search_json": search_json}
@@ -601,22 +607,23 @@ def modify_doc_info():
 @blue_print.route('/del_doc', methods=['POST'])
 # @swag_from(del_doc_dict)
 def del_doc():
-    doc_ids = request.json.get('doc_ids', [])
-    customer_id = request.json.get('customer_id', 0)
+    doc_uuids = request.json.get('doc_uuids', [])
+    customer_uuid = request.json.get('customer_uuid', "")
     permission_flag = False
     status_flag = False
     try:
-        customer = Customer.query.filter_by(id=customer_id).first()
+        customer = Customer.query.filter_by(uuid=customer_uuid).first()
+        print(customer.uuid)
         if customer:
             del_doc_ids = []
-            for doc_id in doc_ids:
-                doc = Document.query.filter_by(id=doc_id).first()
+            for doc_uuid in doc_uuids:
+                doc = Document.query.filter_by(uuid=doc_uuid).first()
                 if doc:
                     if doc.get_power() > customer.get_power():
                         permission_flag = True
                     else:
                         if doc.status < 2:
-                            del_doc_ids.append(doc.id)
+                            del_doc_ids.append(str(doc.uuid))
                         else:
                             status_flag = True
 
@@ -652,8 +659,8 @@ def del_doc():
 # 真实删除doc操作
 def delete_doc_in_pg_es(doc_ids):
     try:
-        for doc_id in doc_ids:
-            doc = Document.query.filter_by(id=doc_id).first()
+        for doc_uuid in doc_ids:
+            doc = Document.query.filter_by(uuid=doc_uuid).first()
             if doc:
                 db.session.delete(doc)
                 db.session.commit()
@@ -663,7 +670,7 @@ def delete_doc_in_pg_es(doc_ids):
         for doc_id in doc_ids:
             header = {"Content-Type": "application/json; charset=UTF-8"}
             search_json = {
-                'id': {'type': 'id', 'value': doc_id}
+                'uuid': {'type': 'id', 'value': doc_uuid}
             }
             es_id_para = {"search_index": "document", "search_json": search_json}
 
@@ -691,9 +698,9 @@ def get_upload_history():
     try:
         current_page = request.args.get('cur_page', 1, type=int)
         page_size = request.args.get('page_size', 10, type=int)
-        customer_id = request.args.get('customer_id', 0, type=int)
+        customer_uuid = request.args.get('customer_uuid', "")
 
-        pagination = Document.query.filter_by(create_by=customer_id).order_by(Document.create_time.desc()).paginate(
+        pagination = Document.query.filter_by(create_by_uuid=customer_uuid).order_by(Document.create_time.desc()).paginate(
             current_page, page_size, False)
 
         data = [{
@@ -720,24 +727,24 @@ def get_upload_history():
 # @swag_from(get_info_dict)
 def get_info():
     try:
-        doc_id = request.args.get('doc_id', 0, type=int)
-        doc = Document.query.filter_by(id=doc_id).first()
-        customer = Customer.query.filter_by(id=doc.create_by, valid=1).first()
+        doc_uuid = request.args.get('doc_uuid', "")
+
+        doc = Document.query.filter_by(uuid=doc_uuid).first()
+        customer = Customer.query.filter_by(uuid=doc.create_by_uuid, valid=1).first()
         permission = Permission.query.filter_by(id=customer.permission_id, valid=1).first()
         permission_list = Permission.query.filter_by(valid=1).all()
         lower_permission_id_list = []
 
         if not doc:
             doc_info = {
-                "id": "",
+                "uuid": "",
                 "name": "",
                 "category": "",
                 "create_time": "",
                 "keywords": [],
                 "pre_doc_id": 0,
                 "next_doc_id": 0,
-                "favorite": 0,
-                "html_path":""
+                "favorite": 0
             }
         else:
 
@@ -749,40 +756,39 @@ def get_info():
                     lower_permission_id_list.append(item.id)
 
             documentPrevious = Document.query.filter(Document.permission_id.in_(lower_permission_id_list),
-                                                     Document.catalog_id == doc.catalog_id,
+                                                     Document.catalog_uuid == doc.catalog_uuid,
                                                      Document.create_time < doc.create_time).order_by(
                 Document.create_time.desc()).first()
             documentNext = Document.query.filter(Document.permission_id.in_(lower_permission_id_list),
-                                                 Document.catalog_id == doc.catalog_id,
+                                                 Document.catalog_uuid == doc.catalog_uuid,
                                                  Document.create_time > doc.create_time).order_by(
                 Document.create_time).first()
             # ----------------------- 获取上下篇文章 END --------------------------
 
             # ----------------------- 根据目录id，获取根目录tab权限 -----------------------
             flag, ancestorn_catalog_tagging_tabs = True, []
-            if doc.catalog_id:
-                catalog = Catalog.query.filter_by(id=doc.catalog_id).first()
+            if doc.catalog_uuid:
+                catalog = Catalog.query.filter_by(uuid=doc.catalog_uuid).first()
                 if catalog:
-                    an_catalog = Catalog.get_ancestorn_catalog(catalog.id)
+                    an_catalog = Catalog.get_ancestorn_catalog(catalog.uuid)
                     if an_catalog:
                         flag, ancestorn_catalog_tagging_tabs = True, an_catalog.tagging_tabs
             # ----------------------- 根据目录id，获取根目录tab权限 END -----------------------
 
             doc_info = {
-                "id": doc.id,
+                "uuid": doc.uuid,
                 "name": doc.name,
                 "category": doc.category,
                 "create_time": doc.create_time.strftime('%Y-%m-%d %H:%M:%S'),
                 "keywords": doc.keywords if doc.keywords else [],
-                "pre_doc_id": documentPrevious.id if documentPrevious else 0,
-                "next_doc_id": documentNext.id if documentNext else 0,
+                "pre_doc_id": documentPrevious.uuid if documentPrevious else None,
+                "next_doc_id": documentNext.uuid if documentNext else None,
                 "tagging_tabs": ancestorn_catalog_tagging_tabs if flag else [],
-                "favorite": doc.is_favorite,
-                "html_path": doc.html_path
+                "favorite": doc.is_favorite
             }
     except Exception as e:
         print(str(e))
-        doc_info = {"id": "",
+        doc_info = {"uuid": "",
                     "name": "",
                     "category": "",
                     "create_time": "",
@@ -801,7 +807,7 @@ def get_info():
 def get_entity_in_list_pagination():
     try:
         search = request.args.get("search", "")
-        customer_id = request.args.get("customer_id", 0, type=int)
+        customer_uuid = request.args.get("customer_uuid", "")
         cur_page = request.args.get("cur_page", 1, type=int)
         page_size = request.args.get("page_size", 10, type=int)
 
@@ -812,15 +818,15 @@ def get_entity_in_list_pagination():
         if search:
             entitiy = Entity.query.filter(or_(Entity.name == search, Entity.synonyms.has_key(search))).first()
             if entitiy:
-                category = EntityCategory.query.filter_by(id=entitiy.category_id, valid=1).first()
+                category = EntityCategory.query.filter_by(uuid=entitiy.category_uuid, valid=1).first()
                 if category.name == PLACE_BASE_NAME:
-                    doc_mark_place_list = DocMarkPlace.query.filter_by(place_id=entitiy.id, valid=1).all()
+                    doc_mark_place_list = DocMarkPlace.query.filter_by(place_uuid=entitiy.uuid, valid=1).all()
                     for doc_mark_place in doc_mark_place_list:
-                        doc_id_list.append(doc_mark_place.doc_id)
+                        doc_id_list.append(doc_mark_place.doc_uuid)
                 else:
-                    doc_mark_entity_list = DocMarkEntity.query.filter_by(entity_id=entitiy.id, valid=1).all()
+                    doc_mark_entity_list = DocMarkEntity.query.filter_by(entity_uuid=entitiy.uuid, valid=1).all()
                     for doc_mark_entity in doc_mark_entity_list:
-                        doc_id_list.append(doc_mark_entity.doc_id)
+                        doc_id_list.append(str(doc_mark_entity.doc_uuid))
 
                 # if YC_ROOT_URL:
                 #     url = YC_ROOT_URL + "/doc/get_entity_in_list_pagination"
@@ -834,8 +840,8 @@ def get_entity_in_list_pagination():
                     #rows = json.loads(resp.text).get("rows", [])
                     data = []
                     leader_ids = get_leader_ids()
-                    for doc_id in list(set(doc_id_list)):
-                        doc = Document.query.filter_by(id=doc_id).first()
+                    for doc_uuid in list(set(doc_id_list)):
+                        doc = Document.query.filter_by(uuid=doc_uuid).first()
                         if doc:
                             # i['name'] = doc.name
                             # i['create_username'] = Customer.get_username_by_id(doc.create_by)
@@ -845,25 +851,56 @@ def get_entity_in_list_pagination():
                             # i['status'] = doc.get_status_name()
                             # i['permission'] = 1 if Permission.judge_power(customer_id, doc.id) else 0
                             if leader_ids:
-                                doc_mark_comments = DocMarkComment.query.filter(DocMarkComment.doc_id == doc.id,
-                                                                                DocMarkComment.create_by.in_(
+                                doc_mark_comments = DocMarkComment.query.filter(DocMarkComment.doc_uuid == doc.uuid,
+                                                                                DocMarkComment.create_by_uuid.in_(
                                                                                     leader_ids),
                                                                                 DocMarkComment.valid == 1).all()
                                 #i["leader_operate"] = 1 if doc_mark_comments else 0
                                 res = {
+                                    "uuid": doc.uuid,
                                     "name": doc.name,
-                                    "create_username": Customer.get_username_by_id(doc.create_by),
+                                    "create_time":doc.create_time.strftime('%Y-%m-%d %H:%M:%S'),
+                                    "create_username": Customer.get_username_by_id(doc.create_by_uuid),
                                     'path': doc.get_full_path() if doc.get_full_path() else '已失效',
                                     'extension': doc.category,
                                     "tag_flag": 1 if doc.status == 1 else 0,
                                     'status': doc.get_status_name(),
-                                    'permission': 1 if Permission.judge_power(customer_id, doc.id) else 0,
+                                    'permission': 1 if Permission.judge_power(customer_uuid, doc.uuid) else 0,
                                     'leader_operate': 1 if doc_mark_comments else 0
                                 }
                             data.append(res)
                     res = {"data": data,
                            "page_count": int(len(data) / page_size) + 1,
                            "total_count": len(data)}
+        else:
+            data = []
+            leader_ids = get_leader_ids()
+
+            pagination = Document.query.filter().order_by(Document.create_time.desc()).paginate(cur_page, page_size, False)
+            #pagination = Document.query.filter().order_by(Document.create_time.desc()).limit(100).offset(100).all()
+            if leader_ids:
+                for doc in pagination.items:
+                    doc_mark_comments = DocMarkComment.query.filter(DocMarkComment.doc_uuid == doc.uuid,
+                                                                    DocMarkComment.create_by_uuid.in_(leader_ids),
+                                                                    DocMarkComment.valid == 1).all()
+
+
+                    data_res = {
+                        "name": doc.name,
+                        "create_time": doc.create_time.strftime('%Y-%m-%d %H:%M:%S'),
+                        "create_username": Customer.get_username_by_id(doc.create_by_uuid) if doc.create_by_uuid else "",
+                        'path': doc.get_full_path() if doc.get_full_path() else '已失效',
+                        'extension': doc.category,
+                        "tag_flag": 1 if doc.status == 1 else 0,
+                        'status': doc.get_status_name(),
+                        'permission': 1 if Permission.judge_power(customer_uuid, doc.uuid) else 0,
+                        'leader_operate': 1 if doc_mark_comments else 0
+                    }
+                    data.append(data_res)
+
+                res = {"data": data,
+                       "page_count": int(len(data) / page_size) + 1,
+                       "total_count": len(data)}
 
     except Exception as e:
         print(str(e))
@@ -878,10 +915,10 @@ def get_entity_in_list_pagination():
 @blue_print.route('/judge_doc_permission', methods=['GET'])
 # @swag_from(judge_doc_permission_dict)
 def judge_doc_permission():
-    customer_id = request.args.get("customer_id", 0, type=int)
-    doc_id = request.args.get("doc_id", 0, type=int)
-    doc = Document.query.filter_by(id=doc_id).first()
-    cus = Customer.query.filter_by(id=customer_id).first()
+    customer_uuid = request.args.get("customer_uuid", "")
+    doc_uuid = request.args.get("doc_uuid", "")
+    doc = Document.query.filter_by(uuid=doc_uuid).first()
+    cus = Customer.query.filter_by(uuid=customer_uuid).first()
     doc_power = doc.get_power() if doc else 0
     cus_power = cus.get_power() if cus else 0
     if cus_power:
@@ -900,7 +937,7 @@ def judge_doc_permission():
 # @swag_from(get_search_panigation_dict)
 def get_search_pagination():
     try:
-        customer_id = request.args.get("customer_id", 0, type=int)
+        customer_uuid = request.args.get("customer_uuid", "")
         search = request.args.get('search', "")
         search_type = request.args.get('search_type', "")
         page_size = request.args.get('page_size', 10, type=int)
@@ -924,17 +961,17 @@ def get_search_pagination():
         data = []
         leader_ids = get_leader_ids()
         for doc in search_result.json()['data']['dataList']:
-            doc_pg = Document.query.filter_by(id=doc['_source']['id']).first()
+            doc_pg = Document.query.filter_by(uuid=doc['_source']['id']).first()
             if doc_pg:
                 path = doc_pg.get_full_path() if doc_pg else '已失效'
-                create_username = Customer.get_username_by_id(doc_pg.create_by) if doc_pg else '无效用户'
+                create_username = Customer.get_username_by_id(doc_pg.create_by_uuid) if doc_pg else '无效用户'
                 if leader_ids:
-                    doc_mark_comments = DocMarkComment.query.filter(DocMarkComment.doc_id == doc_pg.id,
-                                                                    DocMarkComment.create_by.in_(leader_ids),
+                    doc_mark_comments = DocMarkComment.query.filter(DocMarkComment.doc_uuid == doc_pg.uuid,
+                                                                    DocMarkComment.create_by_uuid.in_(leader_ids),
                                                                     DocMarkComment.valid == 1).all()
 
                     data_item = {
-                        'id': doc['_source']['id'],
+                        'uuid': doc['_source']['id'], #修改es后改称uuid
                         'name': doc['_source']['name'],
                         'create_username': create_username,
                         'path': path,
@@ -942,7 +979,7 @@ def get_search_pagination():
                         'tag_flag': 1 if doc_pg.status == 1 else 0,
                         "status": doc_pg.get_status_name(),
                         'extension': doc_pg.category,
-                        "permission": 1 if Permission.judge_power(customer_id, doc_pg.id) else 0,
+                        "permission": 1 if Permission.judge_power(customer_uuid, doc_pg.uuid) else 0,
                         "leader_operate": 1 if doc_mark_comments else 0
                     }
                     data.append(data_item)
@@ -968,95 +1005,95 @@ def get_search_pagination():
     return jsonify(res)
 
 
-# 高级搜索
-@blue_print.route('/search_advanced', methods=['POST'])
-# @swag_from('../swagger/search_advanced.yml')
-def search_advanced():
-    try:
-        start_date = request.json.get('start_date', "")
-        end_date = request.json.get('end_date', "")
-        # 时间参数
-        date = request.json.get('date', [])
-        time_range = request.json.get('time_range', [])
-        time_period = request.json.get('time_period', [])
-        frequency = request.json.get('frequency', [])
-        # 地点参数
-        place = request.json.get('place', [])
-        place_direction_distance = request.json.get('place_direction_distance', [])
-        location = request.json.get('location', [])
-        degrees = request.json.get('degrees', [])
-        length = request.json.get('length', [])
-        route = request.json.get('route', [])
-
-        dates = request.json.get('dates', {})
-
-        if dates.get("date_type", False):
-            date_type = dates.get("date_type", "")
-            date_value = dates.get("value", None)
-            if date_type == 'date':
-                date = date_value
-            elif date_type == 'time_range':
-                time_range = date_value
-            elif date_type == 'time_period':
-                time_period = date_value
-            elif date_type == 'frequency':
-                frequency = date_value
-
-        places = request.json.get('places', {})
-        if places.get("place_type", False):
-            place_type = places.get("place_type", "")
-            place_value = places.get("value", None)
-            if place_type == 'place':
-                place = place_value
-            elif place_type == 'place_direction_distance':
-                place_direction_distance = place_value
-            elif place_type == 'location':
-                location = place_value
-            elif place_type == 'degrees':
-                degrees = place_value
-            elif place_type == 'length':
-                length = place_value
-            elif place_type == 'route':
-                route = place_value
-
-        # 搜索内容无关参数
-        customer_id = request.json.get('customer_id', 0)
-
-        # 其他搜索参数
-        entities = request.json.get('entities', [])
-        keywords = request.json.get('keywords', [])
-        event_categories = request.json.get('event_categories', {})
-        notes = request.json.get('notes', [])
-        notes_content = request.json.get('notes_content', [])
-        doc_type = request.json.get('doc_type', 0)
-        content = request.json.get('content', "")
-        url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
-        data_screen = get_es_doc(url, customer_id=customer_id, date=date, time_range=time_range,
-                                 time_period=time_period, frequency=frequency,
-                                 place=place, place_direction_distance=place_direction_distance, location=location,
-                                 degrees=degrees, length=length, route=route, entities=entities, keywords=keywords,
-                                 event_categories=event_categories,
-                                 notes=notes, doc_type=doc_type, content=content, notes_content=notes_content)
-
-        # 组装ids，和结构化数据
-        ids = []
-        for data in data_screen:
-            if data.get("id", False):
-                ids.append(data["id"])
-
-        event_list = get_event_list_from_docs()
-
-        final_data = {
-            "doc": data_screen,
-            "event_list": event_list
-        }
-    except Exception as e:
-        print("Exception: ", str(e))
-        final_data = {
-            "doc": [],
-            "event_list": []
-        }
-    return jsonify(final_data)  # doc:原来格式数据 event_list:事件数据
+# # 高级搜索
+# @blue_print.route('/search_advanced', methods=['POST'])
+# # @swag_from('../swagger/search_advanced.yml')
+# def search_advanced():
+#     try:
+#         start_date = request.json.get('start_date', "")
+#         end_date = request.json.get('end_date', "")
+#         # 时间参数
+#         date = request.json.get('date', [])
+#         time_range = request.json.get('time_range', [])
+#         time_period = request.json.get('time_period', [])
+#         frequency = request.json.get('frequency', [])
+#         # 地点参数
+#         place = request.json.get('place', [])
+#         place_direction_distance = request.json.get('place_direction_distance', [])
+#         location = request.json.get('location', [])
+#         degrees = request.json.get('degrees', [])
+#         length = request.json.get('length', [])
+#         route = request.json.get('route', [])
+#
+#         dates = request.json.get('dates', {})
+#
+#         if dates.get("date_type", False):
+#             date_type = dates.get("date_type", "")
+#             date_value = dates.get("value", None)
+#             if date_type == 'date':
+#                 date = date_value
+#             elif date_type == 'time_range':
+#                 time_range = date_value
+#             elif date_type == 'time_period':
+#                 time_period = date_value
+#             elif date_type == 'frequency':
+#                 frequency = date_value
+#
+#         places = request.json.get('places', {})
+#         if places.get("place_type", False):
+#             place_type = places.get("place_type", "")
+#             place_value = places.get("value", None)
+#             if place_type == 'place':
+#                 place = place_value
+#             elif place_type == 'place_direction_distance':
+#                 place_direction_distance = place_value
+#             elif place_type == 'location':
+#                 location = place_value
+#             elif place_type == 'degrees':
+#                 degrees = place_value
+#             elif place_type == 'length':
+#                 length = place_value
+#             elif place_type == 'route':
+#                 route = place_value
+#
+#         # 搜索内容无关参数
+#         customer_uuid = request.json.get('customer_uuid', "")
+#
+#         # 其他搜索参数
+#         entities = request.json.get('entities', [])
+#         keywords = request.json.get('keywords', [])
+#         event_categories = request.json.get('event_categories', {})
+#         notes = request.json.get('notes', [])
+#         notes_content = request.json.get('notes_content', [])
+#         doc_type = request.json.get('doc_type', 0)
+#         content = request.json.get('content', "")
+#         url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+#         data_screen = get_es_doc(url, customer_uuid=customer_uuid, date=date, time_range=time_range,
+#                                  time_period=time_period, frequency=frequency,
+#                                  place=place, place_direction_distance=place_direction_distance, location=location,
+#                                  degrees=degrees, length=length, route=route, entities=entities, keywords=keywords,
+#                                  event_categories=event_categories,
+#                                  notes=notes, doc_type=doc_type, content=content, notes_content=notes_content)
+#
+#         # 组装ids，和结构化数据
+#         ids = []
+#         for data in data_screen:
+#             if data.get("uuid", False):
+#                 ids.append(data["uuid"])
+#
+#         event_list = get_event_list_from_docs()
+#
+#         final_data = {
+#             "doc": data_screen,
+#             "event_list": event_list
+#         }
+#     except Exception as e:
+#         print("Exception: ", str(e))
+#         final_data = {
+#             "doc": [],
+#             "event_list": []
+#         }
+#     return jsonify(final_data)  # doc:原来格式数据 event_list:事件数据
 
 
 # 高级搜索 doc_type
@@ -1111,7 +1148,7 @@ def search_advanced_doc_type():
                 route = place_value
 
         # 搜索内容无关参数
-        customer_id = request.json.get('customer_id', 0)
+        customer_uuid = request.json.get('customer_uuid', "")
         page_size = request.json.get('page_size', 10)
         cur_page = request.json.get('cur_page', 1)
 
@@ -1125,7 +1162,7 @@ def search_advanced_doc_type():
         content = request.json.get('content', "")
         url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
 
-        data_screen = get_es_doc(url, customer_id=customer_id, date=date, time_range=time_range,
+        data_screen = get_es_doc(url, customer_uuid=customer_uuid, date=date, time_range=time_range,
                                  time_period=time_period, frequency=frequency,
                                  place=place, place_direction_distance=place_direction_distance, location=location,
                                  degrees=degrees, length=length, route=route, entities=entities, keywords=keywords,
@@ -1137,12 +1174,12 @@ def search_advanced_doc_type():
         data_by_doc_id = {}
         for data in data_screen:
             if not data["name"]:
-                doc = Document.query.filter_by(id=data['id']).first()
+                doc = Document.query.filter_by(uuid=data['uuid']).first()
                 if doc:
                     data["name"] = doc.name if doc else ""
             if data["name"]:
-                if data.get("id", False):
-                    doc_ids.append(data["id"])
+                if data.get("uuid", False):
+                    doc_ids.append(data["uuid"])
                 if data.get("doc_type", False):
                     if data_by_doc_id.get(data["doc_type"], False) and len(
                             data_by_doc_id[data["doc_type"]]) <= page_size:
@@ -1171,18 +1208,18 @@ def search_advanced_doc_type():
     return jsonify(res)  # doc:原来格式数据 event_list:事件数据
 
 
-def get_event_list_from_docs(doc_ids=[], start_date='1000-01-01', end_date='9999-12-31'):
+def get_event_list_from_docs(doc_uuids=[], start_date='1000-01-01', end_date='9999-12-31'):
     # <editor-fold desc="construct into event_list from docs order by event_time">
     event_list = []
-    if doc_ids:
-        events = DocMarkEvent.query.filter(DocMarkEvent.doc_id.in_(doc_ids)).all()
+    if doc_uuids:
+        events = DocMarkEvent.query.filter(DocMarkEvent.doc_uuid.in_(doc_uuids),DocMarkEvent.valid == 1).all()
         for i in events:
             if i.event_address and isinstance(i.event_address, list):
-                place_ids = DocMarkPlace.query.with_entities(DocMarkPlace.place_id).filter(
-                    DocMarkPlace.id.in_(i.event_address)).all()
-                if place_ids:
-                    place_ids = [i[0] for i in place_ids]
-                    places = Entity.query.filter(Entity.id.in_(place_ids), Entity.valid == 1).all()
+                place_uuids = DocMarkPlace.query.with_entities(DocMarkPlace.place_uuid).filter(
+                    DocMarkPlace.uuid.in_(i.event_address),DocMarkPlace.valid == 1).all()
+                if place_uuids:
+                    place_uuids = [str(i[0]) for i in place_uuids]
+                    places = Entity.query.filter(Entity.uuid.in_(place_uuids), Entity.valid == 1).all()
                     if places:
                         objects, subjects, form_time = [], [], ""
 
@@ -1190,11 +1227,11 @@ def get_event_list_from_docs(doc_ids=[], start_date='1000-01-01', end_date='9999
                             object_id_list = i.event_object
                             if i.event_subject:
                                 object_id_list.extend(i.event_subject)
-                            object_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_id).filter(
-                                DocMarkEntity.id.in_(object_id_list)).all()
+                            object_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_uuid).filter(
+                                DocMarkEntity.uuid.in_(object_id_list),DocMarkEntity.valid == 1).all()
                             if object_ids:
-                                object_ids = [i[0] for i in object_ids]
-                                objects = Entity.query.filter(Entity.id.in_(object_ids), Entity.valid == 1).all()
+                                object_ids = [str(i[0]) for i in object_ids]
+                                objects = Entity.query.filter(Entity.uuid.in_(object_ids), Entity.valid == 1).all()
 
                         # subject和object结合，返回给前端
 
@@ -1202,7 +1239,7 @@ def get_event_list_from_docs(doc_ids=[], start_date='1000-01-01', end_date='9999
                             if i.event_time and isinstance(i.event_time, list):
                                 mark_time_ids = i.event_time
                                 times = DocMarkTimeTag.query.with_entities(DocMarkTimeTag.format_date, DocMarkTimeTag.format_date_end).filter(
-                                    DocMarkTimeTag.id.in_(mark_time_ids),
+                                    DocMarkTimeTag.uuid.in_(mark_time_ids),DocMarkTimeTag.valid == 1,
                                     or_(and_(DocMarkTimeTag.format_date.between(start_date, end_date),
                                              DocMarkTimeTag.time_type == 1),
                                         and_(DocMarkTimeTag.format_date > start_date,
@@ -1221,13 +1258,13 @@ def get_event_list_from_docs(doc_ids=[], start_date='1000-01-01', end_date='9999
                                         "place": [{
                                             "place_lat": place.latitude,
                                             "place_lon": place.longitude,
-                                            "place_id": place.id,
+                                            "place_id": place.uuid,
                                             # "type": 1,
                                             "word": place.name,
                                         } for place in places],
                                         "title": i.title,
                                         "object": [i.name for i in objects],
-                                        "event_id": i.id
+                                        "event_id": i.uuid
                                     }
                                     event_list.append(item)
         # </editor-fold>
@@ -1240,31 +1277,31 @@ def get_event_list_from_docs_group_by_entities(doc_ids=[]):
     event_list = []
     if doc_ids:
         event_dict = {}
-        events = DocMarkEvent.query.filter(DocMarkEvent.doc_id.in_(doc_ids)).all()
+        events = DocMarkEvent.query.filter(DocMarkEvent.doc_uuid.in_(doc_ids),DocMarkEvent.valid == 1).all()
         for i in events:
             if i.event_address and isinstance(i.event_address, list):
-                place_ids = DocMarkPlace.query.with_entities(DocMarkPlace.place_id).filter(
-                    DocMarkPlace.id.in_(i.event_address)).all()
+                place_ids = DocMarkPlace.query.with_entities(DocMarkPlace.place_uuid).filter(
+                    DocMarkPlace.uuid.in_(i.event_address)).all()
                 if place_ids:
-                    place_ids = [i[0] for i in place_ids]
-                    places = Entity.query.filter(Entity.id.in_(place_ids), Entity.valid == 1).all()
+                    place_ids = [str(i[0]) for i in place_ids]
+                    places = Entity.query.filter(Entity.uuid.in_(place_ids), Entity.valid == 1).all()
                     if places:
                         object_ids, subject_ids = [], []
                         objects, subjects, form_time = [], [], []
 
                         if i.event_object and isinstance(i.event_object, list):
-                            object_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_id).filter(
-                                DocMarkEntity.id.in_(i.event_object)).all()
+                            object_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_uuid).filter(
+                                DocMarkEntity.uuid.in_(i.event_object),DocMarkEntity.valid == 1).all()
                             if object_ids:
-                                object_ids = [i[0] for i in object_ids]
-                                objects = Entity.query.filter(Entity.id.in_(object_ids), Entity.valid == 1).all()
+                                object_ids = [str(i[0]) for i in object_ids]
+                                objects = Entity.query.filter(Entity.uuid.in_(object_ids), Entity.valid == 1).all()
 
                         if i.event_subject and isinstance(i.event_subject, list):
-                            subject_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_id).filter(
-                                DocMarkEntity.id.in_(i.event_subject)).all()
+                            subject_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_uuid).filter(
+                                DocMarkEntity.uuid.in_(i.event_subject),DocMarkEntity.valid == 1).all()
                             if subject_ids:
-                                subject_ids = [i[0] for i in subject_ids]
-                                subjects = Entity.query.filter(Entity.id.in_(subject_ids), Entity.valid == 1).all()
+                                subject_ids = [str(i[0]) for i in subject_ids]
+                                subjects = Entity.query.filter(Entity.uuid.in_(subject_ids), Entity.valid == 1).all()
 
                         # subject和object结合，返回给前端
                         objects.extend(subjects)
@@ -1272,7 +1309,7 @@ def get_event_list_from_docs_group_by_entities(doc_ids=[]):
                             if i.event_time and isinstance(i.event_time, list):
                                 mark_time_ids = i.event_time
                                 times = DocMarkTimeTag.query.with_entities(DocMarkTimeTag.format_date, DocMarkTimeTag.format_date_end).filter(
-                                    DocMarkTimeTag.id.in_(mark_time_ids),
+                                    DocMarkTimeTag.uuid.in_(mark_time_ids),DocMarkTimeTag.valid == 1,
                                     DocMarkTimeTag.time_type.in_(['1', '2'])).all()
                                 if times[0]:
                                     form_time.append(times[0])
@@ -1287,13 +1324,13 @@ def get_event_list_from_docs_group_by_entities(doc_ids=[]):
                                     "place": [{
                                         "place_lat": place.latitude,
                                         "place_lon": place.longitude,
-                                        "place_id": place.id,
+                                        "place_id": place.uuid,
                                         # "type": 1,
                                         "word": place.name,
                                     } for place in places],
                                     "title": i.title,
                                     "object": [i.name for i in objects],
-                                    "event_id": i.id
+                                    "event_id": i.uuid
                                 }
                                 if event_dict.get(timeline_key, []):
                                     event_dict[timeline_key].append(item)
@@ -1305,13 +1342,13 @@ def get_event_list_from_docs_group_by_entities(doc_ids=[]):
 
 
 def get_doc_events_to_earth(doc_ids):
-    doc_mark_event_list = DocMarkEvent.query.filter(DocMarkEvent.doc_id.in_(doc_ids)).all()
+    doc_mark_event_list = DocMarkEvent.query.filter(DocMarkEvent.doc_uuid.in_(doc_ids)).all()
     result = []
     for doc_mark_event in doc_mark_event_list:
         places = doc_mark_event.get_places()
         place_list = [{
             "word": i.word,
-            "place_id": i.place_id,
+            "place_uuid": i.place_uuid,
             "place_lon": i.place_lon,
             "place_lat": i.place_lat
         } for i in places if i.place_lon and i.place_lat]
@@ -1333,7 +1370,7 @@ def get_doc_events_to_earth(doc_ids):
                         "object": object_list,
                         "datetime": datetime,
                         "place": place_list,
-                        "event_id": doc_mark_event.id})
+                        "event_uuid": doc_mark_event.uuid})
     res = sorted(result, key=lambda x: x.get('datetime', '')[0])
     return res
 
@@ -1347,7 +1384,7 @@ def get_doc_events_to_earth_by_entities(doc_ids):
         places = doc_mark_event.get_places()
         place_list = [{
             "word": i.word,
-            "place_id": i.place_id,
+            "place_uuid": i.place_uuid,
             "place_lon": i.place_lon,
             "place_lat": i.place_lat
         } for i in places if i.place_lon and i.place_lat]
@@ -1375,7 +1412,7 @@ def get_doc_events_to_earth_by_entities(doc_ids):
                     "place": place_list,
                     "title": doc_mark_event.title,
                     "object": object_uni_list,
-                    "event_id": doc_mark_event.id
+                    "event_uuid": doc_mark_event.uuid
                 }
 
                 if event_dict.get(timeline_key, []):
@@ -1391,10 +1428,10 @@ def get_doc_events_to_earth_by_entities(doc_ids):
 @blue_print.route('/screen_event_by_time_range', methods=['POST'])
 def get_events_by_doc_ids_and_time_range():
     try:
-        doc_ids = request.json.get('doc_ids', [])
+        doc_uuids = request.json.get('doc_uuids', [])
         start_time = request.json.get('start_time', '1900-01-01')
         end_time = request.json.get('end_time', '9999-12-31')
-        res = get_event_list_from_docs(doc_ids, start_time, end_time)
+        res = get_event_list_from_docs(doc_uuids, start_time, end_time)
     except Exception as e:
         print(str(e))
         res = []
@@ -1449,7 +1486,7 @@ def search_advanced_pagination():
         elif place_type == 'route':
             route = place_value
     # 搜索内容无关参数
-    customer_id = request.json.get('customer_id', 0)
+    customer_uuid = request.json.get('customer_uuid', '')
     page_size = request.json.get('page_size', 10)
     cur_page = request.json.get('cur_page', 1)
 
@@ -1462,7 +1499,7 @@ def search_advanced_pagination():
     doc_type = request.json.get('doc_type', 0)
     content = request.json.get('content', "")
     url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
-    data_screen = get_es_doc(url, customer_id=customer_id, date=date, time_range=time_range,
+    data_screen = get_es_doc(url, customer_uuid=customer_uuid, date=date, time_range=time_range,
                              time_period=time_period, frequency=frequency,
                              place=place, place_direction_distance=place_direction_distance, location=location,
                              degrees=degrees, length=length, route=route, entities=entities, keywords=keywords,
@@ -1472,19 +1509,19 @@ def search_advanced_pagination():
     data_screen_res = []
     leader_ids = get_leader_ids()
     for data in data_screen:
-        doc = Document.query.filter_by(id=data['id']).first()
+        doc = Document.query.filter_by(uuid=data['uuid']).first()
         if doc:
             if not data["name"]:
                 data["name"] = doc.name if doc else ""
-            data['create_username'] = Customer.get_username_by_id(doc.create_by)
+            data['create_username'] = Customer.get_username_by_id(doc.create_by_uuid)
             data['path'] = doc.get_full_path() if doc.get_full_path() else '已失效'
             data['extension'] = doc.category
             data['tag_flag'] = 1 if doc.status == 1 else 0
             data['status'] = doc.get_status_name()
-            data['permission'] = 1 if Permission.judge_power(customer_id, doc.id) else 0
+            data['permission'] = 1 if Permission.judge_power(customer_uuid, doc.uuid) else 0
             if leader_ids:
-                doc_mark_comments = DocMarkComment.query.filter(DocMarkComment.doc_id == doc.id,
-                                                                DocMarkComment.create_by.in_(
+                doc_mark_comments = DocMarkComment.query.filter(DocMarkComment.doc_uuid == doc.uuid,
+                                                                DocMarkComment.create_by_uuid.in_(
                                                                     leader_ids),
                                                                 DocMarkComment.valid == 1).all()
                 data["leader_operate"] = 1 if doc_mark_comments else 0
@@ -1523,7 +1560,7 @@ def search_advanced_pagination():
 def save_tagging_result():
     try:
 
-        doc_id = request.json.get('doc_id', 0)
+        doc_uuid = request.json.get('doc_uuid','')
         date = request.json.get('date', [])
         time_range = request.json.get('time_range', [])
         time_period = request.json.get('time_period', [])
@@ -1540,8 +1577,8 @@ def save_tagging_result():
         notes_content = request.json.get('notes_content', [])
         keywords = request.json.get('keywords', [])
         doc_type = request.json.get('doc_type', 0)
-        if not doc_id:
-            res = fail_res(msg="No doc_id")
+        if not doc_uuid:
+            res = fail_res(msg="No doc_uuid")
         else:
             # 替换相应属性,修改es已有doc,如果传递参数做修改，没有传的参数不做修改
             key_value_json = {}
@@ -1583,7 +1620,7 @@ def save_tagging_result():
             url = f"http://{ES_SERVER_IP}:{ES_SERVER_PORT}"
             header = {"Content-Type": "application/json; charset=UTF-8"}
             search_json = {
-                "id": {"type": "id", "value": doc_id}
+                "id": {"type": "id", "value": doc_uuid}
             }
             es_id_para = {"search_index": "document", "search_json": search_json}
 
@@ -1598,7 +1635,7 @@ def save_tagging_result():
                 requests.post(url + '/updatebyId', data=json.dumps(inesert_para), headers=header)
                 res = success_res()
             else:
-                res = fail_res(msg="can't find doc by doc_id in ES")
+                res = fail_res(msg="can't find doc by doc_uuid in ES")
     except Exception as e:
         print(str(e))
         db.session.rollback()
@@ -1611,10 +1648,10 @@ def save_tagging_result():
 # @swag_from(get_latest_upload_file_tagging_url)
 def get_latest_upload_file_tagging_url():
     try:
-        customer_id = request.args.get("uid", 0, type=int)
-        doc = Document.query.filter_by(create_by=customer_id).order_by(Document.id.desc()).first()
-        if doc and customer_id:
-            url = YC_TAGGING_PAGE_URL + "?doc_id={0}&uid={1}&edit=1".format(doc.id, customer_id)
+        customer_uuid = request.args.get("uuid", '')
+        doc = Document.query.filter_by(create_by_uuid=customer_uuid).first()
+        if doc and customer_uuid:
+            url = YC_TAGGING_PAGE_URL + "?doc_id={0}&uid={1}&edit=1".format(doc.uuid, customer_uuid)
             res = success_res(data=url)
         else:
             res = fail_res(data="/#")
@@ -1629,23 +1666,16 @@ def get_latest_upload_file_tagging_url():
 # @swag_from(set_favorite)
 def set_favorite():
     try:
-        doc_id = request.json.get("doc_id", 0)
+        doc_uuid = request.json.get("doc_uuid", '')
         favorite = request.json.get("favorite", 0)
-        print(type(doc_id))
-        if isinstance(doc_id, str) and not doc_id.isdigit():
-            res = fail_res(msg="文档id格式有误")
-        elif isinstance(favorite, str) and not favorite.isdigit():
-            res = fail_res(msg="收藏参数有误")
+        favorite = int(favorite)
+        doc = Document.query.filter_by(uuid=doc_uuid).first()
+        if doc:
+            doc.is_favorite = favorite
+            db.session.commit()
+            res = success_res()
         else:
-            doc_id = int(doc_id)
-            favorite = int(favorite)
-            doc = Document.query.filter_by(id=doc_id).first()
-            if doc:
-                doc.is_favorite = favorite
-                db.session.commit()
-                res = success_res()
-            else:
-                res = fail_res(msg="文档不存在")
+            res = fail_res(msg="文档不存在")
     except Exception as e:
         print(str(e))
         res = fail_res()
@@ -1655,7 +1685,7 @@ def set_favorite():
 # ——————————————————————— 文档抽取、删选 —————————————————————————————
 
 
-def get_es_doc(url, customer_id=0, date=[], time_range=[], time_period=[], place=[], place_direction_distance=[],
+def get_es_doc(url, customer_uuid=0, date=[], time_range=[], time_period=[], place=[], place_direction_distance=[],
                location=[], degrees=[], length=[], route=[], entities=[], keywords=[], event_categories={}, notes=[],
                doc_type=0, content="", frequency=[], notes_content=[]):
     search_json = {}
@@ -1727,16 +1757,16 @@ def screen_doc(data_inppt, time_range=[], degrees=[], entities=[], event_categor
         screen_dict["entities"]["name"] = []
         screen_dict["entities"]["value"] = []
         for ent in entities:
-            if ent["entity"] and ent["category_id"]:
-                screen_dict["entities"]["entities"].append({ent["entity"]: ent["category_id"]})
-            elif ent["entity"] and not ent["category_id"]:
+            if ent["entity"] and ent["category_uuid"]:
+                screen_dict["entities"]["entities"].append({ent["entity"]: ent["category_uuid"]})
+            elif ent["entity"] and not ent["category_uuid"]:
                 screen_dict["entities"]["name"].append(ent["entity"])
-            elif not ent["entity"] and ent["category_id"]:
-                screen_dict["entities"]["value"].append(ent["category_id"])
+            elif not ent["entity"] and ent["category_uuid"]:
+                screen_dict["entities"]["value"].append(ent["category_uuid"])
     if event_categories:
         screen_dict["event_categories"] = []
         for eve in event_categories:
-            screen_dict["event_categories"].append({eve["event_class"]: eve["event_category_id"]})
+            screen_dict["event_categories"].append({eve["event_class"]: eve["event_category_uuid"]})
 
     true_value = len(screen_dict)
 
@@ -1777,13 +1807,13 @@ def screen_doc(data_inppt, time_range=[], degrees=[], entities=[], event_categor
 
             entities_names = [ent["name"] for ent in doc["entities"]]
 
-            entities_values = [ent["category_id"] for ent in doc["entities"]]
+            entities_values = [ent["category_uuid"] for ent in doc["entities"]]
 
             screen_entity_list = []
 
             for entity in screen_dict["entities"]["entities"]:
                 key = list(entity.keys())[0]
-                screen_entity_list.append({"name": key, "category_id": entity[key]})
+                screen_entity_list.append({"name": key, "category_uuid": entity[key]})
 
             for entity in screen_entity_list:
                 if entity not in entities_dic:
@@ -1824,8 +1854,8 @@ def screen_doc(data_inppt, time_range=[], degrees=[], entities=[], event_categor
 
                 event_key = list(screen_dict["event_categories"][0].keys())[0]
 
-            es_event_category_ids = [i.get("event_category_id", 0) for i in event_categories_dic]
-            es_event_class_ids = [i.get("event_class_id", 0) for i in event_categories_dic]
+            es_event_category_ids = [i.get("event_category_uuid", '') for i in event_categories_dic]
+            es_event_class_ids = [i.get("event_class_uuid", '') for i in event_categories_dic]
 
             if event_key in es_event_class_ids:
                 if event_value:
@@ -1888,6 +1918,7 @@ def get_keywords(content):
         print("get_keywords error: ", str(e))
         res = []
     return res
+
 
 # ——————————————————————— 提取关键词 —————————————————————————————
 

@@ -21,6 +21,7 @@ from .. import db
 from ..conf import ES_SERVER_IP, ES_SERVER_PORT, YC_ROOT_URL, YC_ROOT_URL_PYTHON, PLACE_BASE_NAME, USE_PLACE_SERVER
 from ..models import Entity, EntityCategory, DocMarkPlace, DocMarkEntity
 from .place import get_place_from_base_server
+import zipfile
 
 
 # from ..serve.neo4j_imp import create_node, update_node, delete_node
@@ -38,9 +39,9 @@ from .place import get_place_from_base_server
 # @swag_from(get_all_dict)
 def get_all():
     ### 重要参数:(当前页和每页条目数)
-    current_page = request.args.get('cur_page', 0, type=int)
-    page_size = request.args.get('page_size', 0, type=int)
-    category_uuid = request.args.get('category_uuid', '')
+    current_page = request.args.get('cur_page', 1, type=int)
+    page_size = request.args.get('page_size', 15, type=int)
+    category_uuid = request.args.get('category_uuid', None)
     type = request.args.get('type', 0, type=int)
 
     category = EntityCategory.query.filter_by(uuid=category_uuid, name=PLACE_BASE_NAME, valid=1).first()
@@ -54,12 +55,11 @@ def get_all():
             conditions.append(Entity.category_uuid == category_uuid)
         else:
             category_uuids = EntityCategory.query.with_entities(EntityCategory.uuid).filter_by(type=type, valid=1).all()
-            category_uuids = [i[0] for i in category_uuids]
+            category_uuids = [str(i[0]) for i in category_uuids]
             conditions.append(Entity.category_uuid.in_(category_uuids))
 
         conditions = tuple(conditions)
         pagination = Entity.query.filter(and_(*conditions)).paginate(current_page, page_size, False)
-
 
         data = [{
             "uuid": item.uuid,
@@ -131,16 +131,16 @@ def insert_entity():
 
             db.session.add(entity)
             db.session.commit()
-            es_insert_item = {}
-
-            if entity.uuid:
-                es_insert_item = {"uuid": entity.uuid}
+            # es_insert_item = {}
+            #
+            # if entity.uuid:
+            #     es_insert_item = {"uuid": entity.uuid}
             # es 插入操作
-            es_insert_item = {'uuid': entity.uuid}
+            es_insert_item = {'uuid': str(entity.uuid)}
             if name:
                 es_insert_item["name"] = name
             if category_uuid:
-                es_insert_item["category_uuid"] = category_uuid
+                es_insert_item["category_uuid"] = str(category_uuid)
             if summary:
                 es_insert_item["summary"] = summary
 
@@ -186,9 +186,9 @@ def insert_entity():
 # @swag_from(update_entity_dict)
 def update_entity():
     try:
-        uuid = request.json.get('uuid', '')
+        uuid = request.json.get('uuid', None)
         name = request.json.get('name', '')
-        category_uuid = request.json.get('category_uuid', 0)
+        category_uuid = request.json.get('category_uuid', None)
         props = request.json.get('props', {})
         synonyms = request.json.get('synonyms', [])
         summary = request.json.get('summary', '')
@@ -239,7 +239,7 @@ def update_entity():
             if name:
                 # <editor-fold desc="yc update name">
                 if name != entity.name:
-                    sync_yc_update_name(entity.name, name, entity.id, entity.get_yc_mark_category(), longitude,
+                    sync_yc_update_name(entity.name, name, entity.uuid, entity.get_yc_mark_category(), longitude,
                                         latitude)
                 # </editor-fold>
                 entity.name = name
@@ -247,7 +247,7 @@ def update_entity():
             if category_uuid:
                 # <editor-fold desc="yc update category_id">
                 if category_uuid != entity.category_uuid:
-                    sync_yc_update_category_uuid(entity.uuid, entity.category_uuid, category_uuid,
+                    sync_yc_update_category_id(entity.uuid, entity.category_uuid, category_uuid,
                                                entity.get_yc_mark_category(), longitude, latitude)
                 # </editor-fold>
                 entity.category_uuid = category_uuid
@@ -258,10 +258,10 @@ def update_entity():
             if summary:
                 entity.summary = summary
                 key_value_json['summary'] = summary
-            if isinstance(synonyms, list):
+            if isinstance(synonyms, list) and synonyms:
                 # <editor-fold desc="yc add & del synonyms">
-                add_synonyms = list(set(synonyms).difference(set(entity.synonyms)))
-                remove_synonyms = list(set(entity.synonyms).difference(set(synonyms)))
+                add_synonyms = list(set(synonyms).difference(set(entity.synonyms if entity.synonyms else [])))
+                remove_synonyms = list(set(entity.synonyms if entity.synonyms else []).difference(set(synonyms)))
 
                 sync_yc_add_synonyms(add_synonyms, entity.uuid, entity.category_uuid,
                                      entity.get_yc_mark_category(), longitude, latitude)
@@ -279,7 +279,7 @@ def update_entity():
             url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
             header = {"Content-Type": "application/json; charset=UTF-8"}
             search_json = {
-                "id": {"type": "id", "value": entity.id}
+                "uuid": {"type": "term", "value": str(entity.uuid)}
             }
             es_id_para = {"search_index": "entity", "search_json": search_json}
 
@@ -289,7 +289,7 @@ def update_entity():
             update_para = {"update_index": 'entity',
                            "data_update_json": [{es_id: key_value_json}]}
 
-            search_result = requests.post(url + '/updatebyId', data=json.dumps(update_para), headers=header)
+            update_result = requests.post(url + '/updatebyId', data=json.dumps(update_para), headers=header)
 
             # neo4j同步
             # update_node(entity.id, entity.name, entity.category_id)
@@ -308,7 +308,7 @@ def update_entity():
 # @swag_from(delete_entity_dict)
 def delete_entity():
     try:
-        uuid = request.json.get('uuid', '')
+        uuid = request.json.get('uuid', None)
 
         entity = Entity.query.filter_by(uuid=uuid, valid=1).first()
         if entity:
@@ -334,7 +334,7 @@ def delete_entity():
             url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
             header = {"Content-Type": "application/json; charset=UTF-8"}
             search_json = {
-                "id": {"type": "id", "value": id}
+                "uuid": {"type": "term", "value": str(uuid)}
             }
             es_id_para = {"search_index": "entity", "search_json": search_json}
             search_result = requests.post(url + '/searchId', data=json.dumps(es_id_para), headers=header)
@@ -350,9 +350,9 @@ def delete_entity():
             # print(search_result.text)
 
             # <editor-fold desc="yc del entity">
-            sync_yc_del_name(entity.name, entity.id, entity.get_yc_mark_category())
+            sync_yc_del_name(entity.name, entity.uuid, entity.get_yc_mark_category())
             if entity.synonyms:
-                sync_yc_del_synonyms(entity.synonyms, entity.id, entity.get_yc_mark_category())
+                sync_yc_del_synonyms(entity.synonyms, entity.uuid, entity.get_yc_mark_category())
             # </editor-fold>
 
             # neo4j同步
@@ -402,15 +402,15 @@ def delete_entity_by_ids():
                     for entity_item in doc_mark_entity:
                         entity_item.valid = 0
                 # feedback.add(category_place.name)
-                res = success_res("全部成功删除！")
+                res = success_res()
             except:
                 pass
-        db.session.commit()
+        # db.session.commit()
 
         url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
-        for id in valid_ids:
+        for id in valid_uuids:
             search_json = {
-                'id': {'type': 'id', 'value': id}}
+                'id': {'type': 'uuid', 'value': str(uuid)}}
             header_es = {"Content-Type": "application/json; charset=UTF-8"}
             es_id_para = {"search_index": "entity", "search_json": search_json}
             search_result = requests.post(url + '/searchId', data=json.dumps(es_id_para), headers=header_es)
@@ -459,7 +459,7 @@ def add_synonyms():
         url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
         header = {"Content-Type": "application/json; charset=UTF-8"}
         search_json = {
-            "id": {"type": "id", "value": entity.id}
+            "id": {"type": "uuid", "value": str(entity.uuid)}
         }
         es_id_para = {"search_index": "entity", "search_json": search_json}
         search_result = requests.post(url + '/searchId', data=json.dumps(es_id_para), headers=header)
@@ -502,7 +502,7 @@ def delete_synonyms():
             url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
             header = {"Content-Type": "application/json; charset=UTF-8"}
             search_json = {
-                "id": {"type": "id", "value": entity.id}
+                "uuid": {"type": "id", "value": str(entity.uuid)}
             }
             es_id_para = {"search_index": "entity", "search_json": search_json}
             search_result = requests.post(url + '/searchId', data=json.dumps(es_id_para), headers=header)
@@ -514,7 +514,7 @@ def delete_synonyms():
             search_result = requests.post(url + '/updatebyId', params=json.dumps(inesert_para), headers=header)
 
             # <editor-fold desc="sync yc del synonmys">
-            sync_yc_del_synonyms(synonyms, entity.id, entity.get_yc_mark_category())
+            sync_yc_del_synonyms(synonyms, entity.uuid, entity.get_yc_mark_category())
             # </editor-fold>
             res = success_res()
         else:
@@ -566,10 +566,10 @@ def sync_yc_add_synonyms(synonyms, entity_uuid, category_uuid, mark_category, lo
                 entity = Entity.query.filter(Entity.synonyms.has_key(synonym),
                                              Entity.category_uuid == category_uuid, Entity.valid == 1).first()
                 item = {
-                    "entity_id": entity_uuid,
+                    "entity_id": str(entity_uuid),
                     "name": synonym,
                     "type": 2,  # 1主体；2别名
-                    "category_id": category_uuid
+                    "category_id": str(category_uuid)
                 }
                 if longitude:
                     item['lon'] = longitude
@@ -600,7 +600,7 @@ def sync_yc_update_name(old_name, new_name, entity_uuid, mark_category, longitud
             yc_update_item = {
                 "old_name": old_name,
                 "new_name": new_name,
-                "entity_id": entity_uuid,
+                "entity_id": str(entity_uuid),
                 "type": 1  # 1主体；2别名
             }
             if longitude:
@@ -626,8 +626,8 @@ def sync_yc_update_category_id(entity_uuid, old_category_id, new_category_uuid, 
         # 雨辰同步
         if sync and YC_ROOT_URL:
             for type in ["1", "2"]:
-                yc_update_item = {"entity_id": entity_uuid,
-                                  "category_id": new_category_uuid,
+                yc_update_item = {"entity_id": str(entity_uuid),
+                                  "category_id": str(new_category_uuid),
                                   "type": type}
                 if longitude:
                     yc_update_item['lon'] = longitude
@@ -651,7 +651,7 @@ def sync_yc_del_name(name, entity_uuid, mark_category, sync=1):
             header = {"Content-Type": "application/json; charset=UTF-8"}
             url = YC_ROOT_URL_PYTHON + "/api/redis/del"
             data = {"entity_data": [{"name": name,
-                                     "entity_id": entity_uuid}],
+                                     "entity_id": str(entity_uuid)}],
                     "mark_category": mark_category}
             yc_res = requests.post(url=url, data=data, headers=header)
     except Exception as e:
@@ -665,7 +665,7 @@ def sync_yc_del_synonyms(del_synonyms, entity_uuid, mark_category, sync=1):
             header = {"Content-Type": "application/json; charset=UTF-8"}
             url = YC_ROOT_URL_PYTHON + "/api/redis/del"
             sync_yc_redis_data = {"entity_data": [{"name": i,
-                                                   "entity_id": entity_uuid} for i in del_synonyms],
+                                                   "entity_id": str(entity_uuid)} for i in del_synonyms],
                                   "mark_category": mark_category}
             data = json.dumps(sync_yc_redis_data)
             yc_res = requests.post(url=url, data=data, headers=header)
@@ -682,7 +682,7 @@ def sync_yc_del_synonyms(del_synonyms, entity_uuid, mark_category, sync=1):
 def get_linking_entity():
     try:
         entity_name = request.args.get('search', '')
-        category_uuid = request.args.get('category_uuid','')
+        category_uuid = request.args.get('category_uuid', None)
         entity = Entity.query.filter(
             and_(Entity.valid == 1, or_(Entity.name == entity_name, Entity.synonyms.has_key(entity_name))))
 
@@ -733,7 +733,7 @@ def get_search_panigation():
         search = request.args.get('search', "")
         page_size = request.args.get('page_size', 10, type=int)
         cur_page = request.args.get('cur_page', 1, type=int)
-        category_uuid = request.args.get('category_uuid', 0, type=int)
+        category_uuid = request.args.get('category_uuid', None)
         data, total_count = get_search_panigation_es(search=search, page_size=page_size, cur_page=cur_page,
                                                      category_uuid=category_uuid)
         res = {
@@ -753,9 +753,9 @@ def get_search_panigation():
     return jsonify(res)
 
 
-def get_search_panigation_es(search='', page_size=10, cur_page=1, category_id=0):
+def get_search_panigation_es(search='', page_size=10, cur_page=1, category_uuid=None):
     try:
-        if category_id == EntityCategory.get_category_id(PLACE_BASE_NAME) and USE_PLACE_SERVER:
+        if category_uuid == EntityCategory.get_category_id(PLACE_BASE_NAME) and USE_PLACE_SERVER:
             data, total_count = get_place_from_base_server(page_size=page_size, cur_page=cur_page, search=search)
         else:
             url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
@@ -765,8 +765,8 @@ def get_search_panigation_es(search='', page_size=10, cur_page=1, category_id=0)
                 search_json = {"name": {"type": "text", "value": search, "boost": 5},
                                "synonyms": {"type": "text", "value": search, "boost": 5}}
 
-            if category_id != 0:
-                search_json['category_id'] = {"type": "id", "value": category_id}
+            if category_uuid:
+                search_json['category_uuid'] = {"type": "term", "value": category_uuid}
 
             para = {"search_index": 'entity', "search_json": search_json, "pageSize": page_size,
                     "currentPage": cur_page}
@@ -776,13 +776,13 @@ def get_search_panigation_es(search='', page_size=10, cur_page=1, category_id=0)
             # print(search_result.text)
             null = 'None'
             total_count = search_result.json()['data']['totalCount']
-            data = [{'id': entity['_source'].get('id', 0),
+            data = [{'uuid': entity['_source'].get('uuid', None),
                      'name': entity['_source'].get('name', ""),
                      'props': entity['_source'].get('props', {}),
                      'synonyms': entity['_source'].get('synonyms', []),
                      'summary': entity['_source'].get('summary', ""),
-                     'category': EntityCategory.get_category_name(entity['_source'].get('category_id', 0)),
-                     'category_id': entity['_source'].get('category_id', 0),
+                     'category': EntityCategory.get_category_name(entity['_source'].get('category_uuid', "")),
+                     'category_uuid': entity['_source'].get('category_uuid', None),
                      "longitude": entity['_source'].get('longitude', []),
                      "latitude": entity['_source'].get('latitude', [])
                      } for entity in search_result.json()['data']['dataList']]
@@ -807,7 +807,7 @@ def get_search_entity():
         search = request.args.get('search', "")
         # page_size = request.args.get('page_size', 10, type=int)
         # cur_page = request.args.get('cur_page', 1, type=int)
-        category_uuid = request.args.get('category_uuid', '')
+        category_uuid = request.args.get('category_uuid', None)
         data, total_count = get_search_es(search=search,
                                           category_uuid=category_uuid)
         res = {
@@ -896,13 +896,13 @@ def get_entity_data_es():
 # @swag_from(get_entity_info_dict)
 def get_entity_info():
     try:
-        uuid = request.args.get('uuid', '')
+        uuid = request.args.get('uuid', None)
         entity = Entity.query.filter_by(uuid=uuid, valid=1).first()
         if entity:
             res = {'uuid': entity.uuid, 'name': entity.name,
                    'synonyms': entity.synonyms if entity.synonyms else [],
                    'props': entity.props if entity.props else {},
-                   'category_id': entity.category_id,
+                   'category_uuid': entity.category_uuid,
                    'category': entity.category_name(),
                    'summary': entity.summary if entity.summary else '',
                    'longitude': entity.longitude,
@@ -952,7 +952,7 @@ def get_entity_data():
                    'category': ''}
     except Exception as e:
         print(str(e))
-        res = {'id': -1, 'name': '', 'synonyms': [], 'props': {},
+        res = {'uuid': -1, 'name': '', 'synonyms': [], 'props': {},
                'category': ''}
     return jsonify(res)
 
@@ -963,7 +963,7 @@ def get_entity_data():
 def get_top_list():
     try:
         search = request.args.get('search', '')
-        category_uuid = request.args.get('category_uuid', '')
+        category_uuid = request.args.get('category_uuid', None)
         data, _ = get_search_panigation_es(search=search, category_uuid=category_uuid, page_size=5, cur_page=1)
         res = data
     except Exception as e:
@@ -1094,7 +1094,7 @@ def import_entity_excel():
                         # es 插入操作
                         data_insert_json = [{
                             'name': ex_name,
-                            'category_id': category_id,
+                            'category_id': category_uuid,
                             'summary': ex_summary,
                             'props': ex_props,
                             'synonyms': ex_synonyms
@@ -1118,11 +1118,11 @@ def import_entity_excel():
                         # es 插入操作
                         data_insert_json = [{
                             'name': ex_name,
-                            'category_id': category_id,
+                            'category_id': category_uuid,
                             'summary': ex_summary,
                             'props': ex_props,
                             'synonyms': ex_synonyms,
-                            'id': entity.id
+                            'id': entity.uuid
                         }]
                         url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
 
@@ -1134,8 +1134,8 @@ def import_entity_excel():
                         # print(search_result.text, flush=True)
 
                         # <editor-fold desc="yc insert name & synonyms">
-                        sync_yc_add_name(ex_name, entity.id, entity.category_id, entity.get_yc_mark_category())
-                        sync_yc_add_synonyms(ex_synonyms, entity.id, entity.category_id, entity.get_yc_mark_category())
+                        sync_yc_add_name(ex_name, entity.uuid, entity.category_uuid, entity.get_yc_mark_category())
+                        sync_yc_add_synonyms(ex_synonyms, entity.uuid, entity.category_uuid, entity.get_yc_mark_category())
                         # </editor-fold>
 
             except Exception as e:
@@ -1424,6 +1424,15 @@ def import_excel_to_pg():
     try:
         file_list = request.files.getlist('file', None)
         for file_obj in file_list:
+            zip_file = zipfile.ZipFile(file_obj)
+            if os.path.isdir(file_obj+"_files"):
+                pass
+            else:
+                os.mkdir(file_obj+"_files")
+            for names in zip_file.namelist():
+                zip_file.extract(names, file_obj+"_files/")
+            zip_file.close()
+
             path_filename = file_obj.filename
             print(path_filename)
             path = path_filename.split("/")
@@ -1515,10 +1524,10 @@ def post_json_data_path_to_yc():
 
 
 
-def insert_entity_to_pg_and_es(name, category_id, summary, props={}, synonyms=[]):
+def insert_entity_to_pg_and_es(name, category_uuid, summary, props={}, synonyms=[]):
     try:
 
-        category = EntityCategory.query.filter_by(id=category_id, valid=1).first()
+        category = EntityCategory.query.filter_by(uuid=category_uuid, valid=1).first()
         if not category:
             res = fail_res(msg="实体类型不存在，添加失败！")
             return jsonify(res)
@@ -1531,19 +1540,19 @@ def insert_entity_to_pg_and_es(name, category_id, summary, props={}, synonyms=[]
             return jsonify(res)
 
         entity = Entity.query.filter(Entity.name == name, Entity.valid == 1,
-                                     Entity.category_id == category_id).first()
+                                     Entity.category_uuid == category_uuid).first()
 
         if not entity:
             props = props if props else {}
             if name in synonyms:
                 synonyms.remove(name)
-            entity = Entity(name=name, category_id=category_id, props=props, synonyms=synonyms, summary=summary,
+            entity = Entity(name=name, category_uuid=category_uuid, props=props, synonyms=synonyms, summary=summary,
                             valid=1)
 
             # es 插入操作
             longitude, latitude = 0, 0
             # 地名实体获取经纬度
-            if EntityCategory.get_category_name(category_id) == PLACE_BASE_NAME:
+            if EntityCategory.get_category_name(category_uuid) == PLACE_BASE_NAME:
                 longitude = request.json.get('longitude', 0)
                 latitude = request.json.get('latitude', 0)
                 if longitude:

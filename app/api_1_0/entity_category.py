@@ -73,6 +73,7 @@ def get_one_entity_category():
 def add_entity_category():
     try:
         name = request.json.get('name', '')
+        source = request.json.get('source', '')
         # if name == PLACE_BASE_NAME:
         #     res = fail_res(msg="地名库由专业团队维护，不能添加！")
         # else:
@@ -80,7 +81,7 @@ def add_entity_category():
         if entity_category:
             res = fail_res(msg="同名实体类型已存在")
         else:
-            entity = EntityCategory(uuid=uuid.uuid1(), name=name, type=1, valid=1)
+            entity = EntityCategory(uuid=uuid.uuid1(), name=name, type=1, valid=1, _source=source)
             db.session.add(entity)
             db.session.commit()
             res = success_res()
@@ -175,7 +176,7 @@ def delete_entity_category_by_ids():
         if res_flag:
             res = success_res()
         else:
-            res = fail_res(msg="部分数据无法删除")
+            res = fail_res(msg=msg)
     except Exception as e:
         print(str(e))
         db.session.rollback()
@@ -367,7 +368,7 @@ def delete_entity_idea_by_ids():
         if res_flag:
             res = success_res()
         else:
-            res = fail_res(msg="部分数据无法删除")
+            res = fail_res(msg=msg)
     except Exception as e:
         print(str(e))
         db.session.rollback()

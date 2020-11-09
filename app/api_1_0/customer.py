@@ -8,7 +8,7 @@ from sqlalchemy import not_, and_
 from . import api_customer as blue_print
 from .utils import success_res, fail_res
 from .. import db
-from ..conf import ADMIN_ROLE_POWER, ASSIS_ROLE_POWER, ADMIN_NAME, ASSIS_NAME
+from ..conf import ADMIN_ROLE_POWER, ASSIS_ROLE_POWER, ADMIN_NAME, ASSIS_NAME, ADMIN_ROLE_NAME, ASSIS_ROLE_NAME
 from ..models import Customer, Permission
 import uuid
 
@@ -182,7 +182,10 @@ def query_by_uuid():
 @blue_print.route('/query_all', methods=['GET'])
 def query_all():
     try:
-        customer = Customer.query.filter_by(valid=1).all()
+        permission_ids = Permission.query.with_entities(Permission.id).filter(not_(Permission.name.in_([ADMIN_ROLE_NAME, ASSIS_ROLE_NAME])),
+                                             Permission.valid == 1).all()
+        permission_ids = [i[0] for i in permission_ids]
+        customer = Customer.query.filter(Customer.valid==1, Customer.permission_id.in_(permission_ids)).all()
         res = []
         for i in customer:
             if i.valid:
@@ -205,7 +208,12 @@ def query_customer_paginate():
             Customer.username.like('%' + search + '%'), Customer.valid == 1,
             not_(Customer.username.in_([ADMIN_NAME, ASSIS_NAME]))
         ]
-        pagination = Customer.query.filter(*cons).paginate(current_page, page_size, False)
+        permission_ids = Permission.query.with_entities(Permission.id).filter(
+            not_(Permission.name.in_([ADMIN_ROLE_NAME, ASSIS_ROLE_NAME])),
+            Permission.valid == 1).all()
+        permission_ids = [i[0] for i in permission_ids]
+
+        pagination = Customer.query.filter(*cons, Customer.permission_id.in_(permission_ids)).paginate(current_page, page_size, False)
         data = []
         for item in pagination.items:
             data.append({
@@ -325,11 +333,11 @@ def update_all_power_score():
     try:
         for uuid in customer_uuids:
             uuid = uuid[0]
-            customer = db.session.query(Customer).filter(and_(Customer.uuid == uuid, Customer.valid == 1)).first()
+            customer = db.session.query(Customer).filter(and_(Customer.uuid == str(uuid), Customer.valid == 1)).first()
             if customer:
                 connection = db.engine.raw_connection()
                 cursor = connection.cursor()
-                cursor.callproc('get_customer_power',[uuid])
+                cursor.callproc('get_customer_power',[str(uuid)])
                 customer.power_score = cursor.fetchall()[0][0]
             else:
                 pass

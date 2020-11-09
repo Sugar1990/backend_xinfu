@@ -18,21 +18,16 @@ import uuid
 def insert_catalog():
     try:
         name = request.json.get("name", "")
-        customer_uuid = request.json.get("customer_uuid", "")
-        catalog_pid = request.json.get("catalog_pid", "")
+        customer_uuid = request.json.get("customer_uuid", None)
+        catalog_pid = request.json.get("catalog_pid", None)
 
-        catalog = Catalog.query.filter_by(name=name, create_by_uuid=customer_uuid, parent_uuid=catalog_pid).first()
+        catalog = Catalog.query.filter_by(name=name, parent_uuid=catalog_pid).first()
 
         if catalog:
             res = fail_res(msg="目录已存在")
         else:
-            sort = Catalog.query.filter_by(parent_uuid="").order_by(Catalog.sort.desc()).first()
-            if sort:
-                sort = sort + 1
-            else:
-                sort = 0
             catalog = Catalog(uuid=uuid.uuid1(), name=name, create_by_uuid=customer_uuid, parent_uuid=catalog_pid,
-                              create_time=datetime.datetime.now(), sort=sort)
+                              create_time=datetime.datetime.now())
             db.session.add(catalog)
             db.session.commit()
             res = success_res()
@@ -47,8 +42,8 @@ def insert_catalog():
 @blue_print.route('/del_catalog', methods=['POST'])
 def del_catalog():
     try:
-        catalog_uuid = request.json.get("catalog_uuid", "")
-        customer_uuid = request.json.get("customer_uuid", "")
+        catalog_uuid = request.json.get("catalog_uuid", None)
+        customer_uuid = request.json.get("customer_uuid", None)
 
         flag, msg = judge_del_catalog_permission(customer_uuid, catalog_uuid)
         print(flag, msg)
@@ -107,7 +102,7 @@ def judge_del_catalog_permission(customer_uuid, catalog_uuid):
                     if i.get_power() > customer.get_power():
                         return 0
                 return 1
-            for dic in data_dic[id]:
+            for dic in data_dic[uuid]:
                 for key, value in dic.items():
                     document = Document.query.filter_by(catalog_uuid=key).all()
                     for i in document:
@@ -152,7 +147,7 @@ def judge_del_catalog_permission(customer_uuid, catalog_uuid):
 def del_catalog_recursive(catalog_uuid):
     try:
         docs = Document.query.filter_by(catalog_uuid=catalog_uuid).all()
-        del_doc_ids = [i.uuid for i in docs]
+        del_doc_ids = [str(i.uuid) for i in docs]
         delete_doc_in_pg_es(del_doc_ids)
 
         catalog = Catalog.query.filter_by(uuid=catalog_uuid).first()
@@ -206,7 +201,7 @@ def get_all():
 
 @blue_print.route('/get_favorite_files', methods=['GET'])
 def get_favorite_files():
-    customer_uuid = request.args.get("customer_uuid", "")
+    customer_uuid = request.args.get("customer_uuid", None)
 
     try:
         docs = Document.query.all()
@@ -245,8 +240,8 @@ def get_favorite_files():
 
 @blue_print.route('/get_catalog_files', methods=['GET'])
 def get_catalog_files():
-    catalog_uuid = request.args.get("catalog_uuid", "")
-    customer_uuid = request.args.get("customer_uuid", "")
+    catalog_uuid = request.args.get("catalog_uuid", None)
+    customer_uuid = request.args.get("customer_uuid", None)
 
     try:
         docs = Document.query.filter_by(catalog_uuid=catalog_uuid).all()
@@ -262,7 +257,7 @@ def get_catalog_files():
                 if leader_ids:
                     for d in docs:
                         doc_json = {}
-                        doc_json["id"] = d.uuid
+                        doc_json["uuid"] = d.uuid
                         doc_json["name"] = d.name
                         doc_json["create_time"] = d.create_time
                         doc_json["create_username"] = Customer.get_username_by_id(d.create_by_uuid)
@@ -280,7 +275,7 @@ def get_catalog_files():
                     res = {
                         "files": doc_list,
                         "catalogs": [{
-                            'id': i.uuid,
+                            'uuid': i.uuid,
                             'name': i.name
                         } for i in catalogs]
                     }
@@ -314,7 +309,7 @@ def get_catalog_files():
 @blue_print.route('/batch_del_catalog', methods=['POST'])
 def batch_del_catalog():
     del_catalog_list = request.json.get('uuids', [])
-    customer_uuid = request.json.get('customer_uuid', 0)
+    customer_uuid = request.json.get('customer_uuid', None)
 
     try:
         msg = ""
@@ -344,14 +339,16 @@ def batch_del_catalog():
 def insert_1stfloor_catalog():
     try:
         name = request.json.get("name", "")
-        customer_uuid = request.json.get("customer_uuid", "")
+        customer_uuid = request.json.get("customer_uuid", None)
         tabs = request.json.get("tabs", [])
-        catalog = Catalog.query.filter_by(name=name, create_by_uuid=customer_uuid, parent_uuid=None, tagging_tabs=tabs).first()
 
+        # 数据库tagging_tabs改为jsonb
+        catalog = Catalog.query.filter(Catalog.name == name, Catalog.create_by_uuid == customer_uuid,
+                                       Catalog.parent_uuid == None, Catalog.tagging_tabs==tabs).first()
         if catalog:
             res = fail_res(msg="相同根目录已存在")
         else:
-            sort = Catalog.query.filter_by(parent_uuid="").order_by(Catalog.sort.desc()).first()
+            sort = Catalog.query.filter_by(parent_uuid=None).order_by(Catalog.sort.desc()).first().sort
             if sort:
                 sort = sort + 1
             else:
@@ -371,10 +368,11 @@ def insert_1stfloor_catalog():
 
 @blue_print.route('/modify_catalog', methods=['PUT'])
 def modify_catalog():
-    catalog_uuid = request.json.get('catalog_uuid', "")
-    parent_uuid = request.json.get('parent_uuid', "")
+    catalog_uuid = request.json.get('catalog_uuid', None)
+    parent_uuid = request.json.get('parent_uuid', None)
     name = request.json.get('name', '')
     tabs = request.json.get('tabs', [])
+    sort = request.json.get('sort')
     try:
         catalog = Catalog.query.filter_by(uuid=catalog_uuid).first()
         if catalog:
@@ -389,6 +387,14 @@ def modify_catalog():
                     catalog.parent_uuid = parent_uuid
                 if tabs:
                     catalog.tagging_tabs = tabs
+                if sort:
+                    cataloges = Catalog.query.all()
+                    sorts = [i.sort for i in cataloges]
+                    if sort in sorts:
+                        res = fail_res(msg="同级目录已存在")
+                        return jsonify(res)
+                    else:
+                        catalog.sort = sort
                 db.session.commit()
                 res = success_res()
         else:
@@ -402,8 +408,8 @@ def modify_catalog():
 
 @blue_print.route('/move_catalog', methods=['PUT'])
 def move_catalog():
-    catalog_uuid = request.json.get('catalog_uuid', "")
-    parent_uuid = request.json.get('parent_uuid', "")
+    catalog_uuid = request.json.get('catalog_uuid', None)
+    parent_uuid = request.json.get('parent_uuid', None)
 
     try:
         if not parent_uuid:
@@ -481,12 +487,13 @@ def get_1stfloor_catalog():
         if not cataloges:
             res = []
         else:
-            res = [{"catalog_id": catalog.uuid,
+            res = [{"catalog_uuid": catalog.uuid,
                     "name": catalog.name,
-                    "parent_id": catalog.parent_uuid,
-                    "create_by": catalog.create_by_uuid,
+                    "parent_uuid": catalog.parent_uuid,
+                    "create_by_uuid": catalog.create_by_uuid,
                     "create_time": catalog.create_time,
-                    "tagging_tabs": catalog.tagging_tabs if catalog.tagging_tabs else []
+                    "tagging_tabs": catalog.tagging_tabs if catalog.tagging_tabs else [],
+                    "sort": catalog.sort
                     } for catalog in cataloges]
     except Exception as e:
         print(str(e))
