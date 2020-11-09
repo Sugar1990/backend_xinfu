@@ -891,3 +891,140 @@ def transform_jsonb_data():
     return jsonify(res)
 
 
+@blue_print.route('/search_events_by_docId_pagination', methods=['GET'])
+def search_events_by_docId_pagination():
+    try:
+        doc_uuid = request.args.get('id', None)
+        page_size = request.args.get('size', 15)
+        cur_page = request.args.get('page', 1)
+
+        pagination = DocMarkEvent.query.filter_by(doc_uuid=doc_uuid, valid=1).paginate(cur_page, page_size, False)
+        data = [{
+                "uuid": i.uuid,
+                "event_id": i.event_id,
+                "event_desc": i.event_desc,
+                "event_subject": i.event_subject,
+                "event_predicate": i.event_predicate,
+                "event_object": i.event_object,
+                "event_time": i.event_time,
+                "event_address": i.event_address,
+                "event_why": i.event_why,
+                "event_result": i.event_result,
+                "event_conduct": i.event_conduct,
+                "event_talk": i.event_talk,
+                "event_how": i.event_how,
+                "doc_uuid": i.doc_uuid,
+                "customer_uuid": i.customer_uuid,
+                "parent_uuid": i.parent_uuid,
+                "title": i.title,
+                "event_class_uuid": i.event_class_uuid,
+                "event_type_uuid": i.event_type_uuid,
+                "create_by_uuid": i.create_by_uuid,
+                "create_time": i.create_time.strftime("%Y-%m-%d %H:%M:%S") if i.create_time else None,
+                "update_by_uuid": i.update_by_uuid,
+                "update_time": i.update_time.strftime("%Y-%m-%d %H:%M:%S") if i.update_time else None,
+                "add_time": i.add_time.strftime("%Y-%m-%d %H:%M:%S") if i.add_time else None
+            } for i in pagination.items]
+        res = success_res(data={
+            "total_count": pagination.total,
+            "page_count": pagination.pages,
+            "data": data,
+            "cur_page": pagination.page
+        })
+    except Exception as e:
+        print(str(e))
+        res = fail_res(data={
+            "total_count": 0,
+            "page_count": 0,
+            "data": [],
+            "cur_page": 0
+        })
+    return jsonify(res)
+
+
+@blue_print.route('/get_advanced_search_of_events_pagination', methods=['GET'])
+def get_advanced_search_of_events_pagination():
+    try:
+        event_class = request.args.get("parentId", None)  # 事件类型
+        event_category = request.args.get("type", None)   # 具体类型
+        start_time = request.args.get("startTime", "")
+        end_time = request.args.get("endTime", "")
+        title = request.args.get("title", "")
+        page_size = request.args.get('size', 15)
+        cur_page = request.args.get('page', 1)
+
+        time_tag_ids = []
+        if start_time and end_time:
+            time_range_time_tags = DocMarkTimeTag.query.filter_by(time_type=2, valid=1).all()
+            # 取出与该时间段有交集的事件
+            for time_range_time_tag in time_range_time_tags:
+                if not (end_time < time_range_time_tag.format_date.strftime('%Y-%m-%d %H:%M:%S') or
+                        start_time > time_range_time_tag.format_date_end.strftime('%Y-%m-%d %H:%M:%S')):
+                    time_tag_ids.append(str(time_range_time_tag.uuid))
+            # 取出时间点在该时间段内的事件
+            date_time_tags = DocMarkTimeTag.query.filter_by(time_type=1, valid=1).all()
+            for date_time_tag in date_time_tags:
+                if start_time < date_time_tag.format_date.strftime('%Y-%m-%d %H:%M:%S') < end_time:
+                    time_tag_ids.append(str(date_time_tag.uuid))
+
+        conditions = [DocMarkEvent.valid == 1]
+        condition_time = []
+        if time_tag_ids:
+            for time_tag_id in time_tag_ids:
+                condition_time.append(DocMarkEvent.event_time.op('@>')([time_tag_id]))
+            condition_time = tuple(condition_time)
+
+        if event_class:
+            conditions.append(DocMarkEvent.event_class_uuid == event_class)
+        if event_category:
+            conditions.append(DocMarkEvent.event_type_uuid == event_category)
+
+        if title:
+            conditions.append(DocMarkEvent.title.contains(title))
+        conditions = tuple(conditions)
+
+        pagination = DocMarkEvent.query.filter(and_(*conditions), or_(*condition_time)).order_by(
+            DocMarkEvent.create_time.desc()).paginate(cur_page, page_size, False)
+
+        data = [{
+            "uuid": i.uuid,
+            "event_id": i.event_id,
+            "event_desc": i.event_desc,
+            "event_subject": i.event_subject,
+            "event_predicate": i.event_predicate,
+            "event_object": i.event_object,
+            "event_time": i.event_time,
+            "event_address": i.event_address,
+            "event_why": i.event_why,
+            "event_result": i.event_result,
+            "event_conduct": i.event_conduct,
+            "event_talk": i.event_talk,
+            "event_how": i.event_how,
+            "doc_uuid": i.doc_uuid,
+            "customer_uuid": i.customer_uuid,
+            "parent_uuid": i.parent_uuid,
+            "title": i.title,
+            "event_class_uuid": i.event_class_uuid,
+            "event_type_uuid": i.event_type_uuid,
+            "create_by_uuid": i.create_by_uuid,
+            "create_time": i.create_time.strftime("%Y-%m-%d %H:%M:%S") if i.create_time else None,
+            "update_by_uuid": i.update_by_uuid,
+            "update_time": i.update_time.strftime("%Y-%m-%d %H:%M:%S") if i.update_time else None,
+            "add_time": i.add_time.strftime("%Y-%m-%d %H:%M:%S") if i.add_time else None
+        } for i in pagination.items]
+        res = success_res(data={
+            "total_count": pagination.total,
+            "page_count": pagination.pages,
+            "data": data,
+            "cur_page": pagination.page
+        })
+
+    except Exception as e:
+        print(str(e))
+        res = fail_res(data={
+            "total_count": 0,
+            "page_count": 0,
+            "data": [],
+            "cur_page": 0
+        })
+    return jsonify(res)
