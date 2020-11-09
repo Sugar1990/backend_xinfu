@@ -48,11 +48,12 @@ def get_one_event_class():
 def add_event_class():
     try:
         name = request.json.get('name')
+        source = request.json.get('source', '')
         event_class = EventClass.query.filter_by(name=name, valid=1).first()
         if event_class:
             res = fail_res(msg="事件类别已存在!")
         else:
-            eventClass = EventClass(uuid=uuid.uuid1(), name=name, valid=1)
+            eventClass = EventClass(uuid=uuid.uuid1(), name=name, valid=1, _source=source)
             db.session.add(eventClass)
             db.session.commit()
             res = success_res()
