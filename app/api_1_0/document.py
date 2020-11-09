@@ -1512,7 +1512,7 @@ def search_advanced_pagination():
         if doc:
             if not data["name"]:
                 data["name"] = doc.name if doc else ""
-            data['create_username'] = Customer.get_username_by_id(doc.create_by)
+            data['create_username'] = Customer.get_username_by_id(doc.create_by_uuid)
             data['path'] = doc.get_full_path() if doc.get_full_path() else '已失效'
             data['extension'] = doc.category
             data['tag_flag'] = 1 if doc.status == 1 else 0
@@ -1520,7 +1520,7 @@ def search_advanced_pagination():
             data['permission'] = 1 if Permission.judge_power(customer_uuid, doc.uuid) else 0
             if leader_ids:
                 doc_mark_comments = DocMarkComment.query.filter(DocMarkComment.doc_uuid == doc.uuid,
-                                                                DocMarkComment.create_by.in_(
+                                                                DocMarkComment.create_by_uuid.in_(
                                                                     leader_ids),
                                                                 DocMarkComment.valid == 1).all()
                 data["leader_operate"] = 1 if doc_mark_comments else 0
