@@ -208,7 +208,12 @@ def query_customer_paginate():
             Customer.username.like('%' + search + '%'), Customer.valid == 1,
             not_(Customer.username.in_([ADMIN_NAME, ASSIS_NAME]))
         ]
-        pagination = Customer.query.filter(*cons).paginate(current_page, page_size, False)
+        permission_ids = Permission.query.with_entities(Permission.id).filter(
+            not_(Permission.name.in_([ADMIN_ROLE_NAME, ASSIS_ROLE_NAME])),
+            Permission.valid == 1).all()
+        permission_ids = [i[0] for i in permission_ids]
+
+        pagination = Customer.query.filter(*cons, Customer.permission_id.in_(permission_ids)).paginate(current_page, page_size, False)
         data = []
         for item in pagination.items:
             data.append({
