@@ -8,7 +8,7 @@ from sqlalchemy import not_, and_
 from . import api_customer as blue_print
 from .utils import success_res, fail_res
 from .. import db
-from ..conf import ADMIN_ROLE_POWER, ASSIS_ROLE_POWER, ADMIN_NAME, ASSIS_NAME
+from ..conf import ADMIN_ROLE_POWER, ASSIS_ROLE_POWER, ADMIN_NAME, ASSIS_NAME, ADMIN_ROLE_NAME, ASSIS_ROLE_NAME
 from ..models import Customer, Permission
 import uuid
 
@@ -182,7 +182,10 @@ def query_by_uuid():
 @blue_print.route('/query_all', methods=['GET'])
 def query_all():
     try:
-        customer = Customer.query.filter_by(valid=1).all()
+        permission_ids = Permission.query.with_entities(Permission.id).filter(not_(Permission.name.in_([ADMIN_ROLE_NAME, ASSIS_ROLE_NAME])),
+                                             Permission.valid == 1).all()
+        permission_ids = [i[0] for i in permission_ids]
+        customer = Customer.query.filter(Customer.valid==1, Customer.permission_id.in_(permission_ids)).all()
         res = []
         for i in customer:
             if i.valid:
