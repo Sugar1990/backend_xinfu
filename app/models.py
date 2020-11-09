@@ -329,6 +329,25 @@ class DocMarkComment(db.Model):
         return '<DocMarkComment %r>' % self.name
 
 
+class DocMarkAdvise(db.Model):
+    __tablename__ = 'doc_mark_advise'
+    __table_args__ = {"schema": "public"}
+    uuid = db.Column(db.String, primary_key=True)
+    doc_uuid = db.Column(db.String)
+    mark_uuid = db.Column(db.String)
+    type = db.Column(db.Integer)
+    content = db.Column(db.Text)
+    create_by_uuid = db.Column(db.String)
+    create_time = db.Column(db.TIMESTAMP)
+    update_by_uuid = db.Column(db.String)
+    update_time = db.Column(db.TIMESTAMP)
+    valid = db.Column(db.Integer)
+    _source = db.Column(db.String)
+
+    def __repr__(self):
+        return '<DocMarkAdvise %r>' % self.content
+
+
 class DocMarkEntity(db.Model):
     __tablename__ = 'doc_mark_entity'
     __table_args__ = {"schema": "public"}
@@ -358,11 +377,8 @@ class DocMarkEvent(db.Model):
     event_subject = db.Column(db.JSON)
     event_predicate = db.Column(db.String)
     event_object = db.Column(db.JSON)
-
     event_time = db.Column(db.JSON)
-
     event_address = db.Column(db.JSON)
-
     event_why = db.Column(db.String)
     event_result = db.Column(db.String)
     event_conduct = db.Column(db.String)
