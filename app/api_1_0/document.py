@@ -887,6 +887,7 @@ def get_entity_in_list_pagination():
 
                     data_res = {
                         "name": doc.name,
+                        "uuid": doc.uuid,
                         "create_time": doc.create_time.strftime('%Y-%m-%d %H:%M:%S'),
                         "create_username": Customer.get_username_by_id(doc.create_by_uuid) if doc.create_by_uuid else "",
                         'path': doc.get_full_path() if doc.get_full_path() else '已失效',
