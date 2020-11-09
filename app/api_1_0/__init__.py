@@ -19,7 +19,8 @@ api_doc_mark_event = Blueprint('doc_mark_event', __name__)
 api_doc_mark_place = Blueprint('doc_mark_place', __name__)
 api_doc_mark_time_tag = Blueprint('doc_mark_time_tag', __name__)
 api_doc_mark_mind = Blueprint('doc_mark_mind', __name__)
-api_doc_mark_relation_property= Blueprint('doc_mark_relation_property', __name__)
+api_doc_mark_relation_property = Blueprint('doc_mark_relation_property', __name__)
+api_sync_offline = Blueprint('sync_offline', __name__)
 
 from . import document
 from . import entity
@@ -41,3 +42,4 @@ from . import doc_mark_place
 from . import doc_mark_time_tag
 from . import doc_mark_mind
 from . import doc_mark_relation_property
+from . import sync_offline

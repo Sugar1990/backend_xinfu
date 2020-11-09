@@ -85,4 +85,7 @@ def create_app(config_name):
     from .api_1_0 import api_doc_mark_mind as api_1_0_doc_mark_mind_blueprint
     app.register_blueprint(api_1_0_doc_mark_mind_blueprint, url_prefix='/doc_mark_mind')
 
+    from .api_1_0 import api_sync_offline as api_1_0_sync_offline_blueprint
+    app.register_blueprint(api_1_0_sync_offline_blueprint, url_prefix='/sync_offline')
+
     return app
