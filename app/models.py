@@ -402,7 +402,7 @@ class DocMarkEvent(db.Model):
         subject_entity_names = []
         if self.event_subject:
             doc_mark_entities = DocMarkEntity.query.filter(DocMarkEntity.uuid.in_(self.event_subject)).all()
-            doc_mark_entities_entity_uuids = [str(i.entity_uuid) for i in doc_mark_entities]
+            doc_mark_entities_entity_uuids = [i.entity_uuid for i in doc_mark_entities]
             if doc_mark_entities_entity_uuids:
                 entities = Entity.query.filter(Entity.uuid.in_(doc_mark_entities_entity_uuids)).all()
                 subject_entity_names = [i.name for i in entities]
@@ -412,7 +412,7 @@ class DocMarkEvent(db.Model):
         object_entity_names = []
         if self.event_object:
             doc_mark_entities = DocMarkEntity.query.filter(DocMarkEntity.uuid.in_(self.event_object)).all()
-            doc_mark_entities_entity_uuids = [str(i.entity_uuid) for i in doc_mark_entities]
+            doc_mark_entities_entity_uuids = [i.entity_uuid for i in doc_mark_entities]
             if doc_mark_entities_entity_uuids:
                 entities = Entity.query.filter(Entity.uuid.in_(doc_mark_entities_entity_uuids)).all()
                 object_entity_names = [i.name for i in entities]
