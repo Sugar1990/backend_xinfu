@@ -695,7 +695,8 @@ def get_during_time_event():
 
         for doc_mark_time_tag in doc_mark_time_tags:
             if doc_mark_time_tag.time_type == 1 and doc_mark_time_tag.format_date.strftime(
-                    '%Y-%m-%d %H:%M:%S') >= start_date:
+                    '%Y-%m-%d %H:%M:%S') >= start_date and doc_mark_time_tag.format_date.strftime(
+                '%Y-%m-%d %H:%M:%S') <= end_date:
                 doc_mark_time_tag_ids.append(str(doc_mark_time_tag.uuid))
 
             elif doc_mark_time_tag.time_type == 2 and not (
@@ -774,7 +775,8 @@ def get_during_time_event_by_entities():
 
         for doc_mark_time_tag in doc_mark_time_tags:
             if doc_mark_time_tag.time_type == 1 and doc_mark_time_tag.format_date.strftime(
-                    '%Y-%m-%d %H:%M:%S') >= start_date:
+                    '%Y-%m-%d %H:%M:%S') >= start_date and doc_mark_time_tag.format_date.strftime(
+                    '%Y-%m-%d %H:%M:%S') <= end_date:
                 doc_mark_time_tag_ids.append(str(doc_mark_time_tag.uuid))
 
             elif doc_mark_time_tag.time_type == 2 and not (
