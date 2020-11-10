@@ -572,16 +572,25 @@ def get_advanced_search_of_events():
                             doc_mark_places = DocMarkPlace.query.filter_by(place_uuid=entity.uuid, valid=1).all()
                             doc_mark_place_ids = [str(i.uuid) for i in doc_mark_places]
 
-        object = request.json.get("object", {})
+        object_list = request.json.get("object", [])
         doc_mark_entity_ids = []
-        if object.get("category_uuid", "") and object.get("entity", ""):
-            category_uuid = object["category_uuid"]
-            entity = object["entity"]
-            entity_db = Entity.query.filter_by(category_uuid=category_uuid, name=entity, valid=1).first()
-            if entity_db:
-                doc_mark_entities = DocMarkEntity.query.filter_by(entity_uuid=entity_db.uuid, valid=1).all()
-                doc_mark_entity_ids = [str(i.uuid) for i in doc_mark_entities]
-                print(doc_mark_entity_ids)
+        for object in object_list:
+            if object.get("category_uuid", "") and object.get("entity", ""):
+                category_uuid = object["category_uuid"]
+                entity = object["entity"]
+                entity_db = Entity.query.filter_by(category_uuid=category_uuid, name=entity, valid=1).first()
+                if entity_db:
+                    doc_mark_entities = DocMarkEntity.query.filter_by(entity_uuid=entity_db.uuid, valid=1).all()
+                    doc_mark_entity_ids = [str(i.uuid) for i in doc_mark_entities]
+                    print(doc_mark_entity_ids)
+
+            if not object.get("category_uuid", None) and object.get("entity", ""):
+                entity = object["entity"]
+                entity_db = Entity.query.filter_by(name=entity, valid=1).first()
+                if entity_db:
+                    doc_mark_entities = DocMarkEntity.query.filter_by(entity_uuid=entity_db.uuid, valid=1).all()
+                    doc_mark_entity_ids = [str(i.uuid) for i in doc_mark_entities]
+                    print(doc_mark_entity_ids)
 
         event = request.json.get("event", {})
         title = request.json.get("title", "")
