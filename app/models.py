@@ -514,6 +514,17 @@ class DocMarkMind(db.Model):
         return '<DocMarkMind %r>' % self.uuid
 
 
+class SyncRecords(db.Model):
+    __tablename__ = 'sync_records'
+    __table_args__ = {"schema": "public"}
+    id = db.Column(db.Integer)
+    system_name = db.Column(db.String)
+    sync_time = db.Column(db.TIMESTAMP)
+
+    def __repr__(self):
+        return '<SyncRecords %r>' % self.system_name
+
+
 class Es_controller():
     # def __init__(self):
     #     Es_controller =
