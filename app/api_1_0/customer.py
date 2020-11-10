@@ -115,7 +115,7 @@ def update_customer():
     uuid = request.json.get('customer_uuid', '')
     username = request.json.get('customer_username', '')
     pwd = request.json.get('customer_pwd', '')
-    permission_id = request.json.get('customer_permission_id', 0)
+    permission_id = request.json.get('customer_permission_uuid', 0)
     try:
         customer = db.session.query(Customer).filter(and_(Customer.uuid == uuid, Customer.valid == 1)).first()
         if customer:
