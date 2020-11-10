@@ -113,7 +113,59 @@ def get_ancestorn_doc_mark_mind(uuid, result=[]):
         res = {
             "uuid": item.uuid,
             "name": item.name,
+            "source": item._source,
+            "doc_uuid": item.doc_uuid,
             "children": []
         }
         get_ancestorn_doc_mark_mind(item.uuid, res["children"])
         result.append(res)
+
+
+@blue_print.route('/get_doc_mark_mind_by_parentId', methods=['GET'])
+def get_doc_mark_mind_by_parentId():
+    try:
+        result = []
+        parent_uuid = request.args.get("parentId")
+        if parent_uuid:
+            doc_mark_mind = DocMarkMind.query.filter_by(parent_uuid=parent_uuid, valid=1).first()
+            if doc_mark_mind:
+                get_ancestorn_doc_mark_mind(doc_mark_mind.uuid, result)
+                res_temp = [{
+                    "uuid": doc_mark_mind.uuid,
+                    "name": doc_mark_mind.name,
+                    "_source": doc_mark_mind._source,
+                    "children": result
+                }]
+                res = success_res(data=res_temp)
+            else:
+                res = fail_res(data=[], msg="操作对象不存在!")
+        else:
+            res = fail_res(msg="参数不能为空")
+
+    except Exception as e:
+        res_temp = []
+        print(str(e))
+        res = fail_res(data=res_temp)
+    return jsonify(res)
+
+
+@blue_print.route('/get_doc_mark_mind_by_ids', methods=['GET'])
+def get_doc_mark_mind_by_ids():
+    try:
+        ids = request.args.get('Ids', [])
+        ids = eval(ids)
+        if ids:
+            doc_mark_minds = DocMarkMind.query.filter(DocMarkMind.uuid.in_(ids),
+                                                            DocMarkMind.valid==1).all()
+            res = success_res(data=[{
+                "uuid": item.uuid,
+                "name": item.name,
+                "doc_uuid": item.doc_uuid,
+                "parent_uuid": item.parent_uuid,
+                "_source": item._source} for item in doc_mark_minds])
+        else:
+            res = fail_res(msg="参数不能为空")
+    except Exception as e:
+        print(str(e))
+        res = fail_res(data=[])
+    return jsonify(res)

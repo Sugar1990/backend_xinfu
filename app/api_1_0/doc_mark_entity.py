@@ -93,7 +93,7 @@ def add_doc_mark_entity():
         create_by_uuid = request.json.get("create_by_uuid", None)
         create_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         update_by_uuid = request.json.get("update_by_uuid", None)
-        update_time = request.json.get("update_time", None)
+        update_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         appear_index_in_text = request.json.get("appear_index_in_text", [])
 
         doc_mark_entity_same = DocMarkEntity.query.filter_by(doc_uuid=doc_uuid, word=word,

@@ -49,12 +49,25 @@ def sync_offline():
                 return '<Customer %r>' % self.username
 
         # offline所有uuid/troop_number，唯一性（去重）判断
-        uuids_in_offline = dbsession.query(OfflineCustomer).with_entities(Customer.uuid).all()
-        uuids_in_offline = [i[0] for i in uuids_in_offline]
+        uuids_and_troop_in_offline = dbsession.query(OfflineCustomer).with_entities(OfflineCustomer.uuid, OfflineCustomer.troop_number).all()
+        uuids_in_offline = [i[0] for i in uuids_and_troop_in_offline]
 
         # online所有uuid/troop_number，唯一性（去重）判断
-        uuids_in_online = Customer.query.with_entities(Customer.uuid).all()
-        uuids_in_online = [i[0] for i in uuids_in_online]
+        uuids_and_troop_in_online = Customer.query.with_entities(Customer.uuid, Customer.troop_number).all()
+        uuids_in_online = [i[0] for i in uuids_and_troop_in_online]
+
+        # 记录uuid变化----customer_uuid_dict_trans
+        online_dict_trans = {}
+        customer_uuid_dict_trans = {}
+
+        for i in uuids_and_troop_in_online:
+            if i[1] not in online_dict_trans.keys():
+                online_dict_trans[i[1]] = i[0]  # [{"troop_number": "uuid"}]
+
+        for offline_customer in uuids_and_troop_in_offline:
+            # offtroop存在, {"offuuid": "onuuid"}, offtroop不存在, {"offuuid": "offuuid"}
+            customer_uuid_dict_trans[offline_customer[0]] = online_dict_trans[
+                offline_customer[1]] if online_dict_trans.get(offline_customer[1], "") else offline_customer[0]
 
         # offline-online：计算是否有要插入的数据
         offline_uuids = list(set(uuids_in_offline).difference(set(uuids_in_online)))
