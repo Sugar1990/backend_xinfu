@@ -8,7 +8,7 @@ from sqlalchemy import not_, and_
 from . import api_customer as blue_print
 from .utils import success_res, fail_res
 from .. import db
-from ..conf import ADMIN_ROLE_POWER, ASSIS_ROLE_POWER, ADMIN_NAME, ASSIS_NAME, ADMIN_ROLE_NAME, ASSIS_ROLE_NAME
+from ..conf import ADMIN_ROLE_POWER, ASSIS_ROLE_POWER, ADMIN_NAME, ASSIS_NAME, ADMIN_ROLE_NAME, ASSIS_ROLE_NAME,MIN_PRICISE_OF_PERMSSION
 from ..models import Customer, Permission
 import uuid
 
@@ -131,6 +131,10 @@ def update_customer():
                     customer.pwd = pwd
                 if permission_id:
                     customer.permission_id = permission_id
+                    if customer.power_score < Permission.get_power(permission_id):
+                        customer.power_score = Permission.get_power(permission_id)
+                    elif customer.power_score > Permission.get_power(permission_id):
+                        customer.power_score = Permission.get_power(permission_id) - MIN_PRICISE_OF_PERMSSION
                 db.session.commit()
                 res = success_res()
         else:
@@ -189,7 +193,7 @@ def query_all():
         res = []
         for i in customer:
             if i.valid:
-                res.append({"uuid": i.uuid, "username": i.username, "permission_id": i.permission_id})
+                res.append({"uuid": i.uuid, "username": i.username, "permission_id": i.permission_id, "power_score": i.power_score})
     except Exception as e:
         print(str(e))
         db.session.rollback()
@@ -219,7 +223,8 @@ def query_customer_paginate():
             data.append({
                 "uuid": item.uuid,
                 "name": item.username,
-                "permission_id": item.permission_id
+                "permission_id": item.permission_id,
+                "power_score": item.power_score
             })
         data = {
             "totalCount": pagination.total,

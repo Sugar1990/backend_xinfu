@@ -149,13 +149,13 @@ def update_es_doc():
         url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
         header = {"Content-Type": "application/json; charset=UTF-8"}
         for doc in docs:
-            doc_id = doc.id
-            an_catalog = Catalog.get_ancestorn_catalog(doc.catalog_id)
-            doc_type = an_catalog.id if an_catalog else 0
+            doc_uuid = doc.uuid
+            an_catalog = Catalog.get_ancestorn_catalog(doc.catalog_uuid)
+            doc_type = an_catalog.uuid if an_catalog else ""
 
             # 获得es对应doc
             search_json = {
-                "id": {"type": "id", "value": doc_id}
+                "uuid": {"type": "term", "value": str(doc_uuid)}
             }
 
             es_id_para = {"search_index": "document", "search_json": search_json}
@@ -166,7 +166,7 @@ def update_es_doc():
             except:
                 es_id = ''
             # 替换name 修改es已有do
-            key_value_json = {'doc_type': doc_type}
+            key_value_json = {'doc_type': str(doc_type)}
             inesert_para = {"update_index": 'document',
                             "data_update_json": [{es_id: key_value_json}]}
             requests.post(url + '/updatebyId', data=json.dumps(inesert_para), headers=header)
