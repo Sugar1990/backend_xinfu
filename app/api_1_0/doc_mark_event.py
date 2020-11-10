@@ -671,19 +671,16 @@ def get_advanced_search_of_events():
                 "title": title,
                 "object": object
             }
-
+            event_list.append(event)
             if event_dict.get(timeline_key, []):
                 event_dict[timeline_key].append(event)
             else:
                 event_dict[timeline_key] = [event]
-
-        event_list = [sorted(i, key=lambda x: x.get('datetime', '')) for i in event_dict.values()]
-        res = success_res(data=event_list)
-
+        event_list_entity = [sorted(i, key=lambda x: x.get('datetime', '')) for i in event_dict.values()]
+        res = success_res(data={"event_list": event_list,"event_list_entity": event_list_entity})
     except Exception as e:
         print(str(e))
         res = fail_res(data=[])
-
     return jsonify(res)
 
 
