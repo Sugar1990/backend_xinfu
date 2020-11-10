@@ -125,7 +125,7 @@ def get_ancestorn_doc_mark_mind(uuid, result=[]):
 def get_doc_mark_mind_by_parentId():
     try:
         result = []
-        parent_uuid = request.args.get("parentId")
+        parent_uuid = request.args.get("parent_uuid")
         if parent_uuid:
             doc_mark_mind = DocMarkMind.query.filter_by(parent_uuid=parent_uuid, valid=1).first()
             if doc_mark_mind:
@@ -152,7 +152,7 @@ def get_doc_mark_mind_by_parentId():
 @blue_print.route('/get_doc_mark_mind_by_ids', methods=['GET'])
 def get_doc_mark_mind_by_ids():
     try:
-        ids = request.args.get('Ids', '')
+        ids = request.args.get('uuid', '')
         if ids:
             doc_mark_mind = DocMarkMind.query.filter(DocMarkMind.uuid==ids, DocMarkMind.valid==1).first()
             res = success_res(data={
