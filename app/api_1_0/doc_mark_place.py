@@ -318,8 +318,8 @@ def delete_doc_mark_place():
 @blue_print.route('/get_doc_mark_place_by_word', methods=['GET'])
 def get_doc_mark_place_by_word():
     try:
-        doc_mark_place_doc_uuid = request.args.get('doc_uuid', '')
-        doc_mark_place_word = request.args.get('doc_mark_place_word', '')
+        doc_mark_place_doc_uuid = request.args.get('docId', '')
+        doc_mark_place_word = request.args.get('word', '')
         doc_mark_place = DocMarkPlace.query.filter_by(doc_uuid=doc_mark_place_doc_uuid,
                                                        word=doc_mark_place_word, valid=1).first()
         res = success_res(data={
@@ -357,8 +357,8 @@ def get_doc_mark_place_by_word():
 @blue_print.route('/get_doc_mark_place', methods=['GET'])
 def get_doc_mark_place():
     try:
-        doc_mark_place_doc_uuid = request.args.get('doc_uuid','')
-        doc_mark_place_place_uuid= request.args.get('place_uuid', '')
+        doc_mark_place_doc_uuid = request.args.get('docId','')
+        doc_mark_place_place_uuid= request.args.get('placeId', '')
         doc_mark_places = DocMarkPlace.query.filter_by(place_uuid=doc_mark_place_place_uuid, doc_uuid=doc_mark_place_doc_uuid, valid=1).all()
 
         res = success_res(data=[{
@@ -396,7 +396,7 @@ def get_doc_mark_place():
 @blue_print.route('/get_doc_mark_place_by_types', methods=['POST'])
 def get_doc_mark_place_by_types():
     try:
-        doc_mark_place_doc_uuid = request.json.get('doc_uuid', '')
+        doc_mark_place_doc_uuid = request.json.get('docId', '')
         doc_mark_place_types = request.json.get('types', [])
         doc_mark_places = db.session.query(DocMarkPlace).filter(
             DocMarkPlace.type.in_(doc_mark_place_types),
@@ -438,7 +438,7 @@ def get_doc_mark_place_by_types():
 @blue_print.route('/get_doc_mark_place_by_ids', methods=['POST'])
 def get_doc_mark_place_by_ids():
     try:
-        doc_mark_place_uuids = request.json.get('uuids', [])
+        doc_mark_place_uuids = request.json.get('ids', [])
         doc_mark_places = db.session.query(DocMarkPlace).filter(
             DocMarkPlace.uuid.in_(doc_mark_place_uuids), DocMarkPlace.valid == 1).all()
         res = success_res(data=[{
