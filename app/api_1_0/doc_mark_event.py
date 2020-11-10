@@ -572,16 +572,25 @@ def get_advanced_search_of_events():
                             doc_mark_places = DocMarkPlace.query.filter_by(place_uuid=entity.uuid, valid=1).all()
                             doc_mark_place_ids = [str(i.uuid) for i in doc_mark_places]
 
-        object = request.json.get("object", {})
+        object_list = request.json.get("object", [])
         doc_mark_entity_ids = []
-        if object.get("category_uuid", "") and object.get("entity", ""):
-            category_uuid = object["category_uuid"]
-            entity = object["entity"]
-            entity_db = Entity.query.filter_by(category_uuid=category_uuid, name=entity, valid=1).first()
-            if entity_db:
-                doc_mark_entities = DocMarkEntity.query.filter_by(entity_uuid=entity_db.uuid, valid=1).all()
-                doc_mark_entity_ids = [str(i.uuid) for i in doc_mark_entities]
-                print(doc_mark_entity_ids)
+        for object in object_list:
+            if object.get("category_uuid", "") and object.get("entity", ""):
+                category_uuid = object["category_uuid"]
+                entity = object["entity"]
+                entity_db = Entity.query.filter_by(category_uuid=category_uuid, name=entity, valid=1).first()
+                if entity_db:
+                    doc_mark_entities = DocMarkEntity.query.filter_by(entity_uuid=entity_db.uuid, valid=1).all()
+                    doc_mark_entity_ids = [str(i.uuid) for i in doc_mark_entities]
+                    print(doc_mark_entity_ids)
+
+            if not object.get("category_uuid", None) and object.get("entity", ""):
+                entity = object["entity"]
+                entity_db = Entity.query.filter_by(name=entity, valid=1).first()
+                if entity_db:
+                    doc_mark_entities = DocMarkEntity.query.filter_by(entity_uuid=entity_db.uuid, valid=1).all()
+                    doc_mark_entity_ids = [str(i.uuid) for i in doc_mark_entities]
+                    print(doc_mark_entity_ids)
 
         event = request.json.get("event", {})
         title = request.json.get("title", "")
@@ -695,7 +704,8 @@ def get_during_time_event():
 
         for doc_mark_time_tag in doc_mark_time_tags:
             if doc_mark_time_tag.time_type == 1 and doc_mark_time_tag.format_date.strftime(
-                    '%Y-%m-%d %H:%M:%S') >= start_date:
+                    '%Y-%m-%d %H:%M:%S') >= start_date and doc_mark_time_tag.format_date.strftime(
+                '%Y-%m-%d %H:%M:%S') <= end_date:
                 doc_mark_time_tag_ids.append(str(doc_mark_time_tag.uuid))
 
             elif doc_mark_time_tag.time_type == 2 and not (
@@ -774,7 +784,8 @@ def get_during_time_event_by_entities():
 
         for doc_mark_time_tag in doc_mark_time_tags:
             if doc_mark_time_tag.time_type == 1 and doc_mark_time_tag.format_date.strftime(
-                    '%Y-%m-%d %H:%M:%S') >= start_date:
+                    '%Y-%m-%d %H:%M:%S') >= start_date and doc_mark_time_tag.format_date.strftime(
+                    '%Y-%m-%d %H:%M:%S') <= end_date:
                 doc_mark_time_tag_ids.append(str(doc_mark_time_tag.uuid))
 
             elif doc_mark_time_tag.time_type == 2 and not (
@@ -943,16 +954,16 @@ def search_events_by_docId_pagination():
     return jsonify(res)
 
 
-@blue_print.route('/get_advanced_search_of_events_pagination', methods=['GET'])
+@blue_print.route('/get_advanced_search_of_events_pagination', methods=['POST'])
 def get_advanced_search_of_events_pagination():
     try:
-        event_class = request.args.get("parentId", None)  # 事件类型
-        event_category = request.args.get("type", None)   # 具体类型
-        start_time = request.args.get("startTime", "")
-        end_time = request.args.get("endTime", "")
-        title = request.args.get("title", "")
-        page_size = request.args.get('size', 15)
-        cur_page = request.args.get('page', 1)
+        event_class = request.json.get("parentId", [])  # 事件类型
+        event_category = request.json.get("type", [])   # 具体类型
+        start_time = request.json.get("startTime", "")
+        end_time = request.json.get("endTime", "")
+        title = request.json.get("title", "")
+        page_size = request.json.get('size', 15)
+        cur_page = request.json.get('page', 1)
 
         time_tag_ids = []
         if start_time and end_time:
@@ -976,9 +987,9 @@ def get_advanced_search_of_events_pagination():
             condition_time = tuple(condition_time)
 
         if event_class:
-            conditions.append(DocMarkEvent.event_class_uuid == event_class)
+            conditions.append(DocMarkEvent.event_class_uuid.in_(event_class) )
         if event_category:
-            conditions.append(DocMarkEvent.event_type_uuid == event_category)
+            conditions.append(DocMarkEvent.event_type_uuid.in_(event_category))
 
         if title:
             conditions.append(DocMarkEvent.title.contains(title))

@@ -18,6 +18,8 @@ class Entity(db.Model):
     longitude = db.Column(db.Float)
     latitude = db.Column(db.Float)
     _source = db.Column(db.String)
+    create_time = db.Column(db.TIMESTAMP)
+    update_time = db.Column(db.TIMESTAMP)
 
     def category_name(self):
         conf = EntityCategory.query.filter_by(uuid=self.category_uuid).first()
@@ -72,7 +74,9 @@ class Document(db.Model):
     content = db.Column(db.JSON)
     catalog_uuid = db.Column(db.String)
     create_by_uuid = db.Column(db.String)
-    create_time = db.Column(db.DateTime)
+    create_time = db.Column(db.TIMESTAMP)
+    update_by_uuid = db.Column(db.String)
+    update_time = db.Column(db.TIMESTAMP)
     permission_id = db.Column(db.Integer)
     status = db.Column(db.Integer)
     keywords = db.Column(db.JSON)
@@ -106,7 +110,7 @@ class DocumentRecords(db.Model):
     uuid = db.Column(db.String, primary_key=True)
     doc_uuid = db.Column(db.String)
     create_by_uuid = db.Column(db.String)
-    create_time = db.Column(db.DateTime)
+    create_time = db.Column(db.TIMESTAMP)
     operate_type = db.Column(db.Integer)
     _source = db.Column(db.String)
 
@@ -127,6 +131,8 @@ class Customer(db.Model):
     # mark_doc_ids = db.Column(db.JSON)
     power_score = db.Column(db.Float)
     troop_number = db.Column(db.String)
+    create_time = db.Column(db.TIMESTAMP)
+    update_time = db.Column(db.TIMESTAMP)
 
     @staticmethod
     def get_username_by_id(uuid):
@@ -153,7 +159,9 @@ class Catalog(db.Model):
     name = db.Column(db.Text)
     parent_uuid = db.Column(db.String)
     create_by_uuid = db.Column(db.String)
-    create_time = db.Column(db.DateTime)
+    create_time = db.Column(db.TIMESTAMP)
+    update_by_uuid = db.Column(db.String)
+    update_time = db.Column(db.TIMESTAMP)
     tagging_tabs = db.Column(db.JSON)
     _source = db.Column(db.String)
     sort = db.Column(db.Integer)
@@ -231,6 +239,8 @@ class EntityCategory(db.Model):
     valid = db.Column(db.Integer)  # 取值0或1，0表示已删除，1表示正常
     type = db.Column(db.Integer)  # 1：实体（地名、国家、人物...）；2：概念（条约公约、战略、战法...）
     _source = db.Column(db.String)
+    create_time = db.Column(db.TIMESTAMP)
+    update_time = db.Column(db.TIMESTAMP)
 
     @staticmethod
     def get_category_name(uuid):
@@ -260,6 +270,8 @@ class EventCategory(db.Model):
     event_class_uuid = db.Column(db.String)
     valid = db.Column(db.Integer)
     _source = db.Column(db.String)
+    create_time = db.Column(db.TIMESTAMP)
+    update_time = db.Column(db.TIMESTAMP)
 
     def __repr__(self):
         return '<EventCategory %r>' % self.name
@@ -273,6 +285,8 @@ class EventClass(db.Model):
     name = db.Column(db.Text)
     valid = db.Column(db.Integer)
     _source = db.Column(db.String)
+    create_time = db.Column(db.TIMESTAMP)
+    update_time = db.Column(db.TIMESTAMP)
 
     @staticmethod
     def get_classname(uuid):
@@ -293,6 +307,8 @@ class RelationCategory(db.Model):
     relation_name = db.Column(db.Text)
     valid = db.Column(db.Integer)
     _source = db.Column(db.String)
+    create_time = db.Column(db.TIMESTAMP)
+    update_time = db.Column(db.TIMESTAMP)
 
     def source_entity_category(self):
         source_entity_categories = []
@@ -470,8 +486,10 @@ class DocMarkTimeTag(db.Model):
     reserve_fields = db.Column(db.Text)
     valid = db.Column(db.Integer)
     arab_time = db.Column(db.Text)
+    create_by_uuid = db.Column(db.String)
+    create_time = db.Column(db.TIMESTAMP)
     update_by_uuid = db.Column(db.String)
-    update_time = db.Column(db.DateTime)
+    update_time = db.Column(db.TIMESTAMP)
     appear_index_in_text = db.Column(db.JSON)
     _source = db.Column(db.String)
 
@@ -495,6 +513,10 @@ class DocMarkRelationProperty(db.Model):
     target_entity_uuid = db.Column(db.String)
     valid = db.Column(db.Integer)
     _source = db.Column(db.String)
+    create_by_uuid = db.Column(db.String)
+    create_time = db.Column(db.TIMESTAMP)
+    update_by_uuid = db.Column(db.String)
+    update_time = db.Column(db.TIMESTAMP)
 
     def __repr__(self):
         return '<DocMarkRelationProperty %r>' % self.uuid
@@ -509,9 +531,22 @@ class DocMarkMind(db.Model):
     doc_uuid = db.Column(db.String)
     valid = db.Column(db.Integer)
     _source = db.Column(db.String)
+    create_time = db.Column(db.TIMESTAMP)
+    update_time = db.Column(db.TIMESTAMP)
 
     def __repr__(self):
         return '<DocMarkMind %r>' % self.uuid
+
+
+class SyncRecords(db.Model):
+    __tablename__ = 'sync_records'
+    __table_args__ = {"schema": "public"}
+    id = db.Column(db.Integer, primary_key=True)
+    system_name = db.Column(db.String)
+    sync_time = db.Column(db.TIMESTAMP)
+
+    def __repr__(self):
+        return '<SyncRecords %r>' % self.system_name
 
 
 class Es_controller():
