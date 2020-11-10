@@ -902,9 +902,9 @@ def transform_jsonb_data():
 @blue_print.route('/search_events_by_docId_pagination', methods=['GET'])
 def search_events_by_docId_pagination():
     try:
-        doc_uuid = request.args.get('id', None)
-        page_size = request.args.get('size', 15)
-        cur_page = request.args.get('page', 1)
+        doc_uuid = request.args.get('uuid', None)
+        page_size = request.args.get('page_size', 15)
+        cur_page = request.args.get('cur_page', 1)
 
         pagination = DocMarkEvent.query.filter_by(doc_uuid=doc_uuid, valid=1).paginate(cur_page, page_size, False)
         data = [{
@@ -954,13 +954,13 @@ def search_events_by_docId_pagination():
 @blue_print.route('/get_advanced_search_of_events_pagination', methods=['POST'])
 def get_advanced_search_of_events_pagination():
     try:
-        event_class = request.json.get("parentId", [])  # 事件类型
-        event_category = request.json.get("type", [])   # 具体类型
-        start_time = request.json.get("startTime", "")
-        end_time = request.json.get("endTime", "")
+        event_class = request.json.get("event_class_uuid", [])  # 事件类型
+        event_category = request.json.get("event_category_uuid", [])   # 具体类型
+        start_time = request.json.get("start_time", "")
+        end_time = request.json.get("end_time", "")
         title = request.json.get("title", "")
-        page_size = request.json.get('size', 15)
-        cur_page = request.json.get('page', 1)
+        page_size = request.json.get('page_size', 15)
+        cur_page = request.json.get('cur_page', 1)
 
         time_tag_ids = []
         if start_time and end_time:
