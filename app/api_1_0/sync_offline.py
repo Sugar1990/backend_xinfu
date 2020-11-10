@@ -5,7 +5,7 @@ from datetime import time
 from sqlalchemy.dialects.postgresql import JSONB
 
 from . import api_sync_offline as blue_print
-from ..models import Customer, db, EntityCategory, RelationCategory, SyncRecords, Entity
+from ..models import Customer, db, EntityCategory, RelationCategory, SyncRecords, Entity, EventClass
 
 from sqlalchemy import create_engine, MetaData, Table, or_
 from sqlalchemy.ext.declarative import declarative_base
@@ -100,7 +100,11 @@ def sync_offline():
                                        token=i.token,
                                        _source=i._source,
                                        power_score=i.power_score,
-                                       troop_number=i.troop_number) for i in offline_customers]
+                                       troop_number=i.troop_number,
+                                       create_by_uuid=i.create_by_uuid,
+                                       create_time=i.create_time,
+                                       update_by_uuid=i.update_by_uuid,
+                                       update_time=i.update_time) for i in offline_customers]
             db.session.add_all(sync_customers)
             db.session.commit()
         # </editor-fold>
@@ -143,7 +147,7 @@ def sync_offline():
             if i[1] not in online_dict_trans.keys():
                 online_dict_trans[i[1]] = i[0]  # {"onname": "onuuid"}
 
-        for offline_ec in uuids_and_names_in_online_ec:
+        for offline_ec in uuids_and_names_in_offline_ec:
             # offname存在, {"offuuid": "onuuid"}, offname不存在, {"offuuid": "offuuid"}
             ec_uuid_dict_trans[offline_ec[0]] = online_dict_trans[
                 offline_ec[1]] if online_dict_trans.get(offline_ec[1], "") else offline_ec[0]
@@ -156,10 +160,14 @@ def sync_offline():
             offline_entity_cateogories = dbsession.query(OfflineEntityCategory).filter(
                 OfflineEntityCategory.name.in_(offline_names)).all()
             sync_entity_categories = [EntityCategory(uuid=i.uuid,
-                                       name=i.name,
-                                       valid=i.valid,
-                                       type=i.type,
-                                       _source=i._source) for i in offline_entity_cateogories]
+                                                     name=i.name,
+                                                     valid=i.valid,
+                                                     type=i.type,
+                                                     _source=i._source,
+                                                     create_by_uuid=i.create_by_uuid,
+                                                     create_time=i.create_time,
+                                                     update_by_uuid=i.update_by_uuid,
+                                                     update_time=i.update_time) for i in offline_entity_cateogories]
             db.session.add_all(sync_entity_categories)
             db.session.commit()
         # </editor-fold>
@@ -212,7 +220,7 @@ def sync_offline():
             if i[1] not in online_dict_trans.keys():
                 online_dict_trans[i[1]] = i[0]  # {"onname": "onuuid"}
 
-        for offline_rc in uuids_and_names_in_online_rc:
+        for offline_rc in uuids_and_names_in_offline_rc:
             # offname存在, {"offuuid": "onuuid"}, offname不存在, {"offuuid": "offuuid"}
             rc_uuid_dict_trans[offline_rc[0]] = online_dict_trans[
                 offline_rc[1]] if online_dict_trans.get(offline_rc[1], "") else offline_rc[0]
@@ -229,7 +237,11 @@ def sync_offline():
                                                          target_entity_category_uuids=i.target_entity_category_uuids,
                                                          relation_name=i.relation_name,
                                                          valid=i.valid,
-                                                         _source=i._source) for i in offline_relation_cateogories]
+                                                         _source=i._source,
+                                                         create_by_uuid=i.create_by_uuid,
+                                                         create_time=i.create_time,
+                                                         update_by_uuid=i.update_by_uuid,
+                                                         update_time=i.update_time) for i in offline_relation_cateogories]
             db.session.add_all(sync_relation_categories)
             db.session.commit()
         # </editor-fold>
@@ -319,11 +331,77 @@ def sync_offline():
                 OfflineEntity.category_uuid.in_(offline_cate_uuid_diff)).all()
             sync_entities = [Entity(uuid=i.uuid, name=i.name, synonyms=i.synonyms, props=i.props,
                                     category_uuid=i.category_uuid, summary=i.summary, valid=i.valid,
-                                    longitude=i.longitude, latitude=i.latitude, _source=i._source) for i in offline_entities]
+                                    longitude=i.longitude, latitude=i.latitude, _source=i._source,
+                                    create_by_uuid=i.create_by_uuid,
+                                    create_time=i.create_time,
+                                    update_by_uuid=i.update_by_uuid,
+                                    update_time=i.update_time) for i in offline_entities]
             db.session.add_all(sync_entities)
             db.session.commit()
         # </editor-fold>
 
+        # <editor-fold desc="sync_offline of EventClass">
+        # 定义模型类
+        class OfflineEventClass(Base):  # 自动加载表结构
+            # __table__ = Table('customer', md, autoload=True)
+            __tablename__ = 'event_class'
+            uuid = db.Column(db.String, primary_key=True)
+            name = db.Column(db.Text)
+            valid = db.Column(db.Integer)
+            _source = db.Column(db.String)
+            create_by_uuid = db.Column(db.String)
+            create_time = db.Column(db.TIMESTAMP)
+            update_by_uuid = db.Column(db.String)
+            update_time = db.Column(db.TIMESTAMP)
+
+            def __repr__(self):
+                return '<EventClass %r>' % self.uuid
+
+        # offline所有name，唯一性（去重）判断
+        uuids_and_names_in_offline_evcl = dbsession.query(OfflineEventClass).with_entities(
+            OfflineEventClass.uuid,
+            OfflineEventClass.name).filter(
+            OfflineEventClass.valid == 1,
+            or_(dbsession.func.date(OfflineEventClass.create_time) > sync_time,
+                dbsession.func.date(OfflineEventClass.update_time) > sync_time)).all()
+        names_in_offline = [i[1] for i in uuids_and_names_in_offline_evcl]
+
+        # online所有name，唯一性（去重）判断
+        uuids_and_names_in_online_evcl = EventClass.query.with_entities(EventClass.uuid,
+                                                                        EventClass.name).filter_by(valid=1).all()
+        names_in_online = [i[1] for i in uuids_and_names_in_online_evcl]
+
+        # 记录uuid变化----event_class_uuid_dict_trans
+        online_dict_trans = {}
+        event_class_uuid_dict_trans = {}
+
+        for i in uuids_and_names_in_online_evcl:
+            if i[1] not in online_dict_trans.keys():
+                online_dict_trans[i[1]] = i[0]  # {"onname": "onuuid"}
+
+        for offline_ec in uuids_and_names_in_offline_evcl:
+            # offname存在, {"offuuid": "onuuid"}, offname不存在, {"offuuid": "offuuid"}
+            event_class_uuid_dict_trans[offline_ec[0]] = online_dict_trans[
+                offline_ec[1]] if online_dict_trans.get(offline_ec[1], "") else offline_ec[0]
+
+        # offline-online：计算是否有要插入的数据
+        offline_names = list(set(names_in_offline).difference(set(names_in_online)))
+
+        # 如果有要插入的数据
+        if offline_names:
+            offline_event_classes = dbsession.query(OfflineEventClass).filter(
+                OfflineEventClass.name.in_(offline_names)).all()
+            sync_event_classes = [EventClass(uuid=i.uuid,
+                                             name=i.name,
+                                             valid=i.valid,
+                                             _source=i._source,
+                                             create_by_uuid=i.create_by_uuid,
+                                             create_time=i.create_time,
+                                             update_by_uuid=i.update_by_uuid,
+                                             update_time=i.update_time) for i in offline_event_classes]
+            db.session.add_all(sync_event_classes)
+            db.session.commit()
+        # </editor-fold>
 
         # 更新同步时间
         sync_record.sync_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
