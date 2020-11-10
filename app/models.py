@@ -18,9 +18,7 @@ class Entity(db.Model):
     longitude = db.Column(db.Float)
     latitude = db.Column(db.Float)
     _source = db.Column(db.String)
-    create_by_uuid = db.Column(db.String)
     create_time = db.Column(db.TIMESTAMP)
-    update_by_uuid = db.Column(db.String)
     update_time = db.Column(db.TIMESTAMP)
 
     def category_name(self):
@@ -113,8 +111,6 @@ class DocumentRecords(db.Model):
     doc_uuid = db.Column(db.String)
     create_by_uuid = db.Column(db.String)
     create_time = db.Column(db.TIMESTAMP)
-    update_by_uuid = db.Column(db.String)
-    update_time = db.Column(db.TIMESTAMP)
     operate_type = db.Column(db.Integer)
     _source = db.Column(db.String)
 
@@ -135,9 +131,7 @@ class Customer(db.Model):
     # mark_doc_ids = db.Column(db.JSON)
     power_score = db.Column(db.Float)
     troop_number = db.Column(db.String)
-    create_by_uuid = db.Column(db.String)
     create_time = db.Column(db.TIMESTAMP)
-    update_by_uuid = db.Column(db.String)
     update_time = db.Column(db.TIMESTAMP)
 
     @staticmethod
@@ -245,9 +239,7 @@ class EntityCategory(db.Model):
     valid = db.Column(db.Integer)  # 取值0或1，0表示已删除，1表示正常
     type = db.Column(db.Integer)  # 1：实体（地名、国家、人物...）；2：概念（条约公约、战略、战法...）
     _source = db.Column(db.String)
-    create_by_uuid = db.Column(db.String)
     create_time = db.Column(db.TIMESTAMP)
-    update_by_uuid = db.Column(db.String)
     update_time = db.Column(db.TIMESTAMP)
 
     @staticmethod
@@ -278,9 +270,7 @@ class EventCategory(db.Model):
     event_class_uuid = db.Column(db.String)
     valid = db.Column(db.Integer)
     _source = db.Column(db.String)
-    create_by_uuid = db.Column(db.String)
     create_time = db.Column(db.TIMESTAMP)
-    update_by_uuid = db.Column(db.String)
     update_time = db.Column(db.TIMESTAMP)
 
     def __repr__(self):
@@ -295,9 +285,7 @@ class EventClass(db.Model):
     name = db.Column(db.Text)
     valid = db.Column(db.Integer)
     _source = db.Column(db.String)
-    create_by_uuid = db.Column(db.String)
     create_time = db.Column(db.TIMESTAMP)
-    update_by_uuid = db.Column(db.String)
     update_time = db.Column(db.TIMESTAMP)
 
     @staticmethod
@@ -319,9 +307,7 @@ class RelationCategory(db.Model):
     relation_name = db.Column(db.Text)
     valid = db.Column(db.Integer)
     _source = db.Column(db.String)
-    create_by_uuid = db.Column(db.String)
     create_time = db.Column(db.TIMESTAMP)
-    update_by_uuid = db.Column(db.String)
     update_time = db.Column(db.TIMESTAMP)
 
     def source_entity_category(self):
@@ -545,9 +531,7 @@ class DocMarkMind(db.Model):
     doc_uuid = db.Column(db.String)
     valid = db.Column(db.Integer)
     _source = db.Column(db.String)
-    create_by_uuid = db.Column(db.String)
     create_time = db.Column(db.TIMESTAMP)
-    update_by_uuid = db.Column(db.String)
     update_time = db.Column(db.TIMESTAMP)
 
     def __repr__(self):

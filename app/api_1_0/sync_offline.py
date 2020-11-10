@@ -5,7 +5,7 @@ from datetime import time
 from sqlalchemy.dialects.postgresql import JSONB
 
 from . import api_sync_offline as blue_print
-from ..models import Customer, db, EntityCategory, RelationCategory, SyncRecords, Entity, EventClass
+from ..models import Customer, db, EntityCategory, RelationCategory, SyncRecords, Entity, EventClass, EventCategory
 
 from sqlalchemy import create_engine, MetaData, Table, or_
 from sqlalchemy.ext.declarative import declarative_base
@@ -53,9 +53,7 @@ def sync_offline():
             _source = db.Column(db.String)
             power_score = db.Column(db.Float)
             troop_number = db.Column(db.String)
-            create_by_uuid = db.Column(db.String)
             create_time = db.Column(db.DateTime)
-            update_by_uuid = db.Column(db.String)
             update_time = db.Column(db.DateTime)
 
             def __repr__(self):
@@ -101,9 +99,7 @@ def sync_offline():
                                        _source=i._source,
                                        power_score=i.power_score,
                                        troop_number=i.troop_number,
-                                       create_by_uuid=i.create_by_uuid,
                                        create_time=i.create_time,
-                                       update_by_uuid=i.update_by_uuid,
                                        update_time=i.update_time) for i in offline_customers]
             db.session.add_all(sync_customers)
             db.session.commit()
@@ -119,9 +115,7 @@ def sync_offline():
             valid = db.Column(db.Integer)  # 取值0或1，0表示已删除，1表示正常
             type = db.Column(db.Integer)  # 1：实体（地名、国家、人物...）；2：概念（条约公约、战略、战法...）
             _source = db.Column(db.String)
-            create_by_uuid = db.Column(db.String)
             create_time = db.Column(db.DateTime)
-            update_by_uuid = db.Column(db.String)
             update_time = db.Column(db.DateTime)
 
             def __repr__(self):
@@ -164,9 +158,7 @@ def sync_offline():
                                                      valid=i.valid,
                                                      type=i.type,
                                                      _source=i._source,
-                                                     create_by_uuid=i.create_by_uuid,
                                                      create_time=i.create_time,
-                                                     update_by_uuid=i.update_by_uuid,
                                                      update_time=i.update_time) for i in offline_entity_cateogories]
             db.session.add_all(sync_entity_categories)
             db.session.commit()
@@ -182,9 +174,7 @@ def sync_offline():
             relation_name = db.Column(db.Text)
             valid = db.Column(db.Integer)
             _source = db.Column(db.String)
-            create_by_uuid = db.Column(db.String)
             create_time = db.Column(db.DateTime)
-            update_by_uuid = db.Column(db.String)
             update_time = db.Column(db.DateTime)
 
             def __repr__(self):
@@ -238,9 +228,7 @@ def sync_offline():
                                                          relation_name=i.relation_name,
                                                          valid=i.valid,
                                                          _source=i._source,
-                                                         create_by_uuid=i.create_by_uuid,
                                                          create_time=i.create_time,
-                                                         update_by_uuid=i.update_by_uuid,
                                                          update_time=i.update_time) for i in offline_relation_cateogories]
             db.session.add_all(sync_relation_categories)
             db.session.commit()
@@ -260,16 +248,16 @@ def sync_offline():
             longitude = db.Column(db.Float)
             latitude = db.Column(db.Float)
             _source = db.Column(db.String)
-            create_by_uuid = db.Column(db.String)
             create_time = db.Column(db.DateTime)
-            update_by_uuid = db.Column(db.String)
             update_time = db.Column(db.DateTime)
 
             def __repr__(self):
                 return '<Entity %r>' % self.uuid
 
         # 更新category_uuids
-        entities_in_offline = dbsession.query(OfflineEntity).all()
+        entities_in_offline = dbsession.query(OfflineEntity).filter(OfflineEntity.valid == 1, or_(
+            dbsession.func.date(OfflineEntity.create_time) > sync_time,
+            dbsession.func.date(OfflineEntity.update_time) > sync_time)).all()
         for i in entities_in_offline:
             i.category_uuid = ec_uuid_dict_trans.get(i.category_uuid)
 
@@ -332,9 +320,7 @@ def sync_offline():
             sync_entities = [Entity(uuid=i.uuid, name=i.name, synonyms=i.synonyms, props=i.props,
                                     category_uuid=i.category_uuid, summary=i.summary, valid=i.valid,
                                     longitude=i.longitude, latitude=i.latitude, _source=i._source,
-                                    create_by_uuid=i.create_by_uuid,
                                     create_time=i.create_time,
-                                    update_by_uuid=i.update_by_uuid,
                                     update_time=i.update_time) for i in offline_entities]
             db.session.add_all(sync_entities)
             db.session.commit()
@@ -349,9 +335,7 @@ def sync_offline():
             name = db.Column(db.Text)
             valid = db.Column(db.Integer)
             _source = db.Column(db.String)
-            create_by_uuid = db.Column(db.String)
             create_time = db.Column(db.TIMESTAMP)
-            update_by_uuid = db.Column(db.String)
             update_time = db.Column(db.TIMESTAMP)
 
             def __repr__(self):
@@ -395,11 +379,72 @@ def sync_offline():
                                              name=i.name,
                                              valid=i.valid,
                                              _source=i._source,
-                                             create_by_uuid=i.create_by_uuid,
                                              create_time=i.create_time,
-                                             update_by_uuid=i.update_by_uuid,
                                              update_time=i.update_time) for i in offline_event_classes]
             db.session.add_all(sync_event_classes)
+            db.session.commit()
+        # </editor-fold>
+
+        # <editor-fold desc="sync_offline of EventCategory">
+        # 定义模型类
+        class OfflineEventCategory(Base):  # 自动加载表结构
+            __tablename__ = 'event_category'
+            uuid = db.Column(db.String, primary_key=True)
+            name = db.Column(db.Text)
+            event_class_uuid = db.Column(db.String)
+            valid = db.Column(db.Integer)
+            _source = db.Column(db.String)
+            create_time = db.Column(db.TIMESTAMP)
+            update_time = db.Column(db.TIMESTAMP)
+
+            def __repr__(self):
+                return '<EventCategory %r>' % self.uuid
+
+        # 更新event_class_uuid
+        event_categories_in_offline = dbsession.query(OfflineEventCategory).filter_by(valid=1).all()
+        for i in event_categories_in_offline:
+            i.event_class_uuid = event_class_uuid_dict_trans.get(i.event_class_uuid)
+
+        # offline所有name, 唯一性（去重）判断
+        names_and_class_uuids_in_offline = dbsession.query(OfflineEventCategory).with_entities(
+            OfflineEventCategory.name, OfflineEventCategory.uuid).filter(
+            OfflineEventCategory.valid == 1, or_(dbsession.func.date(OfflineEventCategory.create_time) > sync_time,
+                                                 dbsession.func.date(OfflineEventCategory.update_time) > sync_time)).all()
+        diff_sign_in_offline = [i[0] for i in names_and_class_uuids_in_offline]
+
+        # online所有name, 唯一性（去重）判断
+        names_and_class_uuids_in_online = EventCategory.query.with_entities(EventCategory.name,
+                                                                    EventCategory.uuid).filter_by(valid=1).all()
+        diff_sign_in_online = [i[0] for i in names_and_class_uuids_in_online]
+
+        # 记录uuid变化----entity_uuid_dict_trans
+        online_dict_trans = {}
+        event_cate_uuid_dict_trans = {}
+
+        for i in names_and_class_uuids_in_online:
+            if i[0] not in online_dict_trans.keys():
+                online_dict_trans[i[0]] = i[1]  # {"online_name+online_event_class_uuid": "onuuid"}
+
+        for offline_event_category in names_and_class_uuids_in_offline:
+            # offname存在, {"offuuid": "onuuid"}, offname不存在, {"offuuid": "offuuid"}
+            event_cate_uuid_dict_trans[offline_event_category[1]] = online_dict_trans[
+                offline_event_category[0]] if online_dict_trans.get(
+                offline_event_category[0], "") else offline_event_category[1]
+
+        # offline-online：计算是否有要插入的数据
+        offline_diff = list(set(diff_sign_in_offline).difference(set(diff_sign_in_online)))
+        offline_name_diff = [i[0] for i in offline_diff]
+
+        # 如果有要插入的数据
+        if offline_name_diff:
+            offline_event_categories = dbsession.query(OfflineEventCategory).filter(
+                OfflineEventCategory.name.in_(offline_name_diff)).all()
+            sync_event_categories = [EventCategory(uuid=i.uuid, name=i.name, synonyms=i.synonyms, props=i.props,
+                                    category_uuid=i.category_uuid, summary=i.summary, valid=i.valid,
+                                    longitude=i.longitude, latitude=i.latitude, _source=i._source,
+                                    create_time=i.create_time,
+                                    update_time=i.update_time) for i in offline_event_categories]
+            db.session.add_all(sync_event_categories)
             db.session.commit()
         # </editor-fold>
 
