@@ -272,11 +272,10 @@ def get_time_tag_by_type_and_docId():
     return jsonify(res)
 
 
-@blue_print.route('/get_doc_mark_time_tags_by_ids', methods=['GET'])
+@blue_print.route('/get_doc_mark_time_tags_by_ids', methods=['POST'])
 def get_doc_mark_time_tags_by_ids():
     try:
-        ids = request.args.get('Ids', [])
-        ids = eval(ids)
+        ids = request.json.get('Ids', [])
         if ids:
             doc_mark_time_tags = DocMarkTimeTag.query.filter(DocMarkTimeTag.uuid.in_(ids),
                                                             DocMarkTimeTag.valid==1).all()

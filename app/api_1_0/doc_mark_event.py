@@ -945,16 +945,16 @@ def search_events_by_docId_pagination():
     return jsonify(res)
 
 
-@blue_print.route('/get_advanced_search_of_events_pagination', methods=['GET'])
+@blue_print.route('/get_advanced_search_of_events_pagination', methods=['POST'])
 def get_advanced_search_of_events_pagination():
     try:
-        event_class = request.args.get("parentId", None)  # 事件类型
-        event_category = request.args.get("type", None)   # 具体类型
-        start_time = request.args.get("startTime", "")
-        end_time = request.args.get("endTime", "")
-        title = request.args.get("title", "")
-        page_size = request.args.get('size', 15)
-        cur_page = request.args.get('page', 1)
+        event_class = request.json.get("parentId", [])  # 事件类型
+        event_category = request.json.get("type", [])   # 具体类型
+        start_time = request.json.get("startTime", "")
+        end_time = request.json.get("endTime", "")
+        title = request.json.get("title", "")
+        page_size = request.json.get('size', 15)
+        cur_page = request.json.get('page', 1)
 
         time_tag_ids = []
         if start_time and end_time:
@@ -978,9 +978,9 @@ def get_advanced_search_of_events_pagination():
             condition_time = tuple(condition_time)
 
         if event_class:
-            conditions.append(DocMarkEvent.event_class_uuid == event_class)
+            conditions.append(DocMarkEvent.event_class_uuid.in_(event_class) )
         if event_category:
-            conditions.append(DocMarkEvent.event_type_uuid == event_category)
+            conditions.append(DocMarkEvent.event_type_uuid.in_(event_category))
 
         if title:
             conditions.append(DocMarkEvent.title.contains(title))
