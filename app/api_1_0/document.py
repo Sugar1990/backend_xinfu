@@ -887,6 +887,7 @@ def get_entity_in_list_pagination():
 
                     data_res = {
                         "name": doc.name,
+                        "uuid": doc.uuid,
                         "create_time": doc.create_time.strftime('%Y-%m-%d %H:%M:%S'),
                         "create_username": Customer.get_username_by_id(doc.create_by_uuid) if doc.create_by_uuid else "",
                         'path': doc.get_full_path() if doc.get_full_path() else '已失效',
@@ -1355,7 +1356,7 @@ def get_doc_events_to_earth(doc_ids):
         if place_list:
             datetime = []
             if doc_mark_event.event_time:
-                time_tag = DocMarkTimeTag.query.filter(DocMarkTimeTag.id.in_(doc_mark_event.event_time)).first()
+                time_tag = DocMarkTimeTag.query.filter(DocMarkTimeTag.uuid.in_(doc_mark_event.event_time)).first()
                 if time_tag:
                     if time_tag.format_date:
                         datetime.append(time_tag.format_date.strftime("%Y-%m-%d %H:%M:%S"))
@@ -1391,7 +1392,7 @@ def get_doc_events_to_earth_by_entities(doc_ids):
         if place_list:
             datetime = []
             if doc_mark_event.event_time:
-                time_tag = DocMarkTimeTag.query.filter(DocMarkTimeTag.id.in_(doc_mark_event.event_time)).first()
+                time_tag = DocMarkTimeTag.query.filter(DocMarkTimeTag.uuid.in_(doc_mark_event.event_time)).first()
                 if time_tag:
                     if time_tag.format_date:
                         datetime.append(time_tag.format_date.strftime("%Y-%m-%d %H:%M:%S"))
@@ -1496,7 +1497,7 @@ def search_advanced_pagination():
     event_categories = request.json.get('event_categories', [])
     notes = request.json.get('notes', [])
     notes_content = request.json.get('notes_content', [])
-    doc_type = request.json.get('doc_type', 0)
+    doc_type = request.json.get('doc_type', "")
     content = request.json.get('content', "")
     url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
     data_screen = get_es_doc(url, customer_uuid=customer_uuid, date=date, time_range=time_range,
@@ -1534,18 +1535,6 @@ def search_advanced_pagination():
         list_return = data_screen_res[page_size * (cur_page - 1):]
     else:
         list_return = []
-
-    '''
-    list_return = []
-    with open(os.path.join(os.getcwd(), 'static', 'search_advanced_pagination.json'), 'r', encoding='utf-8') as f:
-        print("read search_advanced_doc_type.json")
-        res_json = json.loads(f.read())
-        list_return = res_json.get("data", [])
-        for i in range(5):
-            list_return += list_return
-        total_count = len(list_return)
-        list_return = list_return[page_size * (cur_page - 1):page_size * cur_page]
-    '''
 
     res = {'data': list_return,
            'page_count': math.ceil(total_count / page_size),
