@@ -125,7 +125,7 @@ def get_ancestorn_doc_mark_mind(uuid, result=[]):
 def get_doc_mark_mind_by_parentId():
     try:
         result = []
-        parent_uuid = request.args.get("parentId")
+        parent_uuid = request.args.get("parent_uuid")
         if parent_uuid:
             doc_mark_mind = DocMarkMind.query.filter_by(parent_uuid=parent_uuid, valid=1).first()
             if doc_mark_mind:
@@ -152,20 +152,18 @@ def get_doc_mark_mind_by_parentId():
 @blue_print.route('/get_doc_mark_mind_by_ids', methods=['GET'])
 def get_doc_mark_mind_by_ids():
     try:
-        ids = request.args.get('Ids', [])
-        ids = eval(ids)
+        ids = request.args.get('uuid', '')
         if ids:
-            doc_mark_minds = DocMarkMind.query.filter(DocMarkMind.uuid.in_(ids),
-                                                            DocMarkMind.valid==1).all()
-            res = success_res(data=[{
-                "uuid": item.uuid,
-                "name": item.name,
-                "doc_uuid": item.doc_uuid,
-                "parent_uuid": item.parent_uuid,
-                "_source": item._source} for item in doc_mark_minds])
+            doc_mark_mind = DocMarkMind.query.filter(DocMarkMind.uuid==ids, DocMarkMind.valid==1).first()
+            res = success_res(data={
+                "uuid": doc_mark_mind.uuid,
+                "name": doc_mark_mind.name,
+                "doc_uuid": doc_mark_mind.doc_uuid,
+                "parent_uuid": doc_mark_mind.parent_uuid,
+                "_source": doc_mark_mind._source})
         else:
             res = fail_res(msg="参数不能为空")
     except Exception as e:
         print(str(e))
-        res = fail_res(data=[])
+        res = fail_res(data={})
     return jsonify(res)

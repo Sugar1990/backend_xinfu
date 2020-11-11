@@ -239,8 +239,8 @@ def delete_doc_mark_time_tag():
 @blue_print.route('/get_time_tag_by_type_and_docId', methods=['GET'])
 def get_time_tag_by_type_and_docId():
     try:
-        time_type = request.args.get("type", 0)
-        doc_uuid = request.args.get("docId", None)
+        time_type = request.args.get("time_type", 0)
+        doc_uuid = request.args.get("doc_uuid", None)
         condition = [DocMarkTimeTag.valid==1]
         if time_type:
             condition.append(DocMarkTimeTag.time_type==time_type)
@@ -275,7 +275,7 @@ def get_time_tag_by_type_and_docId():
 @blue_print.route('/get_doc_mark_time_tags_by_ids', methods=['POST'])
 def get_doc_mark_time_tags_by_ids():
     try:
-        ids = request.json.get('Ids', [])
+        ids = request.json.get('uuids', [])
         if ids:
             doc_mark_time_tags = DocMarkTimeTag.query.filter(DocMarkTimeTag.uuid.in_(ids),
                                                             DocMarkTimeTag.valid==1).all()
