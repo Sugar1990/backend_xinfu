@@ -6,7 +6,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 
 from . import api_sync_offline as blue_print
 from ..models import Customer, db, EntityCategory, RelationCategory, SyncRecords, Entity, EventClass, EventCategory, \
-    DocMarkComment, DocMarkEntity, DocMarkPlace, DocMarkRelationProperty, DocMarkTimeTag
+    DocMarkComment, DocMarkEntity, DocMarkPlace, DocMarkRelationProperty, DocMarkTimeTag, DocMarkMind, DocMarkAdvise
 
 from sqlalchemy import create_engine, MetaData, Table, or_
 from sqlalchemy.ext.declarative import declarative_base
@@ -668,7 +668,7 @@ def sync_offline():
         for i in doc_mark_time_tag_in_offline:
             i.create_by_uuid = customer_uuid_dict_trans.get(i.create_by_uuid)
             i.update_by_uuid = customer_uuid_dict_trans.get(i.update_by_uuid)
-        # 同步offline_doc_mark_time_tag_in_offline
+        # 同步doc_mark_time_tag_in_offline
         sync_doc_mark_time_tags = [DocMarkTimeTag(uuid=i.uuid, doc_uuid=i.doc_uuid, word=i.word, format_date=i.format_date,
                                                   format_date_end=i.format_date_end, mark_position=i.mark_position,
                                                   time_type=i.time_type, reserve_fields=i.reserve_fields,
@@ -680,6 +680,73 @@ def sync_offline():
         db.session.commit()
         # </editor-fold>
 
+        # <editor-fold desc="sync_offline of DocMarkMind">
+        # 定义模型类
+        class OfflineDocMarkMind(Base):  # 自动加载表结构
+            __tablename__ = 'doc_mark_mind'
+            uuid = db.Column(db.String, primary_key=True)
+            name = db.Column(db.Text)
+            parent_uuid = db.Column(db.String)
+            doc_uuid = db.Column(db.String)
+            valid = db.Column(db.Integer)
+            _source = db.Column(db.String)
+            create_time = db.Column(db.TIMESTAMP)
+            update_time = db.Column(db.TIMESTAMP)
+
+            def __repr__(self):
+                return '<DocMarkMind %r>' % self.uuid
+
+        # 更新create_by_uuid、update_by_uuid
+        doc_mark_mind_in_offline = dbsession.query(OfflineDocMarkMind).filter(OfflineDocMarkMind.valid == 1,
+                                                                                     or_(
+                                                                                         OfflineDocMarkMind.create_time > sync_time,
+                                                                                         OfflineDocMarkMind.update_time > sync_time)).all()
+        # 同步doc_mark_mind_in_offline
+        sync_doc_mark_minds = [DocMarkMind(uuid=i.uuid, name=i.name, parent_uuid=i.parent_uuid, doc_uuid=i.doc_uuid,
+                                           create_time=i.create_time, update_time=i.update_time, _source=i._source,
+                                           valid=i.valid) for i in doc_mark_mind_in_offline]
+        db.session.add_all(sync_doc_mark_minds)
+        db.session.commit()
+        # </editor-fold>
+
+        # <editor-fold desc="sync_offline of DocMarkAdvise">
+        # 定义模型类
+        class OfflineDocMarkAdvise(Base):  # 自动加载表结构
+            __tablename__ = 'doc_mark_advise'
+            uuid = db.Column(db.String, primary_key=True)
+            doc_uuid = db.Column(db.String)
+            mark_uuid = db.Column(db.String)
+            type = db.Column(db.Integer)
+            content = db.Column(db.Text)
+            create_by_uuid = db.Column(db.String)
+            create_time = db.Column(db.TIMESTAMP)
+            update_by_uuid = db.Column(db.String)
+            update_time = db.Column(db.TIMESTAMP)
+            valid = db.Column(db.Integer)
+            _source = db.Column(db.String)
+
+            def __repr__(self):
+                return '<DocMarkAdvise %r>' % self.uuid
+
+        # 更新create_by_uuid、update_by_uuid
+        doc_mark_advise_in_offline = dbsession.query(OfflineDocMarkAdvise).filter(OfflineDocMarkAdvise.valid == 1,
+                                                                              or_(
+                                                                                  OfflineDocMarkAdvise.create_time > sync_time,
+                                                                                  OfflineDocMarkAdvise.update_time > sync_time)).all()
+        # 更新create_by_uuid、update_by_uuid
+        for i in doc_mark_advise_in_offline:
+            i.create_by_uuid = customer_uuid_dict_trans.get(i.create_by_uuid)
+            i.update_by_uuid = customer_uuid_dict_trans.get(i.update_by_uuid)
+
+        # 同步doc_mark_advise_in_offline
+        sync_doc_mark_advises = [
+            DocMarkAdvise(uuid=i.uuid, doc_uuid=i.doc_uuid, mark_uuid=i.mark_uuid, type=i.type, content=i.content,
+                          create_by_uuid=i.create_by_uuid, create_time=i.create_time, update_by_uuid=i.update_by_uuid,
+                          update_time=i.update_time, _source=i._source, valid=i.valid) for i in
+            doc_mark_mind_in_offline]
+        db.session.add_all(sync_doc_mark_advises)
+        db.session.commit()
+        # </editor-fold>
 
         # 更新同步时间
         sync_record.sync_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
