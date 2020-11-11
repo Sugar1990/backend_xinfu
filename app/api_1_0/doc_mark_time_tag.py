@@ -303,3 +303,22 @@ def get_doc_mark_time_tags_by_ids():
         print(str(e))
         res = fail_res(data=[])
     return jsonify(res)
+
+#根据文档标识删除时间标注记录
+@blue_print.route('/delete_doc_mark_time_tags_by_doc_id', methods=['POST'])
+def delete_doc_mark_time_tags_by_doc_id():
+    try:
+        doc_uuid = request.json.get('doc_uuid', '')
+        doc_mark_time_tags = DocMarkTimeTag.query.filter_by(doc_uuid=doc_uuid, valid=1).all()
+
+        for doc_mark_time_tag in doc_mark_time_tags:
+            doc_mark_time_tag.valid = 0
+            db.session.commit()
+            res = success_res()
+
+    except Exception as e:
+        print(str(e))
+        db.session.rollback()
+        res = fail_res(msg="删除失败！")
+
+    return jsonify(res)
