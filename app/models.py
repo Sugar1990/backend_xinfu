@@ -468,7 +468,9 @@ class DocMarkPlace(db.Model):
     entity_or_sys = db.Column(db.Integer)
     appear_index_in_text = db.Column(db.JSON)
     _source = db.Column(db.String)
-
+    word_count = db.Column(db.String)
+    word_sentence = db.Column(db.String)
+    source_type = db.Column(db.String)
     def __repr__(self):
         return '<DocMarkPlace %r>' % self.uuid
 
