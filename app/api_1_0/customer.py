@@ -172,8 +172,8 @@ def query_by_uuid():
             "uuid": customer.uuid,
             "username": customer.username,
             "permission_id": customer.permission_id,
-            "permission_power": Permission.get_power(customer.permission_id),
-
+            "power_score": customer.power_score
+            # "permission_power": Permission.get_power(customer.permission_id),
         }
     except Exception as e:
         print(str(e))

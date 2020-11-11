@@ -408,7 +408,7 @@ def delete_entity_by_ids():
         # db.session.commit()
 
         url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
-        for id in valid_uuids:
+        for uuid in valid_uuids:
             search_json = {
                 'id': {'type': 'uuid', 'value': str(uuid)}}
             header_es = {"Content-Type": "application/json; charset=UTF-8"}
@@ -472,7 +472,7 @@ def add_synonyms():
         search_result = requests.post(url + '/updatebyId', params=json.dumps(inesert_para), headers=header)
 
         # <editor-fold desc="sync yc del synonmys">
-        sync_yc_add_synonyms(synonyms, entity.id, entity.category_id, entity.get_yc_mark_category())
+        sync_yc_add_synonyms(synonyms, entity.uuid, entity.category_uuid, entity.get_yc_mark_category())
         # </editor-fold>
 
         res = success_res()
@@ -502,7 +502,7 @@ def delete_synonyms():
             url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
             header = {"Content-Type": "application/json; charset=UTF-8"}
             search_json = {
-                "uuid": {"type": "id", "value": str(entity.uuid)}
+                "id": {"type": "uuid", "value": str(entity.uuid)}
             }
             es_id_para = {"search_index": "entity", "search_json": search_json}
             search_result = requests.post(url + '/searchId', data=json.dumps(es_id_para), headers=header)
