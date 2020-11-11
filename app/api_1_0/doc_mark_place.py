@@ -470,3 +470,60 @@ def get_doc_mark_place_by_ids():
         print(str(e))
         res = fail_res(data=[])
     return jsonify(res)
+
+
+#查询地点标注所有未删除的记录
+@blue_print.route('/get_doc_mark_place_all', methods=['GET'])
+def get_doc_mark_place_all():
+    try:
+        doc_mark_places = DocMarkPlace.query.filter_by(valid=1).all()
+
+        res = success_res(data=[{
+            "uuid": doc_mark_place.uuid,
+            "doc_uuid": doc_mark_place.doc_uuid,
+            "word": doc_mark_place.word,
+            "type": doc_mark_place.type,
+            "place_uuid": doc_mark_place.place_uuid,
+            "direction": doc_mark_place.direction,
+            "place_lon": doc_mark_place.place_lon,
+            "place_lat": doc_mark_place.place_lat,
+            "height": doc_mark_place.height,
+            "unit": doc_mark_place.unit,
+            "dms": doc_mark_place.dms,
+            "distance": doc_mark_place.distance,
+            "relation": doc_mark_place.relation,
+            "create_by_uuid": doc_mark_place.create_by_uuid,
+            "create_time": doc_mark_place.create_time.strftime(
+                "%Y-%m-%d %H:%M:%S") if doc_mark_place.create_time else None,
+            "update_by_uuid": doc_mark_place.update_by_uuid,
+            "update_time": doc_mark_place.update_time.strftime(
+                "%Y-%m-%d %H:%M:%S") if doc_mark_place.update_time else None,
+            "valid": doc_mark_place.valid,
+            "entity_or_sys": doc_mark_place.entity_or_sys,
+            "appear_index_in_text": doc_mark_place.appear_index_in_text
+        } for doc_mark_place in doc_mark_places])
+
+    except Exception as e:
+        print(str(e))
+        res = fail_res(data=[])
+    return jsonify(res)
+
+
+#根据文档标识删除地点标注记录
+@blue_print.route('/delete_doc_mark_place_by_doc_id', methods=['POST'])
+def delete_doc_mark_place_by_doc_id():
+    try:
+        doc_uuid = request.json.get('doc_uuid', '')
+        doc_mark_places = DocMarkPlace.query.filter_by(doc_uuid=doc_uuid, valid=1).all()
+
+        for doc_mark_place in doc_mark_places:
+            doc_mark_place.valid = 0
+            db.session.commit()
+            res = success_res()
+
+    except Exception as e:
+        print(str(e))
+        db.session.rollback()
+        res = fail_res(msg="删除失败！")
+
+    return jsonify(res)
