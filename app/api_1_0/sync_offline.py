@@ -5,7 +5,8 @@ import time
 from sqlalchemy.dialects.postgresql import JSONB
 
 from . import api_sync_offline as blue_print
-from ..models import Customer, db, EntityCategory, RelationCategory, SyncRecords, Entity, EventClass, EventCategory
+from ..models import Customer, db, EntityCategory, RelationCategory, SyncRecords, Entity, EventClass, EventCategory, \
+    DocMarkComment, DocMarkEntity, DocMarkPlace
 
 from sqlalchemy import create_engine, MetaData, Table, or_
 from sqlalchemy.ext.declarative import declarative_base
@@ -234,8 +235,7 @@ def sync_offline():
                                                          valid=i.valid,
                                                          _source=i._source,
                                                          create_time=i.create_time,
-                                                         update_time=i.update_time) for i in
-                                        offline_relation_cateogories]
+                                                         update_time=i.update_time) for i in offline_relation_cateogories]
             db.session.add_all(sync_relation_categories)
             db.session.commit()
 
@@ -456,7 +456,6 @@ def sync_offline():
                                                    update_time=i.update_time) for i in offline_event_categories]
             db.session.add_all(sync_event_categories)
             db.session.commit()
-
         # </editor-fold>
 
         # <editor-fold desc="sync_offline of DocMarkComment">
@@ -487,15 +486,109 @@ def sync_offline():
             i.create_by_uuid = customer_uuid_dict_trans.get(i.create_by_uuid)
             i.update_by_uuid = customer_uuid_dict_trans.get(i.update_by_uuid)
             # 同步offline_doc_mark_comment
-            sync_doc_mark_comments = [EventCategory(uuid=i.uuid, doc_uuid=i.doc_uuid, name=i.name, position=i.position,
-                                                    comment=i.comment, create_by_uuid=i.create_by_uuid,
-                                                    create_time=i.create_time,
-                                                    update_by_uuid=i.update_by_uuid, update_time=i.update_time,
-                                                    _source=i._source,
-                                                    valid=i.valid) for i in doc_mark_comment_in_offline]
-            db.session.add_all(sync_doc_mark_comments)
-            db.session.commit()
+        sync_doc_mark_comments = [DocMarkComment(uuid=i.uuid, doc_uuid=i.doc_uuid, name=i.name, position=i.position,
+                                                comment=i.comment, create_by_uuid=i.create_by_uuid,
+                                                create_time=i.create_time,
+                                                update_by_uuid=i.update_by_uuid, update_time=i.update_time,
+                                                _source=i._source,
+                                                valid=i.valid) for i in doc_mark_comment_in_offline]
+        db.session.add_all(sync_doc_mark_comments)
+        db.session.commit()
         # </editor-fold>
+
+        # <editor-fold desc="sync_offline of DocMarkEntity">
+        # 定义模型类
+        class OfflineDocMarkEntity(Base):  # 自动加载表结构
+            __tablename__ = 'doc_mark_entity'
+            uuid = db.Column(db.String, primary_key=True)
+            doc_uuid = db.Column(db.String)
+            word = db.Column(db.String)
+            entity_uuid = db.Column(db.String)
+            source = db.Column(db.Integer)
+            create_by_uuid = db.Column(db.String)
+            create_time = db.Column(db.TIMESTAMP)
+            update_by_uuid = db.Column(db.String)
+            update_time = db.Column(db.TIMESTAMP)
+            appear_index_in_text = db.Column(db.JSON)
+            valid = db.Column(db.Integer)
+            _source = db.Column(db.String)
+
+            def __repr__(self):
+                return '<DocMarkEntity %r>' % self.uuid
+
+        # 更新create_by_uuid、update_by_uuid、entity_uuid
+        doc_mark_entity_in_offline = dbsession.query(OfflineDocMarkEntity).filter(
+            OfflineDocMarkEntity.valid == 1,
+            or_(
+                OfflineDocMarkEntity.create_time > sync_time,
+                OfflineDocMarkEntity.update_time > sync_time)).all()
+        for i in doc_mark_entity_in_offline:
+            i.create_by_uuid = customer_uuid_dict_trans.get(i.create_by_uuid)
+            i.update_by_uuid = customer_uuid_dict_trans.get(i.update_by_uuid)
+            i.entity_uuid = entity_uuid_dict_trans.get(i.entity_uuid)
+            # 同步offline_doc_mark_entity
+        sync_doc_mark_entities = [
+            DocMarkEntity(uuid=i.uuid, doc_uuid=i.doc_uuid, word=i.word, entity_uuid=i.entity_uuid, source=i.source,
+                          create_by_uuid=i.create_by_uuid, create_time=i.create_time,
+                          update_by_uuid=i.update_by_uuid, update_time=i.update_time,
+                          appear_index_in_text=i.appear_index_in_text, _source=i._source, valid=i.valid) for i in
+            doc_mark_entity_in_offline]
+        db.session.add_all(sync_doc_mark_entities)
+        db.session.commit()
+        # </editor-fold>
+
+        # <editor-fold desc="sync_offline of DocMarkEntity">
+        # 定义模型类
+        class OfflineDocMarkPlace(Base):  # 自动加载表结构
+            __tablename__ = 'doc_mark_place'
+            uuid = db.Column(db.String, primary_key=True)
+            doc_uuid = db.Column(db.String)
+            word = db.Column(db.Text)
+            type = db.Column(db.Integer)
+            place_uuid = db.Column(db.String)
+            direction = db.Column(db.Text)
+            place_lon = db.Column(db.Text)
+            place_lat = db.Column(db.Text)
+            height = db.Column(db.Text)
+            unit = db.Column(db.Text)
+            dms = db.Column(db.JSON)
+            distance = db.Column(db.Integer)
+            relation = db.Column(db.Text)
+            create_by_uuid = db.Column(db.String)
+            create_time = db.Column(db.DateTime)
+            update_by_uuid = db.Column(db.String)
+            update_time = db.Column(db.DateTime)
+            valid = db.Column(db.Integer)
+            entity_or_sys = db.Column(db.Integer)
+            appear_index_in_text = db.Column(db.JSON)
+            _source = db.Column(db.String)
+
+            def __repr__(self):
+                return '<DocMarkPlace %r>' % self.uuid
+
+        # 更新create_by_uuid、update_by_uuid、place_uuid
+        doc_mark_place_in_offline = dbsession.query(OfflineDocMarkPlace).filter(
+            OfflineDocMarkPlace.valid == 1,
+            or_(
+                OfflineDocMarkPlace.create_time > sync_time,
+                OfflineDocMarkPlace.update_time > sync_time)).all()
+        for i in doc_mark_place_in_offline:
+            i.create_by_uuid = customer_uuid_dict_trans.get(i.create_by_uuid)
+            i.update_by_uuid = customer_uuid_dict_trans.get(i.update_by_uuid)
+            i.place_uuid = entity_uuid_dict_trans.get(i.place_uuid)
+            # 同步offline_doc_mark_place
+        sync_doc_mark_places = [
+            DocMarkPlace(uuid=i.uuid, doc_uuid=i.doc_uuid, word=i.word, type=i.type, place_uuid=i.place_uuid,
+                         direction=i.direction, place_lon=i.place_lon, place_lat=i.place_lat, height=i.height,
+                         unit=i.unit, dms=i.dms, distance=i.distance, relation=i.relation,
+                         create_by_uuid=i.create_by_uuid, create_time=i.create_time, update_by_uuid=i.update_by_uuid,
+                         update_time=i.update_time, entity_or_sys=i.entity_or_sys,
+                         appear_index_in_text=i.appear_index_in_text, _source=i._source, valid=i.valid) for i in
+            doc_mark_place_in_offline]
+        db.session.add_all(sync_doc_mark_places)
+        db.session.commit()
+        # </editor-fold>
+
 
         # 更新同步时间
         sync_record.sync_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
