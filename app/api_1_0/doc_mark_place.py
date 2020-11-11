@@ -2,7 +2,7 @@
 import datetime
 from flask import jsonify, request
 from . import api_doc_mark_place as blue_print
-from ..models import DocMarkPlace
+from ..models import DocMarkPlace,Entity
 from .. import db
 from .utils import success_res, fail_res
 import uuid
@@ -35,7 +35,11 @@ def get_doc_mark_place_by_doc_id():
                 "%Y-%m-%d %H:%M:%S") if doc_mark_place.update_time else None,
             "valid": doc_mark_place.valid,
             "entity_or_sys": doc_mark_place.entity_or_sys,
-            "appear_index_in_text": doc_mark_place.appear_index_in_text
+            "appear_index_in_text": doc_mark_place.appear_index_in_text,
+            "word_count":doc_mark_place.word_count,
+            "word_sentence": doc_mark_place.word_sentence,
+            "source_type": doc_mark_place.source_type,
+            "place_name":Entity.query.filter(Entity.uuid.in_([doc_mark_place.place_uuid]), Entity.valid == 1).all()[0].name
         } for doc_mark_place in doc_mark_places])
     except Exception as e:
         print(str(e))
