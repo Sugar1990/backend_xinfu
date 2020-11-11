@@ -445,6 +445,7 @@ def get_doc_mark_place_by_ids():
         doc_mark_place_uuids = request.json.get('ids', [])
         doc_mark_places = db.session.query(DocMarkPlace).filter(
             DocMarkPlace.uuid.in_(doc_mark_place_uuids), DocMarkPlace.valid == 1).all()
+
         res = success_res(data=[{
             "uuid": doc_mark_place.uuid,
             "doc_uuid": doc_mark_place.doc_uuid,
@@ -530,4 +531,43 @@ def delete_doc_mark_place_by_doc_id():
         db.session.rollback()
         res = fail_res(msg="删除失败！")
 
+    return jsonify(res)
+
+
+#根据place_uuids查询记录信息
+@blue_print.route('/get_doc_mark_place_by_place_uuids', methods=['POST'])
+def get_doc_mark_place_by_place_uuids():
+    try:
+        doc_mark_place_place_uuids = request.json.get('place_uuids', [])
+        doc_mark_places = db.session.query(DocMarkPlace).filter(
+            DocMarkPlace.place_uuid.in_(doc_mark_place_place_uuids), DocMarkPlace.valid == 1).all()
+
+        res = success_res(data=[{
+            "uuid": doc_mark_place.uuid,
+            "doc_uuid": doc_mark_place.doc_uuid,
+            "word": doc_mark_place.word,
+            "type": doc_mark_place.type,
+            "place_uuid": doc_mark_place.place_uuid,
+            "direction": doc_mark_place.direction,
+            "place_lon": doc_mark_place.place_lon,
+            "place_lat": doc_mark_place.place_lat,
+            "height": doc_mark_place.height,
+            "unit": doc_mark_place.unit,
+            "dms": doc_mark_place.dms,
+            "distance": doc_mark_place.distance,
+            "relation": doc_mark_place.relation,
+            "create_by_uuid": doc_mark_place.create_by_uuid,
+            "create_time": doc_mark_place.create_time.strftime(
+                "%Y-%m-%d %H:%M:%S") if doc_mark_place.create_time else None,
+            "update_by_uuid": doc_mark_place.update_by_uuid,
+            "update_time": doc_mark_place.update_time.strftime(
+                "%Y-%m-%d %H:%M:%S") if doc_mark_place.update_time else None,
+            "valid": doc_mark_place.valid,
+            "entity_or_sys": doc_mark_place.entity_or_sys,
+            "appear_index_in_text": doc_mark_place.appear_index_in_text
+        } for doc_mark_place in doc_mark_places])
+
+    except Exception as e:
+        print(str(e))
+        res = fail_res(data=[])
     return jsonify(res)
