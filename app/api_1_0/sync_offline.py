@@ -6,7 +6,8 @@ from sqlalchemy.dialects.postgresql import JSONB
 
 from . import api_sync_offline as blue_print
 from ..models import Customer, db, EntityCategory, RelationCategory, SyncRecords, Entity, EventClass, EventCategory, \
-    DocMarkComment, DocMarkEntity, DocMarkPlace, DocMarkRelationProperty, DocMarkTimeTag, DocMarkMind, DocMarkAdvise
+    DocMarkComment, DocMarkEntity, DocMarkPlace, DocMarkRelationProperty, DocMarkTimeTag, DocMarkMind, DocMarkAdvise, \
+    DocumentRecords, DocMarkEvent
 
 from sqlalchemy import create_engine, MetaData, Table, or_
 from sqlalchemy.ext.declarative import declarative_base
@@ -477,11 +478,12 @@ def sync_offline():
             def __repr__(self):
                 return '<DocMarkComment %r>' % self.uuid
 
-        # 更新create_by_uuid、update_by_uuid
+
         doc_mark_comment_in_offline = dbsession.query(OfflineDocMarkComment).filter(OfflineDocMarkComment.valid == 1,
                                                                                     or_(
                                                                                         OfflineDocMarkComment.create_time > sync_time,
                                                                                         OfflineDocMarkComment.update_time > sync_time)).all()
+        # 更新create_by_uuid、update_by_uuid
         for i in doc_mark_comment_in_offline:
             i.create_by_uuid = customer_uuid_dict_trans.get(i.create_by_uuid)
             i.update_by_uuid = customer_uuid_dict_trans.get(i.update_by_uuid)
@@ -516,12 +518,13 @@ def sync_offline():
             def __repr__(self):
                 return '<DocMarkEntity %r>' % self.uuid
 
-        # 更新create_by_uuid、update_by_uuid、entity_uuid
+
         doc_mark_entity_in_offline = dbsession.query(OfflineDocMarkEntity).filter(
             OfflineDocMarkEntity.valid == 1,
             or_(
                 OfflineDocMarkEntity.create_time > sync_time,
                 OfflineDocMarkEntity.update_time > sync_time)).all()
+        # 更新create_by_uuid、update_by_uuid、entity_uuid
         for i in doc_mark_entity_in_offline:
             i.create_by_uuid = customer_uuid_dict_trans.get(i.create_by_uuid)
             i.update_by_uuid = customer_uuid_dict_trans.get(i.update_by_uuid)
@@ -566,12 +569,13 @@ def sync_offline():
             def __repr__(self):
                 return '<DocMarkPlace %r>' % self.uuid
 
-        # 更新create_by_uuid、update_by_uuid、place_uuid
+
         doc_mark_place_in_offline = dbsession.query(OfflineDocMarkPlace).filter(
             OfflineDocMarkPlace.valid == 1,
             or_(
                 OfflineDocMarkPlace.create_time > sync_time,
                 OfflineDocMarkPlace.update_time > sync_time)).all()
+        # 更新create_by_uuid、update_by_uuid、place_uuid
         for i in doc_mark_place_in_offline:
             i.create_by_uuid = customer_uuid_dict_trans.get(i.create_by_uuid)
             i.update_by_uuid = customer_uuid_dict_trans.get(i.update_by_uuid)
@@ -614,10 +618,11 @@ def sync_offline():
             def __repr__(self):
                 return '<DocMarkRelationProperty %r>' % self.uuid
 
-        # 更新relation_uuid、create_by_uuid、update_by_uuid
+
         doc_mark_relation_property_in_offline = dbsession.query(OfflineDocMarkRelationProperty).filter(
             OfflineDocMarkRelationProperty.valid == 1, or_(OfflineDocMarkRelationProperty.create_time > sync_time,
                                                            OfflineDocMarkRelationProperty.update_time > sync_time)).all()
+        # 更新relation_uuid、create_by_uuid、update_by_uuid
         for i in doc_mark_relation_property_in_offline:
             i.relation_uuid = rc_uuid_dict_trans.get(i.relation_uuid)
             i.create_by_uuid = customer_uuid_dict_trans.get(i.create_by_uuid)
@@ -660,11 +665,12 @@ def sync_offline():
             def __repr__(self):
                 return '<DocMarkTimeTag %r>' % self.uuid
 
-        # 更新create_by_uuid、update_by_uuid
+
         doc_mark_time_tag_in_offline = dbsession.query(OfflineDocMarkTimeTag).filter(OfflineDocMarkTimeTag.valid == 1,
                                                                                      or_(
                                                                                          OfflineDocMarkTimeTag.create_time > sync_time,
                                                                                          OfflineDocMarkTimeTag.update_time > sync_time)).all()
+        # 更新create_by_uuid、update_by_uuid
         for i in doc_mark_time_tag_in_offline:
             i.create_by_uuid = customer_uuid_dict_trans.get(i.create_by_uuid)
             i.update_by_uuid = customer_uuid_dict_trans.get(i.update_by_uuid)
@@ -696,7 +702,6 @@ def sync_offline():
             def __repr__(self):
                 return '<DocMarkMind %r>' % self.uuid
 
-        # 更新create_by_uuid、update_by_uuid
         doc_mark_mind_in_offline = dbsession.query(OfflineDocMarkMind).filter(OfflineDocMarkMind.valid == 1,
                                                                                      or_(
                                                                                          OfflineDocMarkMind.create_time > sync_time,
@@ -728,7 +733,6 @@ def sync_offline():
             def __repr__(self):
                 return '<DocMarkAdvise %r>' % self.uuid
 
-        # 更新create_by_uuid、update_by_uuid
         doc_mark_advise_in_offline = dbsession.query(OfflineDocMarkAdvise).filter(OfflineDocMarkAdvise.valid == 1,
                                                                               or_(
                                                                                   OfflineDocMarkAdvise.create_time > sync_time,
@@ -745,6 +749,97 @@ def sync_offline():
                           update_time=i.update_time, _source=i._source, valid=i.valid) for i in
             doc_mark_mind_in_offline]
         db.session.add_all(sync_doc_mark_advises)
+        db.session.commit()
+        # </editor-fold>
+
+        # <editor-fold desc="sync_offline of DocumentRecords">
+        # 定义模型类
+        class OfflineDocumentRecords(Base):  # 自动加载表结构
+            __tablename__ = 'document_records'
+            uuid = db.Column(db.String, primary_key=True)
+            doc_uuid = db.Column(db.String)
+            create_by_uuid = db.Column(db.String)
+            create_time = db.Column(db.TIMESTAMP)
+            operate_type = db.Column(db.Integer)
+            _source = db.Column(db.String)
+
+            def __repr__(self):
+                return '<DocumentRecords %r>' % self.uuid
+
+        # 更新create_by_uuid、update_by_uuid
+        document_records_in_offline = dbsession.query(OfflineDocumentRecords).filter(
+            OfflineDocumentRecords.create_time > sync_time).all()
+        # 更新create_by_uuid
+        for i in document_records_in_offline:
+            i.create_by_uuid = customer_uuid_dict_trans.get(i.create_by_uuid)
+
+        # 同步document_records_in_offline
+        sync_document_records = [DocumentRecords(uuid=i.uuid, doc_uuid=i.doc_uuid, create_by_uuid=i.create_by_uuid,
+                                                 create_time=i.create_time, operate_type=i.operate_type,
+                                                 _source=i._source) for i in document_records_in_offline]
+        db.session.add_all(sync_document_records)
+        db.session.commit()
+        # </editor-fold>
+
+        # <editor-fold desc="sync_offline of DocMarkEvent">
+        # 定义模型类
+        class OfflineDocMarkEvent(Base):  # 自动加载表结构
+            __tablename__ = 'doc_mark_event'
+            uuid = db.Column(db.String, primary_key=True)
+            event_id = db.Column(db.String)
+            event_desc = db.Column(db.String)
+            event_subject = db.Column(db.JSON)
+            event_predicate = db.Column(db.String)
+            event_object = db.Column(db.JSON)
+            event_time = db.Column(db.JSON)
+            event_address = db.Column(db.JSON)
+            event_why = db.Column(db.String)
+            event_result = db.Column(db.String)
+            event_conduct = db.Column(db.String)
+            event_talk = db.Column(db.String)
+            event_how = db.Column(db.String)
+            doc_uuid = db.Column(db.String)
+            customer_uuid = db.Column(db.String)
+            parent_uuid = db.Column(db.String)
+            title = db.Column(db.String)
+            event_class_uuid = db.Column(db.String)
+            event_type_uuid = db.Column(db.String)
+            create_by_uuid = db.Column(db.String)
+            create_time = db.Column(db.TIMESTAMP)
+            update_by_uuid = db.Column(db.String)
+            update_time = db.Column(db.TIMESTAMP)
+            add_time = db.Column(db.TIMESTAMP)
+            valid = db.Column(db.Integer)
+            _source = db.Column(db.String)
+
+            def __repr__(self):
+                return '<DocMarkEvent %r>' % self.uuid
+
+        doc_mark_event_in_offline = dbsession.query(OfflineDocMarkEvent).filter(OfflineDocMarkEvent.valid == 1,
+                                                                                  or_(
+                                                                                      OfflineDocMarkEvent.create_time > sync_time,
+                                                                                      OfflineDocMarkEvent.update_time > sync_time)).all()
+
+        # 更新customer_uuid、event_class_uuid、event_type_uuid、create_by_uuid、update_by_uuid
+        for i in doc_mark_event_in_offline:
+            i.customer_uuid = customer_uuid_dict_trans.get(i.customer_uuid)
+            i.event_class_uuid = event_class_uuid_dict_trans.get(i.event_class_uuid)
+            i.event_type_uuid = event_cate_uuid_dict_trans.get(i.event_type_uuid)
+            i.create_by_uuid = customer_uuid_dict_trans.get(i.create_by_uuid)
+            i.update_by_uuid = customer_uuid_dict_trans.get(i.update_by_uuid)
+
+        # 同步doc_mark_events_in_offline
+        sync_doc_mark_events = [
+            DocMarkEvent(uuid=i.uuid, event_id=i.event_id, event_desc=i.event_desc, event_subject=i.event_subject,
+                         event_predicate=i.event_predicate, event_object=i.event_object, event_time=i.event_time,
+                         event_address=i.event_address, event_why=i.event_why, event_result=i.event_result,
+                         event_conduct=i.event_conduct, event_talk=i.event_talk, event_how=i.event_how,
+                         doc_uuid=i.doc_uuid, customer_uuid=i.customer_uuid, parent_uuid=i.parent_uuid,
+                         title=i.title, event_class_uuid=i.event_class_uuid, event_type_uuid=i.event_type_uuid,
+                         create_by_uuid=i.create_by_uuid, create_time=i.create_time, update_by_uuid=i.update_by_uuid,
+                         update_time=i.update_time, add_time=i.add_time, _source=i._source,
+                         valid=i.valid) for i in doc_mark_event_in_offline]
+        db.session.add_all(sync_doc_mark_events)
         db.session.commit()
         # </editor-fold>
 
