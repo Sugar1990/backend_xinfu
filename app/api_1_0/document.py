@@ -4,8 +4,8 @@ import hashlib
 import json
 import math
 import os
-import time
 import re
+import time
 import uuid
 
 import requests
@@ -23,17 +23,8 @@ from .. import db, lock
 from ..conf import LEXICON_IP, LEXICON_PORT, SUMMARY_IP, SUMMARY_PORT, YC_ROOT_URL, ES_SERVER_IP, ES_SERVER_PORT, \
     YC_TAGGING_PAGE_URL, YC_ROOT_URL_PYTHON, EVENT_EXTRACTION_URL, PLACE_BASE_NAME
 from ..models import Document, Entity, Customer, Permission, Catalog, DocMarkEntity, DocMarkPlace, DocMarkTimeTag, \
-    DocMarkEvent, DocMarkComment, EntityCategory
+    DocMarkEvent, DocMarkComment, EntityCategory, DocMarkAdvise, DocMarkMind, DocMarkRelationProperty
 from ..serve.word_parse import extract_word_content
-
-
-@blue_print.route("/doc_adc", methods=['POST'])
-# @swag_from('../swagger/save_tagging_result.yml')
-def doc_adc():
-    doc_ids = request.json.get('doc_ids', [])
-    a1 = jsonify({"event_list": get_event_list_from_docs(doc_ids),
-                  "event_list_group_by_entities": get_event_list_from_docs_group_by_entities(doc_ids)})
-    return a1
 
 
 # 上传文档
@@ -123,7 +114,7 @@ def upload_doc():
                                         res_place = yc_res["place"]
                                         res_time = yc_res["time"]
                                         res_concept = yc_res["concept"]
-
+                                        print("yc_res.paras", res_entity, res_place, res_concept, res_time)
                                         data_insert_entity = []
                                         for index, item_entity in enumerate(res_entity):
                                             entity_json = {}
@@ -458,7 +449,7 @@ def modify_doc_es_doc_type(doc_ids):
                 url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
                 header = {"Content-Type": "application/json; charset=UTF-8"}
                 search_json = {
-                    "id": {"type": "id", "value": doc.uuid}
+                    "uuid": {"type": "term", "value": doc.uuid}
                 }
 
                 es_id_para = {"search_index": "document", "search_json": search_json}
@@ -627,7 +618,7 @@ def del_doc():
                         else:
                             status_flag = True
 
-            delete_doc_in_pg_es(del_doc_ids)
+            delete_doc_mark_result(del_doc_ids)
 
             if del_doc_ids:
                 success_msg = ['操作成功']  # 删除消息
@@ -667,10 +658,71 @@ def delete_doc_in_pg_es(doc_ids):
 
         es_id_list = []  # 删除doc 对应esdoc的列表
         url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
-        for doc_id in doc_ids:
+        for doc_uuid in doc_ids:
             header = {"Content-Type": "application/json; charset=UTF-8"}
             search_json = {
-                'uuid': {'type': 'id', 'value': doc_uuid}
+                'uuid': {'type': 'term', 'value': str(doc_uuid)}
+            }
+            es_id_para = {"search_index": "document", "search_json": search_json}
+
+            search_result = requests.post(url + '/searchId', data=json.dumps(es_id_para), headers=header)
+
+            list_out = search_result.json()['data']['dataList']
+
+            if list_out:
+                es_id_list.append(list_out[0])
+
+        if es_id_list:
+            delete_para = {"delete_index": "document", "id_json": es_id_list}
+            search_result = requests.post(url + '/deletebyId', data=json.dumps(delete_para), headers=header)
+        else:
+            print('No_delete')
+    except Exception as e:
+        print(str(e))
+        pass
+
+
+def delete_doc_mark_result(doc_ids):
+    try:
+        doc = Document.query.filter(Document.uuid.in_(doc_ids)).all()
+        if doc:
+            db.session.delete(doc)
+            db.session.commit()
+        doc_mark_time = DocMarkTimeTag.query.filter(DocMarkTimeTag.doc_uuid.in_(doc_ids)).all()
+        if doc_mark_time:
+            db.session.delete(doc_mark_time)
+            db.session.commit()
+        doc_mark_entity = DocMarkEntity.query.filter(DocMarkEntity.doc_uuid.in_(doc_ids)).all()
+        if doc_mark_entity:
+            db.session.delete(doc_mark_entity)
+            db.session.commit()
+        doc_mark_plcace = DocMarkPlace.query.filter(DocMarkPlace.doc_uuid.in_(doc_ids)).all()
+        if doc_mark_plcace:
+            db.session.delete(doc_mark_plcace)
+            db.session.commit()
+        doc_mark_comment = DocMarkComment.query.filter(DocMarkComment.doc_uuid.in_(doc_ids)).all()
+        if doc_mark_comment:
+            db.session.delete(doc_mark_comment)
+            db.session.commit()
+        doc_mark_mind = DocMarkMind.query.filter(DocMarkMind.doc_uuid.in_(doc_ids)).all()
+        if doc_mark_mind:
+            db.session.delete(doc_mark_mind)
+            db.session.commit()
+        doc_mark_relationproperty = DocMarkRelationProperty.query.filter(DocMarkRelationProperty.doc_uuid.in_(doc_ids)).all()
+        if doc_mark_relationproperty:
+            db.session.delete(doc_mark_relationproperty)
+            db.session.commit()
+        doc_mark_advise = DocMarkAdvise.query.filter(DocMarkAdvise.doc_uuid.in_(doc_ids)).all()
+        if doc_mark_mind:
+            db.session.delete(doc_mark_advise)
+            db.session.commit()
+
+        es_id_list = []  # 删除doc 对应esdoc的列表
+        url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+        for doc_uuid in doc_ids:
+            header = {"Content-Type": "application/json; charset=UTF-8"}
+            search_json = {
+                'uuid': {'type': 'term', 'value': str(doc_uuid)}
             }
             es_id_para = {"search_index": "document", "search_json": search_json}
 
