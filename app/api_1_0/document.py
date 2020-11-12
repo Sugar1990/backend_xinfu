@@ -802,7 +802,8 @@ def get_info():
                 "keywords": [],
                 "pre_doc_id": 0,
                 "next_doc_id": 0,
-                "favorite": 0
+                "favorite": 0,
+                "html_path": ""
             }
         else:
 
