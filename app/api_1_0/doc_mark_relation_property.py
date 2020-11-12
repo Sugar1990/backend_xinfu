@@ -14,7 +14,7 @@ import uuid
 @blue_print.route('/get_one_doc_mark_relation_property', methods=['GET'])
 def get_one_doc_mark_relation_property():
     try:
-        doc_mark_relation_property_uuid = request.args.get('uuid', '')
+        doc_mark_relation_property_uuid = request.args.get('uuid', None)
 
         doc_mark_relation_property = DocMarkRelationProperty.query.filter_by(uuid=doc_mark_relation_property_uuid,
                                                                              valid=1).first()
@@ -57,7 +57,7 @@ def get_one_doc_mark_relation_property():
 @blue_print.route('/get_doc_mark_relation_property_by_docId', methods=['GET'])
 def get_doc_mark_relation_property_by_docId():
     try:
-        doc_uuid = request.args.get('doc_uuid', '')
+        doc_uuid = request.args.get('doc_uuid', None)
 
         doc_mark_relation_property_list = DocMarkRelationProperty.query.filter_by(doc_uuid=doc_uuid, valid=1).all()
         res = success_res(data=[{
@@ -85,16 +85,16 @@ def get_doc_mark_relation_property_by_docId():
 @blue_print.route('/add_doc_mark_relation_property', methods=['POST'])
 def add_doc_mark_relation_property():
     try:
-        doc_uuid = request.json.get('doc_uuid', '')
+        doc_uuid = request.json.get('doc_uuid', None)
         nid = request.json.get('nid', '')
-        relation_uuid = request.json.get('relation_uuid', '')
+        relation_uuid = request.json.get('relation_uuid', None)
         relation_name = request.json.get('relation_name', '')
         start_time = request.json.get('start_time', None)
         start_type = request.json.get('start_type', '')
         end_time = request.json.get('end_time', None)
         end_type = request.json.get('end_type', 1)
-        source_entity_uuid = request.json.get("source_entity_uuid", '')
-        target_entity_uuid = request.json.get("target_entity_uuid", '')
+        source_entity_uuid = request.json.get("source_entity_uuid", None)
+        target_entity_uuid = request.json.get("target_entity_uuid", None)
         source_entity = Entity.query.filter_by(uuid=source_entity_uuid, valid=1).first()
         target_entity = Entity.query.filter_by(uuid=target_entity_uuid, valid=1).first()
         if source_entity and target_entity:
@@ -127,17 +127,17 @@ def add_doc_mark_relation_property():
 @blue_print.route('/modify_doc_mark_relation_property', methods=['PUT'])
 def modify_doc_mark_relation_property():
     try:
-        doc_mark_relation_property_uuid = request.json.get('uuid', '')
-        doc_uuid = request.json.get('doc_uuid', '')
+        doc_mark_relation_property_uuid = request.json.get('uuid', None)
+        doc_uuid = request.json.get('doc_uuid', None)
         nid = request.json.get('nid', '')
-        relation_uuid = request.json.get('relation_uuid', '')
+        relation_uuid = request.json.get('relation_uuid', None)
         relation_name = request.json.get('relation_name', '')
         start_time = request.json.get('start_time', None)
         start_type = request.json.get('start_type', '')
         end_time = request.json.get('end_time', None)
         end_type = request.json.get('end_type', 1)
-        source_entity_uuid = request.json.get("source_entity_uuid", '')
-        target_entity_uuid = request.json.get("target_entity_uuid", '')
+        source_entity_uuid = request.json.get("source_entity_uuid", None)
+        target_entity_uuid = request.json.get("target_entity_uuid", None)
 
         source_entity = Entity.query.filter_by(uuid=source_entity_uuid, valid=1).first()
         target_entity = Entity.query.filter_by(uuid=target_entity_uuid, valid=1).first()
@@ -181,7 +181,7 @@ def modify_doc_mark_relation_property():
 @blue_print.route('/delete_doc_mark_relation_property', methods=['POST'])
 def delete_doc_mark_relation_property():
     try:
-        doc_mark_relation_property_uuid = request.json.get("uuid", '')
+        doc_mark_relation_property_uuid = request.json.get("uuid", None)
         doc_mark_relation_property = DocMarkRelationProperty.query.filter_by(uuid=doc_mark_relation_property_uuid,
                                                                              valid=1).first()
         if doc_mark_relation_property:
@@ -201,7 +201,7 @@ def delete_doc_mark_relation_property():
 @blue_print.route('/get_graph_by_entity_id', methods=['GET'])
 def get_graph_by_entity_id():
     try:
-        center_entity_uuid = request.args.get("uuid", '')
+        center_entity_uuid = request.args.get("uuid", None)
         nodes, edges, exist_entity_uuids = [], [], []
 
         center_entity = Entity.query.filter_by(uuid=center_entity_uuid, valid=1).first()

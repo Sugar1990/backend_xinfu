@@ -14,7 +14,7 @@ from ..models import DocMarkPlace, Entity
 @blue_print.route('/get_doc_mark_place_by_doc_id', methods=['GET'])
 def get_doc_mark_place_by_doc_id():
     try:
-        doc_mark_place_doc_uuid = request.args.get('doc_uuid','')
+        doc_mark_place_doc_uuid = request.args.get('doc_uuid', None)
         doc_mark_places = DocMarkPlace.query.filter_by(doc_uuid=doc_mark_place_doc_uuid, valid=1).all()
         res = success_res(data=[{
             "uuid": doc_mark_place.uuid,
@@ -55,7 +55,7 @@ def get_doc_mark_place_by_doc_id():
 @blue_print.route('/get_one_doc_mark_place_by_id', methods=['GET'])
 def get_one_doc_mark_place_by_id():
     try:
-        doc_mark_place_uuid = request.args.get('uuid','')
+        doc_mark_place_uuid = request.args.get('uuid', None)
         doc_mark_place = DocMarkPlace.query.filter_by(uuid=doc_mark_place_uuid, valid=1).first()
         if doc_mark_place:
             res = {
@@ -124,7 +124,7 @@ def get_one_doc_mark_place_by_id():
 @blue_print.route('/get_one_doc_mark_place_by_doc_id', methods=['GET'])
 def get_one_doc_mark_place_by_doc_id():
     try:
-        doc_mark_place_doc_uuid = request.args.get('doc_uuid','')
+        doc_mark_place_doc_uuid = request.args.get('doc_uuid', None)
         doc_mark_place = DocMarkPlace.query.filter_by(doc_uuid=doc_mark_place_doc_uuid, valid=1).first()
         if doc_mark_place:
             res = {
@@ -193,10 +193,10 @@ def get_one_doc_mark_place_by_doc_id():
 @blue_print.route('/add_doc_mark_place', methods=['POST'])
 def add_doc_mark_place():
     try:
-        doc_uuid = request.json.get('doc_uuid', '')
+        doc_uuid = request.json.get('doc_uuid', None)
         word = request.json.get('word', '')
         type = request.json.get('type', 0)
-        place_uuid = request.json.get('place_uuid', '')
+        place_uuid = request.json.get('place_uuid', None)
         direction = request.json.get('direction', '')
         place_lon = request.json.get('place_lon', '')
         place_lat = request.json.get('place_lat', '')
@@ -205,9 +205,9 @@ def add_doc_mark_place():
         dms = request.json.get('dms', [])
         distance = request.json.get('distance', 0.0)
         relation = request.json.get('relation', '')
-        create_by_uuid = request.json.get('create_by_uuid', '')
+        create_by_uuid = request.json.get('create_by_uuid', None)
         create_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-        update_by_uuid = request.json.get("update_by_uuid", '')
+        update_by_uuid = request.json.get("update_by_uuid", None)
         update_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         entity_or_sys = request.json.get('entity_or_sys', 0)
         appear_index_in_text = request.json.get('appear_index_in_text', [])
@@ -258,11 +258,11 @@ def add_doc_mark_place():
 @blue_print.route('/modify_doc_mark_place', methods=['PUT'])
 def modify_doc_mark_place():
     try:
-        uuid = request.json.get('uuid', '')
-        doc_uuid = request.json.get('doc_uuid', '')
+        uuid = request.json.get('uuid', None)
+        doc_uuid = request.json.get('doc_uuid', None)
         word = request.json.get('word', '')
         type = request.json.get('type', 0)
-        place_uuid = request.json.get('place_uuid', '')
+        place_uuid = request.json.get('place_uuid', None)
         direction = request.json.get('direction', '')
         place_lon = request.json.get('place_lon', '')
         place_lat = request.json.get('place_lat', '')
@@ -271,9 +271,9 @@ def modify_doc_mark_place():
         dms = request.json.get('dms', [])
         distance = request.json.get('distance', 0.0)
         relation = request.json.get('relation', '')
-        update_by_uuid = request.json.get('update_by_uuid', '')  # 更新修改者
+        update_by_uuid = request.json.get('update_by_uuid', None)  # 更新修改者
         entity_or_sys = request.json.get('entity_or_sys', 0)
-        create_by_uuid = request.json.get('create_by_uuid', '')
+        create_by_uuid = request.json.get('create_by_uuid', None)
         create_time = request.json.get('create_time', None)
         appear_index_in_text = request.json.get('appear_index_in_text', [])
         word_count = request.json.get('word_count', '')
@@ -357,7 +357,7 @@ def modify_doc_mark_place():
 @blue_print.route('/delete_doc_mark_place', methods=['POST'])
 def delete_doc_mark_place():
     try:
-        uuid = request.json.get('uuid', '')
+        uuid = request.json.get('uuid', None)
         doc_mark_place = DocMarkPlace.query.filter_by(uuid=uuid, valid=1).first()
         if doc_mark_place:
             doc_mark_place.valid = 0
@@ -377,7 +377,7 @@ def delete_doc_mark_place():
 @blue_print.route('/get_doc_mark_place_by_word', methods=['GET'])
 def get_doc_mark_place_by_word():
     try:
-        doc_mark_place_doc_uuid = request.args.get('doc_uuid', '')
+        doc_mark_place_doc_uuid = request.args.get('doc_uuid', None)
         doc_mark_place_word = request.args.get('word', '')
         doc_mark_place = DocMarkPlace.query.filter_by(doc_uuid=doc_mark_place_doc_uuid,
                                                        word=doc_mark_place_word, valid=1).first()
@@ -425,8 +425,8 @@ def get_doc_mark_place_by_word():
 @blue_print.route('/get_doc_mark_place', methods=['GET'])
 def get_doc_mark_place():
     try:
-        doc_mark_place_doc_uuid = request.args.get('doc_uuid','')
-        doc_mark_place_place_uuid= request.args.get('place_uuid', '')
+        doc_mark_place_doc_uuid = request.args.get('doc_uuid', None)
+        doc_mark_place_place_uuid= request.args.get('place_uuid', None)
         doc_mark_places = DocMarkPlace.query.filter_by(place_uuid=doc_mark_place_place_uuid, doc_uuid=doc_mark_place_doc_uuid, valid=1).all()
 
         res = success_res(data=[{
@@ -470,7 +470,7 @@ def get_doc_mark_place():
 @blue_print.route('/get_doc_mark_place_by_types', methods=['POST'])
 def get_doc_mark_place_by_types():
     try:
-        doc_mark_place_doc_uuid = request.json.get('doc_uuid', '')
+        doc_mark_place_doc_uuid = request.json.get('doc_uuid', None)
         doc_mark_place_types = request.json.get('types', [])
         doc_mark_places = db.session.query(DocMarkPlace).filter(
             DocMarkPlace.type.in_(doc_mark_place_types),
@@ -606,7 +606,7 @@ def get_doc_mark_place_all():
 @blue_print.route('/delete_doc_mark_place_by_doc_id', methods=['POST'])
 def delete_doc_mark_place_by_doc_id():
     try:
-        doc_uuid = request.json.get('doc_uuid', '')
+        doc_uuid = request.json.get('doc_uuid', None)
         doc_mark_places = DocMarkPlace.query.filter_by(doc_uuid=doc_uuid, valid=1).all()
 
         for doc_mark_place in doc_mark_places:

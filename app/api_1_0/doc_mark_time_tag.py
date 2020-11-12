@@ -14,7 +14,7 @@ from .utils import success_res, fail_res
 @blue_print.route('/get_doc_mark_time_tag_by_doc_id', methods=['GET'])
 def get_doc_mark_time_tag_by_doc_id():
     try:
-        doc_mark_time_tag_doc_uuid = request.args.get('doc_uuid', '')
+        doc_mark_time_tag_doc_uuid = request.args.get('doc_uuid', None)
         doc_mark_time_tags = DocMarkTimeTag.query.filter_by(doc_uuid=doc_mark_time_tag_doc_uuid, valid=1).all()
         res = success_res(data=[{
             "uuid": doc_mark_time_tag.uuid,
@@ -42,7 +42,7 @@ def get_doc_mark_time_tag_by_doc_id():
 @blue_print.route('/get_one_doc_mark_time_tag_by_id', methods=['GET'])
 def get_one_doc_mark_time_tag_by_id():
     try:
-        doc_mark_time_tag_uuid = request.args.get('uuid', '')
+        doc_mark_time_tag_uuid = request.args.get('uuid', None)
         doc_mark_time_tag = DocMarkTimeTag.query.filter_by(uuid=doc_mark_time_tag_uuid, valid=1).first()
         res = {
             "uuid": doc_mark_time_tag.uuid,
@@ -83,7 +83,7 @@ def get_one_doc_mark_time_tag_by_id():
 @blue_print.route('/get_one_doc_mark_time_tag_by_doc_id', methods=['GET'])
 def get_one_doc_mark_time_tag_by_doc_id():
     try:
-        doc_mark_time_tag_doc_uuid = request.args.get('doc_uuid', '')
+        doc_mark_time_tag_doc_uuid = request.args.get('doc_uuid', None)
         doc_mark_time_tag = DocMarkTimeTag.query.filter_by(doc_uuid=doc_mark_time_tag_doc_uuid, valid=1).first()
         res = {
             "uuid": doc_mark_time_tag.uuid,
@@ -122,7 +122,7 @@ def get_one_doc_mark_time_tag_by_doc_id():
 @blue_print.route('/add_doc_mark_time_tag', methods=['POST'])
 def add_doc_mark_time_tag():
     try:
-        doc_uuid = request.json.get('doc_uuid', '')
+        doc_uuid = request.json.get('doc_uuid', None)
         word = request.json.get('word', '')
         format_date = request.json.get('format_date', None)
         format_date_end = request.json.get('format_date_end', None)
@@ -130,7 +130,7 @@ def add_doc_mark_time_tag():
         time_type = request.json.get('time_type', 0)
         reserve_fields = request.json.get('reserve_fields', '')
         arab_time = request.json.get('arab_time', '')
-        update_by_uuid = request.json.get('update_by_uuid', ''),
+        update_by_uuid = request.json.get('update_by_uuid', None),
         appear_index_in_text = request.json.get('appear_index_in_text', [])
         doc_mark_time_tag = DocMarkTimeTag.query.filter_by(doc_uuid=doc_uuid, word=word,
                                                            format_date=format_date,
@@ -163,8 +163,8 @@ def add_doc_mark_time_tag():
 @blue_print.route('/modify_doc_mark_time_tag', methods=['PUT'])
 def modify_doc_mark_time_tag():
     try:
-        uuid = request.json.get('uuid', '')
-        doc_uuid = request.json.get('doc_uuid', '')
+        uuid = request.json.get('uuid', None)
+        doc_uuid = request.json.get('doc_uuid', None)
         word = request.json.get('word', '')
         format_date = request.json.get('format_date', None)
         format_date_end = request.json.get('format_date_end', None)
@@ -172,7 +172,7 @@ def modify_doc_mark_time_tag():
         time_type = request.json.get('time_type', 0)
         reserve_fields = request.json.get('reserve_fields', '')
         arab_time = request.json.get('arab_time', '')
-        update_by_uuid = request.json.get('update_by_uuid', '')
+        update_by_uuid = request.json.get('update_by_uuid', None)
         appear_index_in_text = request.json.get('appear_index_in_text', [])
         doc_mark_time_tag = DocMarkTimeTag.query.filter_by(uuid=uuid, valid=1).first()
         if doc_mark_time_tag:
@@ -221,7 +221,7 @@ def modify_doc_mark_time_tag():
 @blue_print.route('/delete_doc_mark_time_tag', methods=['POST'])
 def delete_doc_mark_time_tag():
     try:
-        uuid = request.json.get('uuid', '')
+        uuid = request.json.get('uuid', None)
         doc_mark_time_tag = DocMarkTimeTag.query.filter_by(uuid=uuid, valid=1).first()
         if doc_mark_time_tag:
             doc_mark_time_tag.valid = 0
@@ -308,7 +308,7 @@ def get_doc_mark_time_tags_by_ids():
 @blue_print.route('/delete_doc_mark_time_tags_by_doc_id', methods=['POST'])
 def delete_doc_mark_time_tags_by_doc_id():
     try:
-        doc_uuid = request.json.get('doc_uuid', '')
+        doc_uuid = request.json.get('doc_uuid', None)
         doc_mark_time_tags = DocMarkTimeTag.query.filter_by(doc_uuid=doc_uuid, valid=1).all()
 
         for doc_mark_time_tag in doc_mark_time_tags:
