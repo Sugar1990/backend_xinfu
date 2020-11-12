@@ -84,6 +84,7 @@ class Document(db.Model):
     is_favorite = db.Column(db.Integer)
     _source = db.Column(db.String)
     html_path = db.Column(db.String)
+    valid = db.Column(db.Integer)
 
     def category_name(self):
         conf = EntityCategory.query.filter_by(uuid=self.category_uuid).first()
