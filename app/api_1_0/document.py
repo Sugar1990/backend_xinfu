@@ -1774,7 +1774,7 @@ def get_es_doc(url, customer_uuid=0, date=[], time_range=[], time_period=[], pla
     if notes_content:
         search_json["notes_content"] = {"type": "phrase", "value": notes_content[0]}
     if doc_type:
-        search_json["doc_type"] = {"type": "id", "value": doc_type}
+        search_json["doc_type"] = {"type": "term", "value": doc_type}
     if search_json:
         search_json["sort"] = {"type": "normal", "sort": "create_time", "asc_desc": "desc"}
     if not search_json:
