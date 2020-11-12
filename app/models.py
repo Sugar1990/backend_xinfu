@@ -470,7 +470,7 @@ class DocMarkPlace(db.Model):
     _source = db.Column(db.String)
     word_count = db.Column(db.String)
     word_sentence = db.Column(db.String)
-    source_type = db.Column(db.String)
+    source_type = db.Column(db.Integer)
     def __repr__(self):
         return '<DocMarkPlace %r>' % self.uuid
 

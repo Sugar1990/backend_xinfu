@@ -155,6 +155,7 @@ def del_customer():
         customer = db.session.query(Customer).filter(and_(Customer.uuid == customer_uuid, Customer.valid == 1)).first()
         customer.valid = 0
         res = success_res(msg="删除成功")
+
     except Exception as e:
         print(str(e))
         db.session.rollback()
@@ -175,11 +176,16 @@ def query_by_uuid():
             "power_score": customer.power_score
             # "permission_power": Permission.get_power(customer.permission_id),
         }
+
     except Exception as e:
         print(str(e))
         db.session.rollback()
-        res = {"uuid": '-1',
-               "username": ""}
+        res = {
+            "uuid": '-1',
+            "username": "",
+            "permission_id": 0,
+            "power_score": 0
+        }
     return jsonify(res)
 
 
@@ -188,12 +194,14 @@ def query_all():
     try:
         permission_ids = Permission.query.with_entities(Permission.id).filter(not_(Permission.name.in_([ADMIN_ROLE_NAME, ASSIS_ROLE_NAME])),
                                              Permission.valid == 1).all()
+
         permission_ids = [i[0] for i in permission_ids]
         customer = Customer.query.filter(Customer.valid==1, Customer.permission_id.in_(permission_ids)).all()
         res = []
         for i in customer:
             if i.valid:
                 res.append({"uuid": i.uuid, "username": i.username, "permission_id": i.permission_id, "power_score": i.power_score})
+
     except Exception as e:
         print(str(e))
         db.session.rollback()
