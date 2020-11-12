@@ -112,10 +112,10 @@ def insert_customer():
 
 @blue_print.route('/update_customer', methods=['PUT'])
 def update_customer():
-    uuid = request.json.get('customer_uuid', '')
+    uuid = request.json.get('customer_uuid', None)
     username = request.json.get('customer_username', '')
     pwd = request.json.get('customer_pwd', '')
-    permission_id = request.json.get('customer_permission_uuid', 0)
+    permission_id = request.json.get('customer_permission_uuid', None)
     try:
         customer = db.session.query(Customer).filter(and_(Customer.uuid == uuid, Customer.valid == 1)).first()
         if customer:
@@ -149,7 +149,7 @@ def update_customer():
 
 @blue_print.route('/del_customer', methods=['POST'])
 def del_customer():
-    customer_uuid = request.json.get("customer_uuid", '')
+    customer_uuid = request.json.get("customer_uuid", None)
 
     try:
         customer = db.session.query(Customer).filter(and_(Customer.uuid == customer_uuid, Customer.valid == 1)).first()
@@ -166,7 +166,7 @@ def del_customer():
 
 @blue_print.route('/query_by_id', methods=['GET'])
 def query_by_uuid():
-    uuid = request.args.get('customer_uuid', '')
+    uuid = request.args.get('customer_uuid', None)
     try:
         customer = Customer.query.filter_by(uuid=uuid, valid=1).first()
         res = {
@@ -298,8 +298,8 @@ def query_by_uuids():
 @blue_print.route('/get_eidt_permission', methods=['POST'])
 def query_by_uuid_doc_uuid():
     try:
-        uuid = request.json.get('uuid', '')
-        doc_uuid = request.json.get('doc_uuid', '')
+        uuid = request.json.get('uuid', None)
+        doc_uuid = request.json.get('doc_uuid', None)
 
         customer_uuid = Customer.query.filter_by(uuid=uuid, valid=1).first()
         customer_doc_uuid = Customer.query.filter_by(uuid=doc_uuid, valid=1).first()
@@ -321,7 +321,7 @@ def query_by_uuid_doc_uuid():
 
 @blue_print.route('/update_power_score', methods=['PUT'])
 def update_power_score():
-    uuid = request.json.get('customer_uuid', '')
+    uuid = request.json.get('customer_uuid', None)
     try:
         customer = db.session.query(Customer).filter(and_(Customer.uuid == uuid, Customer.valid == 1)).first()
         if customer:

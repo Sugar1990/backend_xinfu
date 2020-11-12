@@ -11,7 +11,7 @@ import uuid
 @blue_print.route('/get_doc_mark_comment_by_id', methods=['GET'])
 def get_doc_mark_comment_by_id():
     try:
-        uuid = request.args.get("uuid", '')
+        uuid = request.args.get("uuid", None)
         doc_mark_comment = DocMarkComment.query.filter_by(uuid=uuid, valid=1).first()
         if doc_mark_comment:
             res = success_res({
@@ -51,7 +51,7 @@ def get_doc_mark_comment_by_id():
 @blue_print.route('/get_doc_mark_comment_by_doc_id', methods=['GET'])
 def get_doc_mark_comment_by_doc_id():
     try:
-        doc_uuid = request.args.get("doc_uuid", '')
+        doc_uuid = request.args.get("doc_uuid", None)
         doc_mark_comment_list = DocMarkComment.query.filter_by(doc_uuid=doc_uuid, valid=1).all()
         res = success_res(data=[{
             "uuid": i.uuid,
@@ -76,7 +76,7 @@ def get_doc_mark_comment_by_doc_id():
 @blue_print.route('/add_doc_mark_comment', methods=['POST'])
 def add_doc_mark_comment():
     try:
-        doc_uuid = request.json.get("doc_uuid", '')
+        doc_uuid = request.json.get("doc_uuid", None)
         name = request.json.get("name", "")
         position = request.json.get("position", "")
         comment = request.json.get("comment", "")
@@ -108,7 +108,7 @@ def add_doc_mark_comment():
 @blue_print.route('/modify_doc_mark_comment', methods=['PUT'])
 def modify_doc_mark_comment():
     try:
-        uuid = request.json.get("uuid", '')
+        uuid = request.json.get("uuid", None)
         doc_uuid = request.json.get("doc_uuid", None)
         name = request.json.get("name", "")
         position = request.json.get("position", "")
@@ -156,7 +156,7 @@ def modify_doc_mark_comment():
 @blue_print.route('/delete_doc_mark_comment_by_id', methods=['POST'])
 def delete_doc_mark_comment_by_id():
     try:
-        uuid = request.json.get("uuid", '')
+        uuid = request.json.get("uuid", None)
         doc_mark_comment = DocMarkComment.query.filter_by(uuid=uuid, valid=1).first()
         if doc_mark_comment:
             doc_mark_comment.valid = 0

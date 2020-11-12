@@ -20,7 +20,7 @@ from ..conf import ES_SERVER_IP, ES_SERVER_PORT, PLACE_BASE_NAME
 @blue_print.route('/get_doc_mark_event_by_id', methods=['GET'])
 def get_doc_mark_event_by_id():
     try:
-        uuid = request.args.get("uuid",'')
+        uuid = request.args.get("uuid",None)
         doc_mark_event = DocMarkEvent.query.filter_by(uuid=uuid, valid=1).first()
         if doc_mark_event:
             res = success_res({
@@ -90,7 +90,7 @@ def get_doc_mark_event_by_id():
 @blue_print.route('/get_doc_mark_event_by_doc_id', methods=['GET'])
 def get_doc_mark_event_by_doc_id():
     try:
-        doc_uuid = request.args.get("doc_uuid",'')
+        doc_uuid = request.args.get("doc_uuid",None)
         doc_mark_event_list = DocMarkEvent.query.filter_by(doc_uuid=doc_uuid, valid=1).all()
         res = success_res(data=[{
             "uuid": i.uuid,
@@ -341,7 +341,7 @@ def modify_doc_mark_event():
 @blue_print.route('/delete_doc_mark_event_by_id', methods=['POST'])
 def delete_doc_mark_entity_by_id():
     try:
-        uuid = request.json.get("uuid", 0)
+        uuid = request.json.get("uuid", None)
         doc_mark_event = DocMarkEvent.query.filter_by(uuid=uuid, valid=1).first()
         if doc_mark_event:
             doc_mark_event.valid = 0
@@ -465,7 +465,7 @@ def get_events_by_doc_ids_and_time_range():
 # @swag_from(get_doc_events_dict)
 def get_doc_events_to_earth():
     try:
-        doc_uuid = request.args.get("doc_uuid", '')
+        doc_uuid = request.args.get("doc_uuid", None)
         doc_mark_event_list = DocMarkEvent.query.filter_by(doc_uuid=doc_uuid, valid=1).all()
 
         result = []

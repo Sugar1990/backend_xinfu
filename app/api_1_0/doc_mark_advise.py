@@ -12,7 +12,7 @@ from ..conf import ADMIN_ROLE_POWER
 @blue_print.route('/get_doc_mark_advise_by_id', methods=['GET'])
 def get_doc_mark_advise_by_id():
     try:
-        uuid = request.args.get("uuid", '')
+        uuid = request.args.get("uuid", None)
         doc_mark_advise = DocMarkAdvise.query.filter_by(uuid=uuid, valid=1).first()
         if doc_mark_advise:
             res = success_res({
@@ -52,7 +52,7 @@ def get_doc_mark_advise_by_id():
 @blue_print.route('/get_doc_mark_advise_by_doc_id', methods=['GET'])
 def get_doc_mark_advise_by_doc_id():
     try:
-        doc_uuid = request.args.get("doc_uuid", '')
+        doc_uuid = request.args.get("doc_uuid", None)
         doc_mark_advise = DocMarkAdvise.query.filter_by(doc_uuid=doc_uuid, valid=1).all()
         res = success_res(data=[{
             "uuid": doc_mark_advise.uuid,
@@ -80,8 +80,8 @@ def get_doc_mark_advise_by_doc_id():
 @blue_print.route('/get_doc_mark_advise_by_create_by_id', methods=['GET'])
 def get_doc_mark_advise_by_create_by_id():
     try:
-        create_by_uuid = request.args.get("create_by_uuid", '')
-        doc_uuid = request.args.get("doc_uuid", '')
+        create_by_uuid = request.args.get("create_by_uuid", None)
+        doc_uuid = request.args.get("doc_uuid", None)
         customer = Customer.query.filter_by(uuid=create_by_uuid, valid=1).first()
         if customer.get_power() != ADMIN_ROLE_POWER:
             doc_mark_advises = DocMarkAdvise.query.filter_by(create_by_uuid=create_by_uuid, doc_uuid=doc_uuid, valid=1).all()
@@ -114,8 +114,8 @@ def get_doc_mark_advise_by_create_by_id():
 @blue_print.route('/add_doc_mark_advise', methods=['POST'])
 def add_doc_mark_advise():
     try:
-        doc_uuid = request.json.get("doc_uuid", '')
-        mark_uuid = request.json.get("mark_uuid", '')
+        doc_uuid = request.json.get("doc_uuid", None)
+        mark_uuid = request.json.get("mark_uuid", None)
         type = request.json.get("type", 0)
         content = request.json.get("content", "")
         create_by_uuid = request.json.get("create_by_uuid", None)
@@ -186,9 +186,9 @@ def add_doc_mark_advise():
 @blue_print.route('/modify_doc_mark_advise', methods=['PUT'])
 def modify_doc_mark_advise():
     try:
-        uuid = request.json.get("uuid", '')
-        doc_uuid = request.json.get("doc_uuid", '')
-        mark_uuid = request.json.get("mark_uuid", '')
+        uuid = request.json.get("uuid", None)
+        doc_uuid = request.json.get("doc_uuid", None)
+        mark_uuid = request.json.get("mark_uuid", None)
         type = request.json.get("type", 0)
         content = request.json.get("content", "")
         create_by_uuid = request.json.get("create_by_uuid", None)
@@ -234,7 +234,7 @@ def modify_doc_mark_advise():
 @blue_print.route('/delete_doc_mark_advise_by_id', methods=['POST'])
 def delete_doc_mark_advise_by_id():
     try:
-        uuid = request.json.get("uuid", '')
+        uuid = request.json.get("uuid", None)
         doc_mark_advise = DocMarkAdvise.query.filter_by(uuid=uuid, valid=1).first()
         if doc_mark_advise:
             doc_mark_advise.valid = 0
