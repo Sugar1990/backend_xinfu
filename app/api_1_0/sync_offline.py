@@ -113,7 +113,7 @@ def sync_offline():
         # </editor-fold>
 
         # <editor-fold desc="sync_offline of EntityCategory">
-        # 定义模型类
+        # # 定义模型类
         class OfflineEntityCategory(Base):  # 自动加载表结构
             # __table__ = Table('customer', md, autoload=True)
             __tablename__ = 'entity_category'
@@ -999,9 +999,8 @@ def sync_offline():
         def __repr__(self):
             return '<Document %r>' % self.name
 
-        offline_document = dbsession.query(OfflineDocument).filter(or_(
+        offline_document = dbsession.query(OfflineDocument).filter(OfflineDocument.valid == 1,or_(
             OfflineDocument.create_time > sync_time,
-            OfflineDocument.valid == 1,
             OfflineDocument.update_time > sync_time)).all()
         print (sync_time)
         sync_document = [Document(uuid=i.uuid,
