@@ -855,13 +855,14 @@ def sync_offline():
         # <editor-fold desc="sync_offline of Catalog">
         # 定义文档目录类
         class OfflineCalalog(Base):  # 自动加载表结构
-            # __table__ = Table('customer', md, autoload=True)
             __tablename__ = 'catalog'
             uuid = db.Column(db.String, primary_key=True)
             name = db.Column(db.Text)
             parent_uuid = db.Column(db.String)
             create_by_uuid = db.Column(db.String)
-            create_time = db.Column(db.DateTime)
+            create_time = db.Column(db.TIMESTAMP)
+            update_by_uuid = db.Column(db.String)
+            update_time = db.Column(db.TIMESTAMP)
             tagging_tabs = db.Column(db.JSON)
             _source = db.Column(db.String)
             sort = db.Column(db.Integer)
@@ -877,24 +878,33 @@ def sync_offline():
         online_catalog_path_dict = {}
         offline_online_catalog_dict = {}
         sync_catalog_uuid_list = []
-        catalogs = Catalog.query.filter_by(parent_uuid=None, valid=1).all()
+        # 存储根目录
+        catalogs = Catalog.query.filter_by(parent_uuid=None).all()
         for catalog in catalogs:
             online_catalog_uuids.append(catalog.uuid)
             online_catalog_path.append([catalog.name, 1])
-            online_catalog_path_dict[1] = [catalog.name]
-        offline_catalogs = dbsession.query(OfflineCalalog).filter_by(parent_uuid=None, valid=1).all()
+            if 1 not in online_catalog_path_dict.keys():
+                online_catalog_path_dict[1] = [catalog.name]
+            else:
+                online_catalog_path_dict[1].append(catalog.name)
+        offline_catalogs = dbsession.query(OfflineCalalog).filter_by(parent_uuid=None).all()
         for offline_catelog in offline_catalogs:
             offline_catalog_uuids.append(offline_catelog.uuid)
             offline_catalog_path.append([offline_catelog.name, 1])
-            offline_catalog_path_dict[1] = [offline_catelog.name]
+            if 1 not in offline_catalog_path_dict.keys():
+                offline_catalog_path_dict[1] = [offline_catelog.name]
+            else:
+                offline_catalog_path_dict[1].append(offline_catelog.name)
 
+        # 存储路径
         def get_catalog_online_path(uuid):
-            catalog = Catalog.query.filter_by(uuid=uuid, valid=1).first()
+            catalog = Catalog.query.filter_by(uuid=uuid).first()
             res = [catalog.name]
-            while (catalog.parent_uuid):
-                catalog = Catalog.query.filter_by(uuid=catalog.parent_uuid, valid=1).first()
+            while catalog.parent_uuid:
+                catalog = Catalog.query.filter_by(uuid=catalog.parent_uuid).first()
                 res.append(catalog.name)
-            path = "/".join(res.reverse())
+            res.reverse()
+            path = "/".join(res)
             catalog_level = path.count("/") + 1
             if catalog_level not in online_catalog_path_dict.keys():
                 online_catalog_path_dict[catalog_level] = [path]
@@ -903,57 +913,47 @@ def sync_offline():
             return [path, catalog_level]
 
         def get_catalog_offline_path(uuid):
-            catalog = dbsession.query(OfflineCalalog).filter_by(uuid=uuid, valid=1).first()
+            catalog = dbsession.query(OfflineCalalog).filter_by(uuid=uuid).first()
             res = [catalog.name]
-            while (catalog.parent_uuid):
-                catalog = dbsession.query(OfflineCalalog).filter_by(uuid=catalog.parent_uuid, valid=1).first()
+            while catalog.parent_uuid:
+                catalog = dbsession.query(OfflineCalalog).filter_by(uuid=catalog.parent_uuid).first()
                 res.append(catalog.name)
-            path = "/".join(res.reverse())
+            res.reverse()
+            path = "/".join(res)
             catalog_level = path.count("/") + 1
-            if catalog_level not in online_catalog_path_dict.keys():
+            if catalog_level not in offline_catalog_path_dict.keys():
                 offline_catalog_path_dict[catalog_level] = [path]
             else:
                 offline_catalog_path_dict[catalog_level].append(path)
             return [path, catalog_level]
 
+        # 层级遍历所有目录
         for uuid in online_catalog_uuids:
-            tmp_catalogs = Catalog.query.filter_by(parent_uuid=uuid, valid=1).all()
+            tmp_catalogs = Catalog.query.filter_by(parent_uuid=uuid).all()
             for tmp_catalog in tmp_catalogs:
                 online_catalog_uuids.append(tmp_catalog.uuid)
                 online_catalog_path.append(get_catalog_online_path(tmp_catalog.uuid))
         for uuid in offline_catalog_uuids:
-            tmp_catalogs = dbsession.query(OfflineCalalog).filter_by(parent_uuid=uuid, valid=1).all()
+            tmp_catalogs = dbsession.query(OfflineCalalog).filter_by(parent_uuid=uuid).all()
             for tmp_catalog in tmp_catalogs:
                 offline_catalog_uuids.append(tmp_catalog.uuid)
                 offline_catalog_path.append(get_catalog_offline_path(tmp_catalog.uuid))
-
+        # 改变离线版目录的父节点和填充offline_online_catalog_dict字典
         for offline_item in offline_catalog_path:
             offline_index = offline_catalog_path.index(offline_item)
-            tmp_offline_catalog = dbsession.query(OfflineCalalog).filter_by(uuid=offline_catalog_uuids[offline_index],
-                                                                            valid=1).first()
-            if offline_item[1] in online_catalog_path_dict.keys():  # 含有该级别
-                if offline_item[0] in online_catalog_path_dict[offline_item[1]]:  # 同名
-                    online_index = online_catalog_path.index(offline_item)
-                    offline_online_catalog_dict[offline_catalog_uuids[offline_index]] = online_catalog_uuids[
-                        online_index]  # 存进字典
-                    tmp_online_catalog = Catalog.query.filter_by(uuid=online_catalog_uuids[online_index],
-                                                                 valid=1).first()
-                    tmp_offline_catalog.parent_uuid = tmp_online_catalog.parent_uuid  # 改目录的父节点
-                else:  # 不同名
-                    sync_catalog_uuid_list.append(tmp_offline_catalog.uuid)
-                    offline_online_catalog_dict[tmp_offline_catalog.uuid] = tmp_offline_catalog.uuid  # 存进字典，uuid不变
-                    if tmp_offline_catalog.parent_uuid in offline_online_catalog_dict.keys():  # 非根目录的不同名
-                        tmp_offline_catalog.parent_uuid = offline_online_catalog_dict[
-                            tmp_offline_catalog.parent_uuid]  # 该目录的父节点
-                    else:  # 根目录的不同名
-                        pass
-            else:  # offline层级更高
+            tmp_offline_catalog = dbsession.query(OfflineCalalog).filter_by(
+                uuid=offline_catalog_uuids[offline_index]).first()
+            if offline_item[1] in online_catalog_path_dict.keys() and offline_item[0] in online_catalog_path_dict[
+                offline_item[1]]:  # 同级,同名
+                online_index = online_catalog_path.index(offline_item)
+                offline_online_catalog_dict[offline_catalog_uuids[offline_index]] = online_catalog_uuids[
+                    online_index]  # 存进字典
+                tmp_online_catalog = Catalog.query.filter_by(uuid=online_catalog_uuids[online_index]).first()
+                tmp_offline_catalog.parent_uuid = tmp_online_catalog.parent_uuid  # 改目录的父节点
+            else:
                 sync_catalog_uuid_list.append(tmp_offline_catalog.uuid)
                 offline_online_catalog_dict[tmp_offline_catalog.uuid] = tmp_offline_catalog.uuid  # 存进字典，uuid不变
-                if tmp_offline_catalog.parent_uuid in offline_online_catalog_dict.keys():  # 正常情况下
-                    tmp_offline_catalog.parent_uuid = offline_online_catalog_dict[tmp_offline_catalog.parent_uuid]
-                else:  # online无根目录
-                    pass
+                tmp_offline_catalog.parent_uuid = offline_online_catalog_dict.get(tmp_offline_catalog.parent_uuid)
         # 如果有要插入的数据
         if sync_catalog_uuid_list:
             offline_catalog = dbsession.query(OfflineCalalog).filter(
@@ -998,30 +998,27 @@ def sync_offline():
         def __repr__(self):
             return '<Document %r>' % self.name
 
-        offline_document = dbsession.query(OfflineDocument).filter_by(valid=1).all()
+        offline_document = dbsession.query(OfflineDocument).filter(or_(
+            OfflineDocument.create_time > sync_time,
+            OfflineDocument.update_time > sync_time)).all()
+        print (sync_time)
         sync_document = [Document(uuid=i.uuid,
                                   name=i.name,
                                   category=i.category,
                                   savepath=i.savepath,
                                   content=i.content,
+                                  create_time=i.create_time,
                                   status=i.status,
                                   keywords=i.keywords,
                                   md5=i.md5,
                                   is_favorite=i.is_favorite,
                                   _source=i._source,
-                                  parent_uuid=i.parent_uuid,
                                   create_by_uuid=customer_uuid_dict_trans.get(i.create_by_uuid),
                                   update_by_uuid=customer_uuid_dict_trans.get(i.update_by_uuid),
                                   catalog_uuid=offline_online_catalog_dict.get(i.catalog_uuid),
                                   html_path=i.html_path,
-                                  create_time=i.create_time,
                                   update_time=i.update_time) for i in offline_document]
         db.session.add_all(sync_document)
-        db.session.commit()
-        # </editor-fold>
-
-        # 更新同步时间
-        sync_record.sync_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         db.session.commit()
 
     except Exception as e:
