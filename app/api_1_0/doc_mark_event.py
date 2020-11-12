@@ -1038,3 +1038,70 @@ def get_advanced_search_of_events_pagination():
             "cur_page": 0
         })
     return jsonify(res)
+
+
+#根据开始时间、结束时间查询事件列表
+@blue_print.route('/get_doc_mark_event_by_times', methods=['POST'])
+# @swag_from(get_doc_events_dict)
+def get_doc_mark_event_by_times():
+    try:
+        start_date = request.json.get('start_date', '1900-01-01')
+        end_date = request.json.get('end_date', '9999-01-01')
+
+        doc_mark_time_tags = DocMarkTimeTag.query.filter(
+            and_(DocMarkTimeTag.valid == 1, DocMarkTimeTag.time_type.in_(['1', '2']))).all()
+        doc_mark_time_tag_ids = []
+
+        for doc_mark_time_tag in doc_mark_time_tags:
+            if doc_mark_time_tag.time_type == 1 and doc_mark_time_tag.format_date.strftime(
+                    '%Y-%m-%d %H:%M:%S') >= start_date and doc_mark_time_tag.format_date.strftime(
+                '%Y-%m-%d %H:%M:%S') <= end_date:
+                doc_mark_time_tag_ids.append(str(doc_mark_time_tag.uuid))
+
+            elif doc_mark_time_tag.time_type == 2 and not (
+                    end_date < doc_mark_time_tag.format_date.strftime(
+                '%Y-%m-%d %H:%M:%S') or start_date > doc_mark_time_tag.format_date_end.strftime('%Y-%m-%d %H:%M:%S')):
+                doc_mark_time_tag_ids.append(str(doc_mark_time_tag.uuid))
+            else:
+                pass
+        doc_mark_time_tag_ids_set = set(doc_mark_time_tag_ids)
+        doc_mark_events = DocMarkEvent.query.filter(DocMarkEvent.valid == 1, DocMarkEvent.event_time!=None,
+                                                    DocMarkEvent.event_address!=None).all()
+        event_list = []
+        for i in doc_mark_events:
+            if set(i.event_time) & doc_mark_time_tag_ids_set:
+                event = {
+                    "uuid": i.uuid,
+                    "event_id": i.event_id,
+                    "event_desc": i.event_desc,
+                    "event_subject": i.event_subject,
+                    "event_predicate": i.event_predicate,
+                    "event_object": i.event_object,
+                    "event_time": i.event_time,
+                    "event_address": i.event_address,
+                    "event_why": i.event_why,
+                    "event_result": i.event_result,
+                    "event_conduct": i.event_conduct,
+                    "event_talk": i.event_talk,
+                    "event_how": i.event_how,
+                    "doc_uuid": i.doc_uuid,
+                    "customer_uuid": i.customer_uuid,
+                    "parent_uuid": i.parent_uuid,
+                    "title": i.title,
+                    "event_class_uuid": i.event_class_uuid,
+                    "event_type_uuid": i.event_type_uuid,
+                    "create_by_uuid": i.create_by_uuid,
+                    "create_time": i.create_time.strftime("%Y-%m-%d %H:%M:%S") if i.create_time else None,
+                    "update_by_uuid": i.update_by_uuid,
+                    "update_time": i.update_time.strftime("%Y-%m-%d %H:%M:%S") if i.update_time else None,
+                    "add_time": i.add_time.strftime("%Y-%m-%d %H:%M:%S") if i.add_time else None
+                }
+                event_list.append(event)
+        res=success_res(data=event_list)
+
+
+
+    except Exception as e:
+        print(str(e))
+        res =[]
+    return jsonify(res)
