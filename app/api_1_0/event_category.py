@@ -209,3 +209,21 @@ def get_event_categories_by_classid():
         print(str(e))
         res = []
     return jsonify(res)
+
+@blue_print.route('/get_event_categories_by_classids', methods=['GET'])
+def get_event_categories_by_classids():
+    try:
+        event_class_uuid_name_list = EventClass.query.with_entities(EventClass.uuid, EventClass.name).filter_by(valid=1).all()
+        res = []
+        for event_class_uuid_name in event_class_uuid_name_list:
+            categories = EventCategory.query.filter_by(event_class_uuid=event_class_uuid_name[0], valid=1).all()
+            res_categories = [{
+                "uuid": i.uuid,
+                "name": i.name,
+            } for i in categories]
+            tmp_res_dic = {"class_name":event_class_uuid_name[1],"class_uuid":event_class_uuid_name[0],"event_categories":res_categories}
+            res.append(tmp_res_dic)
+    except Exception as e:
+        print(str(e))
+        res = []
+    return jsonify(res)
