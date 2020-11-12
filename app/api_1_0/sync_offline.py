@@ -994,12 +994,14 @@ def sync_offline():
             is_favorite = db.Column(db.Integer)
             _source = db.Column(db.String)
             html_path = db.Column(db.String)
+            valid = db.Column(db.Integer)
 
         def __repr__(self):
             return '<Document %r>' % self.name
 
         offline_document = dbsession.query(OfflineDocument).filter(or_(
             OfflineDocument.create_time > sync_time,
+            OfflineDocument.valid == 1,
             OfflineDocument.update_time > sync_time)).all()
         print (sync_time)
         sync_document = [Document(uuid=i.uuid,
@@ -1017,6 +1019,7 @@ def sync_offline():
                                   update_by_uuid=customer_uuid_dict_trans.get(i.update_by_uuid),
                                   catalog_uuid=offline_online_catalog_dict.get(i.catalog_uuid),
                                   html_path=i.html_path,
+                                  valid=1,
                                   update_time=i.update_time) for i in offline_document]
         db.session.add_all(sync_document)
         db.session.commit()
