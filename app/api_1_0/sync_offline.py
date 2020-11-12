@@ -41,6 +41,10 @@ def sync_offline():
         sync_record = SyncRecords.query.filter_by(system_name=OFFLINE_PG_DB_SERVER_IP).first()
         sync_time = sync_record.sync_time
 
+        # 更新同步时间
+        sync_record.sync_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+        db.session.commit()
+
         # <editor-fold desc="sync_offline of Customer">
         # 定义模型类
         class OfflineCustomer(Base):  # 自动加载表结构
@@ -69,7 +73,7 @@ def sync_offline():
 
         # online所有uuid/troop_number，唯一性（去重）判断
         uuids_and_troop_in_online = Customer.query.with_entities(Customer.uuid, Customer.troop_number).filter(
-            Customer.valid==1, or_(Customer.create_time > sync_time, Customer.update_time > sync_time)).all()
+            Customer.valid==1).all()
         troop_numbers_in_online = [i[1] for i in uuids_and_troop_in_online]
 
         # 记录uuid变化----customer_uuid_dict_trans
@@ -134,8 +138,7 @@ def sync_offline():
         # online所有name，唯一性（去重）判断
         uuids_and_names_in_online_ec = EntityCategory.query.with_entities(EntityCategory.uuid,
                                                                           EntityCategory.name).filter(
-            EntityCategory.valid == 1,
-            or_(EntityCategory.create_time > sync_time, EntityCategory.update_time > sync_time)).all()
+            EntityCategory.valid == 1).all()
         names_in_online = [i[1] for i in uuids_and_names_in_online_ec]
 
         # 记录uuid变化----ec_uuid_dict_trans
@@ -213,8 +216,7 @@ def sync_offline():
         # online所有relation_name，唯一性（去重）判断
         uuids_and_names_in_online_rc = RelationCategory.query.with_entities(RelationCategory.uuid,
                                                                             RelationCategory.relation_name).filter(
-            RelationCategory.valid == 1,
-            or_(RelationCategory.create_time > sync_time, RelationCategory.update_time > sync_time)).all()
+            RelationCategory.valid == 1).all()
         names_in_online = [i[1] for i in uuids_and_names_in_online_rc]
 
         # 记录uuid变化----rc_uuid_dict_trans
@@ -229,7 +231,7 @@ def sync_offline():
             # offname存在, {"offuuid": "onuuid"}, offname不存在, {"offuuid": "offuuid"}
             rc_uuid_dict_trans[offline_rc[0]] = online_dict_trans[
                 offline_rc[1]] if online_dict_trans.get(offline_rc[1], "") else offline_rc[0]
-        print("rc_uuid_dict_trans", rc_uuid_dict_trans)
+        # print("rc_uuid_dict_trans", rc_uuid_dict_trans)
         # offline-online：计算是否有要插入的数据
         offline_names = list(set(names_in_offline).difference(set(names_in_online)))
 
@@ -288,8 +290,7 @@ def sync_offline():
 
         # online所有name+category_uuid，唯一性（去重）判断
         names_and_cate_uuids_in_online = Entity.query.with_entities(Entity.name, Entity.category_uuid,
-                                                                    Entity.uuid).filter(Entity.valid == 1, or_(
-            Entity.create_time > sync_time, Entity.update_time > sync_time)).all()
+                                                                    Entity.uuid).filter(Entity.valid == 1).all()
         diff_sign_in_online = [i[0] + str(i[1]) for i in names_and_cate_uuids_in_online]
 
         # 记录uuid变化----entity_uuid_dict_trans
@@ -299,7 +300,7 @@ def sync_offline():
         for i in names_and_cate_uuids_in_online:
             if i[0] + str(i[1]) not in online_dict_trans.keys():
                 online_dict_trans[i[0] + str(i[1])] = i[2]  # {"onname+oncate_uuid": "onuuid"}
-        print("entity:", online_dict_trans)
+        # print("entity:", online_dict_trans)
         for offline_entity in names_and_cate_uuids_in_offline:
             # offname存在, {"offuuid": "onuuid"}, offname不存在, {"offuuid": "offuuid"}
             entity_uuid_dict_trans[offline_entity[2]] = online_dict_trans[
@@ -318,7 +319,7 @@ def sync_offline():
         offline_name_inter = [i[0:-36] for i in offline_inter]
         offline_cate_uuid_inter = [i[-36:] for i in offline_inter]
 
-        # 如果有要更新的数据
+        # 如果有要更新的数据----更新synonyms和props
         if offline_inter:
             online_entities_update = Entity.query().filter(Entity.name.in_(offline_name_inter),
                                                            Entity.category_uuid.in_(offline_cate_uuid_inter)).all()
@@ -328,7 +329,8 @@ def sync_offline():
                 online_entity.synonyms = list(set(online_entity.synonyms.append(offline_entity.synonyms)))
                 offline_entity.props.update(online_entity.props)  # 相同属性保留online的值
                 online_entity.props = offline_entity.props
-                online_entity.summary = online_entity.summary + ' ' + offline_entity.summary + "——来自" + offline_entity._source
+                online_entity.summary = online_entity.summary  # 不更新summary
+                # online_entity.summary = online_entity.summary + ' ' + offline_entity.summary + "——来自" + offline_entity._source
 
             db.session.commit()
 
@@ -371,7 +373,7 @@ def sync_offline():
 
         # online所有name，唯一性（去重）判断
         uuids_and_names_in_online_evcl = EventClass.query.with_entities(EventClass.uuid, EventClass.name).filter(
-            EventClass.valid == 1, or_(EventClass.create_time > sync_time, EventClass.update_time > sync_time)).all()
+            EventClass.valid == 1).all()
         names_in_online = [i[1] for i in uuids_and_names_in_online_evcl]
 
         # 记录uuid变化----event_class_uuid_dict_trans
@@ -435,8 +437,7 @@ def sync_offline():
         # online所有name, 唯一性（去重）判断
         names_and_class_uuids_in_online = EventCategory.query.with_entities(EventCategory.name,
                                                                             EventCategory.uuid).filter(
-            EventCategory.valid == 1,
-            or_(EventCategory.create_time > sync_time, EventCategory.update_time > sync_time)).all()
+            EventCategory.valid == 1).all()
         diff_sign_in_online = [i[0] for i in names_and_class_uuids_in_online]
 
         # 记录uuid变化----event_cate_uuid_dict_trans
@@ -526,7 +527,6 @@ def sync_offline():
 
             def __repr__(self):
                 return '<DocMarkEntity %r>' % self.uuid
-
 
         doc_mark_entity_in_offline = dbsession.query(OfflineDocMarkEntity).filter(
             OfflineDocMarkEntity.valid == 1,
@@ -1020,6 +1020,7 @@ def sync_offline():
                                   update_time=i.update_time) for i in offline_document]
         db.session.add_all(sync_document)
         db.session.commit()
+        # </editor-fold>
 
     except Exception as e:
         print(str(e))
