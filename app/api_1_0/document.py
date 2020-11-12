@@ -72,7 +72,7 @@ def upload_doc():
                             file_md5 = md5_hash.hexdigest()
 
                         if file_md5:
-                            doc = Document.query.filter_by(md5=file_md5, catalog_uuid=catalog_uuid).first()
+                            doc = Document.query.filter_by(md5=file_md5, catalog_uuid=catalog_uuid,valid=1).first()
                             if doc:
                                 url = YC_TAGGING_PAGE_URL + "?doc_id={0}&uid={1}".format(doc.uuid, uid)
                                 doc_power = doc.get_power() if doc else 0
@@ -93,7 +93,9 @@ def upload_doc():
                                                permission_id=permission_id,
                                                status=0,
                                                keywords=keywords,
-                                               md5=file_md5)
+                                               md5=file_md5,
+                                               valid=1
+                                               )
 
                                 db.session.add(doc)
                                 db.session.commit()
@@ -328,7 +330,7 @@ def upload_doc():
                                             # res_html_path = yc_res_event.json()["data"]
                                             res_html_path = json.loads(yc_res_event.text)
                                             print("路径结果", res_html_path)
-                                            doc_html = Document.query.filter_by(uuid=doc.uuid, catalog_uuid=catalog_uuid).first()
+                                            doc_html = Document.query.filter_by(uuid=doc.uuid, catalog_uuid=catalog_uuid, valid=1).first()
                                             doc_html.html_path = res_html_path["data"]
                                             print("res_html_path", res_html_path, doc_html.html_path)
                                             db.session.commit()
@@ -422,7 +424,7 @@ def find_leaf_catalog_id(parent_catalog_id, path_catalog_name_list, uid):
 def get_doc_realpath():
     try:
         doc_uuid = request.args.get('doc_uuid', "")
-        doc = Document.query.filter_by(uuid=doc_uuid).first()
+        doc = Document.query.filter_by(uuid=doc_uuid, valid=1).first()
 
         res = doc.savepath.replace('\n\"', '') if doc else ""
     except Exception as e:
@@ -436,7 +438,7 @@ def get_doc_realpath():
 # @swag_from(update_es_doc_type_dict)
 def update_es_doc_type():
     try:
-        docs = Document.query.all()
+        docs = Document.query.filter_by(valid=1).all()
         doc_ids = [str(i.uuid) for i in docs]
         res = modify_doc_es_doc_type(doc_ids)
     except Exception as e:
@@ -449,7 +451,7 @@ def update_es_doc_type():
 def modify_doc_es_doc_type(doc_ids):
     try:
         if isinstance(doc_ids, list):
-            doc_list = Document.query.filter(Document.uuid.in_(doc_ids)).all()
+            doc_list = Document.query.filter(Document.uuid.in_(doc_ids), Document.valid == 1).all()
             for doc in doc_list:
                 # 获得es对应doc
                 url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
@@ -495,10 +497,10 @@ def move_doc_to_catalog():
         if not catalog:
             res = fail_res(msg="目标目录不存在")
         else:
-            docs = Document.query.filter(Document.uuid.in_(doc_uuids)).all()
+            docs = Document.query.filter(Document.uuid.in_(doc_uuids), Document.valid == 1).all()
             if docs:
                 for doc in docs:
-                    document_same = Document.query.filter(Document.md5 == doc.md5, Document.uuid != doc.uuid).first()
+                    document_same = Document.query.filter(Document.md5 == doc.md5, Document.uuid != doc.uuid, Document.valid == 1).first()
                     move_source_docs_to_target_catalog([doc], catalog_uuid)
                     res = success_res()
             else:
@@ -512,7 +514,7 @@ def move_doc_to_catalog():
 
 # 移动文件到指定目录
 def move_source_docs_to_target_catalog(source_docs=[], target_catalog_id=0):
-    target_docs = Document.query.filter_by(catalog_uuid=target_catalog_id).all()
+    target_docs = Document.query.filter_by(catalog_uuid=target_catalog_id, valid=1).all()
 
     # 重名：判断和处理重名文件；否则直接移动
     del_doc_id = []
@@ -542,7 +544,7 @@ def move_source_docs_to_target_catalog(source_docs=[], target_catalog_id=0):
 def get_content():
     try:
         doc_uuid = request.args.get('doc_uuid')
-        doc = Document.query.filter_by(uuid=doc_uuid).first()
+        doc = Document.query.filter_by(uuid=doc_uuid, valid=1).first()
         res = doc.content if doc else []
     except Exception as e:
         print(str(e))
@@ -559,7 +561,7 @@ def modify_doc_info():
         name = request.json.get('name', '')
         status = request.json.get('status', 0)
 
-        doc = Document.query.filter_by(uuid=doc_uuid).first()
+        doc = Document.query.filter_by(uuid=doc_uuid, valid=1).first()
         if not doc:
             res = fail_res()
         else:
@@ -609,12 +611,12 @@ def del_doc():
     permission_flag = False
     status_flag = False
     try:
-        customer = Customer.query.filter_by(uuid=customer_uuid).first()
+        customer = Customer.query.filter_by(uuid=customer_uuid, valid=1).first()
         print(customer.uuid)
         if customer:
             del_doc_ids = []
             for doc_uuid in doc_uuids:
-                doc = Document.query.filter_by(uuid=doc_uuid).first()
+                doc = Document.query.filter_by(uuid=doc_uuid, valid =1).first()
                 if doc:
                     if doc.get_power() > customer.get_power():
                         permission_flag = True
@@ -624,9 +626,9 @@ def del_doc():
                         else:
                             status_flag = True
 
-            delete_doc_mark_result(del_doc_ids)
-
+            # delete_doc_mark_result(del_doc_ids)
             if del_doc_ids:
+                delete_doc_mark_result(del_doc_ids)
                 success_msg = ['操作成功']  # 删除消息
             else:
                 success_msg = []
@@ -648,19 +650,20 @@ def del_doc():
             res = fail_res(msg='无效用户，操作失败')
     except Exception as e:
         print(str(e))
-        db.session.rollback()
+        # db.session.rollback()
         res = fail_res()
     return jsonify(res)
 
 
-# 真实删除doc操作
+# 删除doc操作
 def delete_doc_in_pg_es(doc_ids):
     try:
         for doc_uuid in doc_ids:
-            doc = Document.query.filter_by(uuid=doc_uuid).first()
+            doc = Document.query.filter_by(uuid=doc_uuid, valid=1).first()
             if doc:
-                db.session.delete(doc)
-                db.session.commit()
+                doc.valid = 0
+                # db.session.delete(doc)
+                # db.session.commit()
 
         es_id_list = []  # 删除doc 对应esdoc的列表
         url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
@@ -690,38 +693,46 @@ def delete_doc_in_pg_es(doc_ids):
 
 def delete_doc_mark_result(doc_ids):
     try:
-        doc = Document.query.filter(Document.uuid.in_(doc_ids)).all()
-        if doc:
-            db.session.delete(doc)
-            db.session.commit()
-        doc_mark_time = DocMarkTimeTag.query.filter(DocMarkTimeTag.doc_uuid.in_(doc_ids)).all()
-        if doc_mark_time:
-            db.session.delete(doc_mark_time)
-            db.session.commit()
-        doc_mark_entity = DocMarkEntity.query.filter(DocMarkEntity.doc_uuid.in_(doc_ids)).all()
-        if doc_mark_entity:
-            db.session.delete(doc_mark_entity)
-            db.session.commit()
-        doc_mark_plcace = DocMarkPlace.query.filter(DocMarkPlace.doc_uuid.in_(doc_ids)).all()
-        if doc_mark_plcace:
-            db.session.delete(doc_mark_plcace)
-            db.session.commit()
-        doc_mark_comment = DocMarkComment.query.filter(DocMarkComment.doc_uuid.in_(doc_ids)).all()
-        if doc_mark_comment:
-            db.session.delete(doc_mark_comment)
-            db.session.commit()
-        doc_mark_mind = DocMarkMind.query.filter(DocMarkMind.doc_uuid.in_(doc_ids)).all()
-        if doc_mark_mind:
-            db.session.delete(doc_mark_mind)
-            db.session.commit()
-        doc_mark_relationproperty = DocMarkRelationProperty.query.filter(DocMarkRelationProperty.doc_uuid.in_(doc_ids)).all()
-        if doc_mark_relationproperty:
-            db.session.delete(doc_mark_relationproperty)
-            db.session.commit()
-        doc_mark_advise = DocMarkAdvise.query.filter(DocMarkAdvise.doc_uuid.in_(doc_ids)).all()
-        if doc_mark_mind:
-            db.session.delete(doc_mark_advise)
-            db.session.commit()
+        doces = Document.query.filter(Document.uuid.in_(doc_ids), Document.valid == 1).all()
+        for doc in doces:
+            doc.valid = 0
+
+        doc_mark_times = DocMarkTimeTag.query.filter(DocMarkTimeTag.doc_uuid.in_(doc_ids),
+                                                     DocMarkTimeTag.valid == 1).all()
+        for doc_mark_time in doc_mark_times:
+            doc_mark_time.valid = 0
+
+        doc_mark_entities = DocMarkEntity.query.filter(DocMarkEntity.doc_uuid.in_(doc_ids),
+                                                       DocMarkEntity.valid == 1).all()
+        for doc_mark_entity in doc_mark_entities:
+            doc_mark_entity.valid = 0
+
+        doc_mark_plcaces = DocMarkPlace.query.filter(DocMarkPlace.doc_uuid.in_(doc_ids), DocMarkPlace.valid == 1).all()
+        for doc_mark_plcace in doc_mark_plcaces:
+            doc_mark_plcace.valid = 0
+
+        doc_mark_comments = DocMarkComment.query.filter(DocMarkComment.doc_uuid.in_(doc_ids),
+                                                        DocMarkComment.valid == 1).all()
+        for doc_mark_comment in doc_mark_comments:
+            doc_mark_comment.valid = 0
+
+        doc_mark_minds = DocMarkMind.query.filter(DocMarkMind.doc_uuid.in_(doc_ids), DocMarkMind.valid == 1).all()
+        for doc_mark_mind in doc_mark_minds:
+            doc_mark_mind.valid = 0
+
+        doc_mark_relationproperties = DocMarkRelationProperty.query.filter(
+            DocMarkRelationProperty.doc_uuid.in_(doc_ids), DocMarkRelationProperty.valid == 1).all()
+        for doc_mark_relationproperty in doc_mark_relationproperties:
+            doc_mark_relationproperty.valid = 0
+
+        doc_mark_advises = DocMarkAdvise.query.filter(DocMarkAdvise.doc_uuid.in_(doc_ids),
+                                                      DocMarkAdvise.valid == 1).all()
+        for doc_mark_advise in doc_mark_advises:
+            doc_mark_advise.valid = 0
+
+        doc_mark_events = DocMarkEvent.query.filter(DocMarkEvent.doc_uuid.in_(doc_ids), DocMarkEvent.valid == 1).all()
+        for doc_mark_event in doc_mark_events:
+            doc_mark_event.valid = 0
 
         es_id_list = []  # 删除doc 对应esdoc的列表
         url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
@@ -758,7 +769,7 @@ def get_upload_history():
         page_size = request.args.get('page_size', 10, type=int)
         customer_uuid = request.args.get('customer_uuid', "")
 
-        pagination = Document.query.filter_by(create_by_uuid=customer_uuid).order_by(Document.create_time.desc()).paginate(
+        pagination = Document.query.filter_by(create_by_uuid=customer_uuid, valid=1).order_by(Document.create_time.desc()).paginate(
             current_page, page_size, False)
 
         data = [{
@@ -787,7 +798,7 @@ def get_info():
     try:
         doc_uuid = request.args.get('doc_uuid', "")
 
-        doc = Document.query.filter_by(uuid=doc_uuid).first()
+        doc = Document.query.filter_by(uuid=doc_uuid, valid=1).first()
         customer = Customer.query.filter_by(uuid=doc.create_by_uuid, valid=1).first()
         permission = Permission.query.filter_by(id=customer.permission_id, valid=1).first()
         permission_list = Permission.query.filter_by(valid=1).all()
@@ -816,10 +827,12 @@ def get_info():
 
             documentPrevious = Document.query.filter(Document.permission_id.in_(lower_permission_id_list),
                                                      Document.catalog_uuid == doc.catalog_uuid,
-                                                     Document.create_time < doc.create_time).order_by(
+                                                     Document.create_time < doc.create_time,
+                                                     Document.valid == 1).order_by(
                 Document.create_time.desc()).first()
             documentNext = Document.query.filter(Document.permission_id.in_(lower_permission_id_list),
                                                  Document.catalog_uuid == doc.catalog_uuid,
+                                                 Document.valid == 1,
                                                  Document.create_time > doc.create_time).order_by(
                 Document.create_time).first()
             # ----------------------- 获取上下篇文章 END --------------------------
@@ -902,7 +915,7 @@ def get_entity_in_list_pagination():
                     data = []
                     leader_ids = get_leader_ids()
                     for doc_uuid in list(set(doc_id_list)):
-                        doc = Document.query.filter_by(uuid=doc_uuid).first()
+                        doc = Document.query.filter_by(uuid=doc_uuid, valid=1).first()
                         if doc:
                             # i['name'] = doc.name
                             # i['create_username'] = Customer.get_username_by_id(doc.create_by)
@@ -937,7 +950,7 @@ def get_entity_in_list_pagination():
             data = []
             leader_ids = get_leader_ids()
 
-            pagination = Document.query.filter().order_by(Document.create_time.desc()).paginate(cur_page, page_size, False)
+            pagination = Document.query.filter(Document.valid == 1).order_by(Document.create_time.desc()).paginate(cur_page, page_size, False)
             #pagination = Document.query.filter().order_by(Document.create_time.desc()).limit(100).offset(100).all()
             if leader_ids:
                 for doc in pagination.items:
@@ -979,7 +992,7 @@ def get_entity_in_list_pagination():
 def judge_doc_permission():
     customer_uuid = request.args.get("customer_uuid", "")
     doc_uuid = request.args.get("doc_uuid", "")
-    doc = Document.query.filter_by(uuid=doc_uuid).first()
+    doc = Document.query.filter_by(uuid=doc_uuid, valid=1).first()
     cus = Customer.query.filter_by(uuid=customer_uuid).first()
     doc_power = doc.get_power() if doc else 0
     cus_power = cus.get_power() if cus else 0
@@ -1023,7 +1036,7 @@ def get_search_pagination():
         data = []
         leader_ids = get_leader_ids()
         for doc in search_result.json()['data']['dataList']:
-            doc_pg = Document.query.filter_by(uuid=doc['_source']['id']).first()
+            doc_pg = Document.query.filter_by(uuid=doc['_source']['id'], valid=1).first()
             if doc_pg:
                 path = doc_pg.get_full_path() if doc_pg else '已失效'
                 create_username = Customer.get_username_by_id(doc_pg.create_by_uuid) if doc_pg else '无效用户'
@@ -1236,7 +1249,7 @@ def search_advanced_doc_type():
         data_by_doc_id = {}
         for data in data_screen:
             if not data["name"]:
-                doc = Document.query.filter_by(uuid=data['uuid']).first()
+                doc = Document.query.filter_by(uuid=data['uuid'], valid=1).first()
                 if doc:
                     data["name"] = doc.name if doc else ""
             if data["name"]:
@@ -1571,7 +1584,7 @@ def search_advanced_pagination():
     data_screen_res = []
     leader_ids = get_leader_ids()
     for data in data_screen:
-        doc = Document.query.filter_by(uuid=data['uuid']).first()
+        doc = Document.query.filter_by(uuid=data['uuid'], valid=1).first()
         if doc:
             if not data["name"]:
                 data["name"] = doc.name if doc else ""
@@ -1699,7 +1712,7 @@ def save_tagging_result():
 def get_latest_upload_file_tagging_url():
     try:
         customer_uuid = request.args.get("uuid", '')
-        doc = Document.query.filter_by(create_by_uuid=customer_uuid).first()
+        doc = Document.query.filter_by(create_by_uuid=customer_uuid, valid=1).first()
         if doc and customer_uuid:
             url = YC_TAGGING_PAGE_URL + "?doc_id={0}&uid={1}&edit=1".format(doc.uuid, customer_uuid)
             res = success_res(data=url)
@@ -1719,7 +1732,7 @@ def set_favorite():
         doc_uuid = request.json.get("doc_uuid", '')
         favorite = request.json.get("favorite", 0)
         favorite = int(favorite)
-        doc = Document.query.filter_by(uuid=doc_uuid).first()
+        doc = Document.query.filter_by(uuid=doc_uuid, valid=1).first()
         if doc:
             doc.is_favorite = favorite
             db.session.commit()
