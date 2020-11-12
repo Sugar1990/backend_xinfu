@@ -108,6 +108,7 @@ def upload_doc():
                                     data = json.dumps(body)
                                     yc_res = requests.post(url=url, data=data, headers=header)
                                     print("yc_res.status_code", yc_res.status_code)
+                                    # print("yc_res.content:", yc_res.content)
                                     if yc_res.status_code in (200, 201):
                                         yc_res = yc_res.json()['data']
                                         res_entity = yc_res["entity"]
@@ -152,7 +153,7 @@ def upload_doc():
 
                                             db.session.add(doc_mark_entity)
                                             db.session.commit()
-                                            item_entity["doc_mark_id"] = doc_mark_entity.uuid
+                                            item_entity["doc_mark_id"] = str(doc_mark_entity.uuid)
                                             data_insert_entity.append(entity_json)
 
                                         data_insert_place = []
@@ -207,7 +208,7 @@ def upload_doc():
                                             else:
                                                 db.session.add(doc_mark_place)
                                                 db.session.commit()
-                                                item_place["doc_mark_id"] = doc_mark_place.uuid
+                                                item_place["doc_mark_id"] = str(doc_mark_place.uuid)
 
                                                 data_insert_place.append(doc_mark_place.word)
 
@@ -254,7 +255,7 @@ def upload_doc():
 
                                             db.session.add(doc_mark_time_tag)
                                             db.session.commit()
-                                            item_time["doc_mark_id"] = doc_mark_time_tag.uuid
+                                            item_time["doc_mark_id"] = str(doc_mark_time_tag.uuid)
                                         # print("doc_mark_time_tag插入成功")
 
                                         doc.status = 2
@@ -276,19 +277,22 @@ def upload_doc():
                                         print("event_extraction_res.status_code", event_extraction_res.status_code)
 
                                         if event_extraction_res.status_code in (200, 201):
+                                            print("jw接口结果",event_extraction_res.json()["result"])
                                             data_insert_event = []
 
                                             for item in event_extraction_res.json()["result"]:
+                                                print("a")
                                                 event_json = {}
                                                 doc_mark_event = DocMarkEvent(uuid=uuid.uuid1(), doc_uuid=doc.uuid, valid=1)
                                                 if item.get("event_address", []):
+                                                    print("b")
                                                     doc_mark_event.event_address = item["event_address"]
-                                                if item.get("event_class_id", 0):
-                                                    doc_mark_event.event_class_uuid = item["event_class_id"]
-                                                    event_json["event_class_id"] = item["event_class_id"]
-                                                if item.get("event_category_id", 0):
-                                                    doc_mark_event.event_type_uuid = item["event_category_id"]
-                                                    event_json["category_id"] = item["event_category_id"]
+                                                # if item.get("event_class_id", None):
+                                                #     doc_mark_event.event_class_uuid = item["event_class_id"]
+                                                #     event_json["event_class_id"] = item["event_class_id"]
+                                                # if item.get("event_category_id", None):
+                                                #     doc_mark_event.event_type_uuid = item["event_category_id"]
+                                                #     event_json["category_id"] = item["event_category_id"]
                                                 if item.get("event_desc", ""):
                                                     doc_mark_event.event_desc = item["event_desc"]
                                                 if item.get("event_object", []):
@@ -316,14 +320,16 @@ def upload_doc():
                                         eventIds = event_id_list
                                         header = {"Content-Type": "application/json; charset=UTF-8"}
                                         url = YC_ROOT_URL + '/doc/preprocess'
-                                        body = {"docId": doc.uuid, "eventIds": eventIds}
+                                        body = {"doc_uuid": str(doc.uuid), "eventIds": eventIds}
                                         data = json.dumps(body)
                                         yc_res_event = requests.post(url=url, data=data, headers=header)
                                         print("yc_res_event.status_code", yc_res_event.status_code)
                                         if event_extraction_res.status_code in (200, 201):
-                                            res_html_path = yc_res_event.json()["data"]
+                                            # res_html_path = yc_res_event.json()["data"]
+                                            res_html_path = json.loads(yc_res_event.text)
+                                            print("路径结果", res_html_path)
                                             doc_html = Document.query.filter_by(uuid=doc.uuid, catalog_uuid=catalog_uuid).first()
-                                            doc_html.html_path = res_html_path
+                                            doc_html.html_path = res_html_path["data"]
                                             print("res_html_path", res_html_path, doc_html.html_path)
                                             db.session.commit()
                                         else:
@@ -336,7 +342,7 @@ def upload_doc():
 
                                 #抽取id、name、content插入es数据库中
                                 data_insert_json = [{
-                                    "id": doc.uuid,
+                                    "id": str(doc.uuid),
                                     "name": doc.name,
                                     "content": doc.content,
                                     "create_time": datetime_now.isoformat(),
@@ -350,7 +356,7 @@ def upload_doc():
                                     "event_categories": data_insert_event
                                 }]
                                 an_catalog = Catalog.get_ancestorn_catalog(catalog_uuid)
-                                doc_type_id = an_catalog.uuid if an_catalog else ""
+                                doc_type_id = str(an_catalog.uuid) if an_catalog else ""
                                 if doc_type_id:
                                     data_insert_json[0]["doc_type"] = doc_type_id
 
@@ -381,7 +387,7 @@ def upload_doc():
     except Exception as e:
         print(str(e))
         db.session.rollback()
-        res = fail_res()
+        res = fail_res(str(e))
     return jsonify(res)
 
 
@@ -836,7 +842,8 @@ def get_info():
                 "pre_doc_id": documentPrevious.uuid if documentPrevious else None,
                 "next_doc_id": documentNext.uuid if documentNext else None,
                 "tagging_tabs": ancestorn_catalog_tagging_tabs if flag else [],
-                "favorite": doc.is_favorite
+                "favorite": doc.is_favorite,
+                "html_path": doc.html_path
             }
     except Exception as e:
         print(str(e))
@@ -847,7 +854,8 @@ def get_info():
                     "keywords": [],
                     "pre_doc_id": 0,
                     "next_doc_id": 0,
-                    "favorite": 0
+                    "favorite": 0,
+                    "html_path": ""
                     }
 
     return jsonify(doc_info)
