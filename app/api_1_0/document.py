@@ -573,7 +573,7 @@ def modify_doc_info():
             url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
             header = {"Content-Type": "application/json; charset=UTF-8"}
             search_json = {
-                "uuid": {"type": "id", "value": doc_uuid}
+                "uuid": {"type": "term", "value": str(doc_uuid)}
             }
 
             es_id_para = {"search_index": "document", "search_json": search_json}
@@ -835,9 +835,9 @@ def get_info():
             # ----------------------- 根据目录id，获取根目录tab权限 END -----------------------
 
             doc_info = {
-                "uuid": doc.uuid,
+                "uuid": str(doc.uuid),
                 "name": doc.name,
-                "category": doc.category,
+                "category": str(doc.catalog_uuid),
                 "create_time": doc.create_time.strftime('%Y-%m-%d %H:%M:%S'),
                 "keywords": doc.keywords if doc.keywords else [],
                 "pre_doc_id": documentPrevious.uuid if documentPrevious else None,
@@ -1023,7 +1023,7 @@ def get_search_pagination():
         data = []
         leader_ids = get_leader_ids()
         for doc in search_result.json()['data']['dataList']:
-            doc_pg = Document.query.filter_by(uuid=doc['_source']['id']).first()
+            doc_pg = Document.query.filter_by(uuid=doc['_source']['uuid']).first()
             if doc_pg:
                 path = doc_pg.get_full_path() if doc_pg else '已失效'
                 create_username = Customer.get_username_by_id(doc_pg.create_by_uuid) if doc_pg else '无效用户'
@@ -1033,7 +1033,7 @@ def get_search_pagination():
                                                                     DocMarkComment.valid == 1).all()
 
                     data_item = {
-                        'uuid': doc['_source']['id'], #修改es后改称uuid
+                        'uuid': doc['_source']['uuid'], #修改es后改称uuid
                         'name': doc['_source']['name'],
                         'create_username': create_username,
                         'path': path,
@@ -1737,7 +1737,7 @@ def set_favorite():
 
 def get_es_doc(url, customer_uuid=0, date=[], time_range=[], time_period=[], place=[], place_direction_distance=[],
                location=[], degrees=[], length=[], route=[], entities=[], keywords=[], event_categories={}, notes=[],
-               doc_type=0, content="", frequency=[], notes_content=[]):
+               doc_type="", content="", frequency=[], notes_content=[]):
     search_json = {}
     if content:
         # search_json["name"] = {"type": "like", "value": content}
@@ -1774,7 +1774,7 @@ def get_es_doc(url, customer_uuid=0, date=[], time_range=[], time_period=[], pla
     if notes_content:
         search_json["notes_content"] = {"type": "phrase", "value": notes_content[0]}
     if doc_type:
-        search_json["doc_type"] = {"type": "term", "value": doc_type}
+        search_json["doc_type"] = {"type": "term", "value": str(doc_type)}
     if search_json:
         search_json["sort"] = {"type": "normal", "sort": "create_time", "asc_desc": "desc"}
     if not search_json:
@@ -1785,8 +1785,9 @@ def get_es_doc(url, customer_uuid=0, date=[], time_range=[], time_period=[], pla
     esurl = url + "/searchCustom"
     search_result = requests.post(url=esurl, data=json.dumps(para), headers=header)
     data = [doc['_source'] for doc in search_result.json()['data']['dataList']]
-    data_screen = screen_doc(data, time_range=time_range, degrees=degrees, entities=entities,
-                             event_categories=event_categories)
+    data_screen = screen_doc(data, time_range=time_range, degrees=degrees, entities=entities)#event_categories=event_categories)
+
+
     return data_screen
 
 
