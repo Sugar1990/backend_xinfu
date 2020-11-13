@@ -1454,7 +1454,7 @@ def get_doc_events_to_earth(doc_ids):
 
 
 def get_doc_events_to_earth_by_entities(doc_ids):
-    doc_mark_event_list = DocMarkEvent.query.filter(DocMarkEvent.doc_id.in_(doc_ids)).all()
+    doc_mark_event_list = DocMarkEvent.query.filter(DocMarkEvent.doc_uuid.in_(doc_ids)).all()
     event_dict = {}
 
     for doc_mark_event in doc_mark_event_list:
