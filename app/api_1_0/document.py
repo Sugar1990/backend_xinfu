@@ -117,7 +117,10 @@ def upload_doc():
                                         res_place = yc_res["place"]
                                         res_time = yc_res["time"]
                                         res_concept = yc_res["concept"]
-                                        print("yc_res.paras", res_entity, res_place, res_concept, res_time)
+                                        print("res_entity: ", res_entity)
+                                        print("res_place: ", res_place)
+                                        print("res_concept: ", res_concept)
+                                        print("res_time: ", res_time)
                                         data_insert_entity = []
                                         for index, item_entity in enumerate(res_entity):
                                             entity_json = {}
@@ -135,7 +138,7 @@ def upload_doc():
 
                                             db.session.add(doc_mark_entity)
                                             db.session.commit()
-                                            item_entity["doc_mark_id"] = doc_mark_entity.uuid
+                                            item_entity["doc_mark_id"] = str(doc_mark_entity.uuid)
                                             data_insert_entity.append(entity_json)
                                         # print("doc_mark_entity数据插入成功")
 
