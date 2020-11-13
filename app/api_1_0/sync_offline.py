@@ -84,18 +84,30 @@ def sync_offline():
             if i[1] not in online_dict_trans.keys():
                 online_dict_trans[i[1]] = i[0]  # [{"troop_number": "uuid"}]
 
-        for offline_customer in uuids_and_troop_in_offline:
+        # 遍历offline所有数据，不做时间筛选，构造dict
+        uuids_and_troop_in_offline_for_dict = dbsession.query(OfflineCustomer).with_entities(OfflineCustomer.uuid,
+                                                                                             OfflineCustomer.troop_number).filter_by(
+            valid=1).all()
+
+        for offline_customer in uuids_and_troop_in_offline_for_dict:
             # offtroop存在, {"offuuid": "onuuid"}, offtroop不存在, {"offuuid": "offuuid"}
             customer_uuid_dict_trans[offline_customer[0]] = online_dict_trans[
                 offline_customer[1]] if online_dict_trans.get(offline_customer[1], "") else offline_customer[0]
 
+        # for offline_customer in uuids_and_troop_in_offline:
+        #     # offtroop存在, {"offuuid": "onuuid"}, offtroop不存在, {"offuuid": "offuuid"}
+        #     customer_uuid_dict_trans[offline_customer[0]] = online_dict_trans[
+        #         offline_customer[1]] if online_dict_trans.get(offline_customer[1], "") else offline_customer[0]
+
         # offline-online：计算是否有要插入的数据
-        offline_troop_numbers = list(set(troop_numbers_in_offline).difference(set(troop_numbers_in_online)))
+        offline_troop_numbers_to_insert = list(set(troop_numbers_in_offline).difference(set(troop_numbers_in_online)))
+        # offline-online：计算是否有要更新的数据
+        offline_troop_numbers_to_update = list(set(troop_numbers_in_offline).intersection(set(troop_numbers_in_online)))
 
         # 如果有要插入的数据
-        if offline_troop_numbers:
+        if offline_troop_numbers_to_insert:
             offline_customers = dbsession.query(OfflineCustomer).filter(
-                OfflineCustomer.troop_number.in_(offline_troop_numbers)).all()
+                OfflineCustomer.troop_number.in_(offline_troop_numbers_to_insert)).all()
             sync_customers = [Customer(uuid=i.uuid,
                                        username=i.username,
                                        pwd=i.pwd,
@@ -109,11 +121,24 @@ def sync_offline():
                                        update_time=i.update_time) for i in offline_customers]
             db.session.add_all(sync_customers)
             db.session.commit()
+
+            # 如果有要更新的数据  即_source相同，off_uuid=on_uuid
+            if offline_troop_numbers_to_update:
+                offline_customers = dbsession.query(OfflineCustomer).filter(
+                    OfflineCustomer.troop_number.in_(offline_troop_numbers_to_update)).all()
+                for offline_customer in offline_customers:
+                    online_customer = Customer.query.filter_by(uuid=offline_customer.uuid,
+                                                               _source=offline_customer._source, valid=1).first()
+                    online_customer.username = offline_customer.username
+                    online_customer.pwd = offline_customer.pwd
+                    online_customer.power_score = offline_customer.power_score
+                    online_customer.update_time = offline_customer.update_time
+            db.session.commit()
         # print("customer_uuid_dict_trans:", customer_uuid_dict_trans)
         # </editor-fold>
 
         # <editor-fold desc="sync_offline of EntityCategory">
-        # 定义模型类
+        # # 定义模型类
         class OfflineEntityCategory(Base):  # 自动加载表结构
             # __table__ = Table('customer', md, autoload=True)
             __tablename__ = 'entity_category'
@@ -149,18 +174,26 @@ def sync_offline():
             if i[1] not in online_dict_trans.keys():
                 online_dict_trans[i[1]] = i[0]  # {"onname": "onuuid"}
 
-        for offline_ec in uuids_and_names_in_offline_ec:
+        # 遍历offline所有数据，不做时间筛选，构造dict
+        uuids_and_names_in_offline_ec_for_dict = dbsession.query(OfflineEntityCategory).with_entities(OfflineEntityCategory.uuid,
+                                                                                             OfflineEntityCategory.name).filter(
+            OfflineEntityCategory.valid == 1).all()
+
+        for offline_ec in uuids_and_names_in_offline_ec_for_dict:
             # offname存在, {"offuuid": "onuuid"}, offname不存在, {"offuuid": "offuuid"}
             ec_uuid_dict_trans[offline_ec[0]] = online_dict_trans[
                 offline_ec[1]] if online_dict_trans.get(offline_ec[1], "") else offline_ec[0]
 
         # offline-online：计算是否有要插入的数据
-        offline_names = list(set(names_in_offline).difference(set(names_in_online)))
+        offline_names_to_insert = list(set(names_in_offline).difference(set(names_in_online)))
+
+        # offline-online：计算是否有要更新的数据
+        offline_names_to_update = list(set(names_in_offline).intersection(set(names_in_online)))
 
         # 如果有要插入的数据
-        if offline_names:
+        if offline_names_to_insert:
             offline_entity_cateogories = dbsession.query(OfflineEntityCategory).filter(
-                OfflineEntityCategory.name.in_(offline_names)).all()
+                OfflineEntityCategory.name.in_(offline_names_to_insert)).all()
             sync_entity_categories = [EntityCategory(uuid=i.uuid,
                                                      name=i.name,
                                                      valid=i.valid,
@@ -169,6 +202,17 @@ def sync_offline():
                                                      create_time=i.create_time,
                                                      update_time=i.update_time) for i in offline_entity_cateogories]
             db.session.add_all(sync_entity_categories)
+            db.session.commit()
+
+        # 如果有要更新的数据
+        if offline_names_to_update:
+            offline_entity_cateogories = dbsession.query(OfflineEntityCategory).filter(
+                OfflineEntityCategory.name.in_(offline_names_to_update)).all()
+            for offline_ec in offline_entity_cateogories:
+                online_ec = EntityCategory.query.filter_by(uuid=offline_ec.uuid, _source=offline_ec._source, valid=1).first()
+                online_ec.name = offline_ec.name
+                online_ec.type = offline_ec.type
+                online_ec.update_time = offline_ec.update_time
             db.session.commit()
         # print("ec_uuid_dict_trans:", ec_uuid_dict_trans)
 
@@ -227,18 +271,25 @@ def sync_offline():
             if i[1] not in online_dict_trans.keys():
                 online_dict_trans[i[1]] = i[0]  # {"onname": "onuuid"}
 
-        for offline_rc in uuids_and_names_in_offline_rc:
+        # 遍历offline所有数据，不做时间筛选，构造dict
+        uuids_and_names_in_offline_rc_for_dict = dbsession.query(OfflineRelationCategory).with_entities(
+            OfflineRelationCategory.uuid, OfflineRelationCategory.relation_name).filter(
+            OfflineRelationCategory.valid == 1).all()
+
+        for offline_rc in uuids_and_names_in_offline_rc_for_dict:
             # offname存在, {"offuuid": "onuuid"}, offname不存在, {"offuuid": "offuuid"}
             rc_uuid_dict_trans[offline_rc[0]] = online_dict_trans[
                 offline_rc[1]] if online_dict_trans.get(offline_rc[1], "") else offline_rc[0]
         # print("rc_uuid_dict_trans", rc_uuid_dict_trans)
         # offline-online：计算是否有要插入的数据
-        offline_names = list(set(names_in_offline).difference(set(names_in_online)))
+        offline_names_to_insert = list(set(names_in_offline).difference(set(names_in_online)))
+        # offline-online：计算是否有要更新的数据
+        offline_names_to_update = list(set(names_in_offline).intersection(set(names_in_online)))
 
         # 如果有要插入的数据
-        if offline_names:
+        if offline_names_to_insert:
             offline_relation_cateogories = dbsession.query(OfflineRelationCategory).filter(
-                OfflineRelationCategory.relation_name.in_(offline_names)).all()
+                OfflineRelationCategory.relation_name.in_(offline_names_to_insert)).all()
             sync_relation_categories = [RelationCategory(uuid=i.uuid,
                                                          source_entity_category_uuids=i.source_entity_category_uuids,
                                                          target_entity_category_uuids=i.target_entity_category_uuids,
@@ -248,6 +299,18 @@ def sync_offline():
                                                          create_time=i.create_time,
                                                          update_time=i.update_time) for i in offline_relation_cateogories]
             db.session.add_all(sync_relation_categories)
+            db.session.commit()
+
+        # 如果有要插入的数据
+        if offline_names_to_update:
+            offline_relation_cateogories = dbsession.query(OfflineRelationCategory).filter(
+                OfflineRelationCategory.relation_name.in_(offline_names_to_update)).all()
+            for offline_rc in offline_relation_cateogories:
+                online_rc = RelationCategory.query.filter(uuid=offline_rc.uuid, _source=offline_rc._source, valid=1).first()
+                online_rc.source_entity_category_uuids = offline_rc.source_entity_category_uuids
+                online_rc.target_entity_category_uuids = offline_rc.target_entity_category_uuids
+                online_rc.relation_name = offline_rc.relation_name
+                online_rc.update_time = offline_rc.update_time
             db.session.commit()
 
         # </editor-fold>
@@ -290,7 +353,7 @@ def sync_offline():
 
         # online所有name+category_uuid，唯一性（去重）判断
         names_and_cate_uuids_in_online = Entity.query.with_entities(Entity.name, Entity.category_uuid,
-                                                                    Entity.uuid).filter(Entity.valid == 1).all()
+                                                                    Entity.uuid).filter(Entity.valid == 1, Entity.category_uuid!=None).all()
         diff_sign_in_online = [i[0] + str(i[1]) for i in names_and_cate_uuids_in_online]
 
         # 记录uuid变化----entity_uuid_dict_trans
@@ -384,18 +447,25 @@ def sync_offline():
             if i[1] not in online_dict_trans.keys():
                 online_dict_trans[i[1]] = i[0]  # {"onname": "onuuid"}
 
-        for offline_ec in uuids_and_names_in_offline_evcl:
+        # offline所有name，构造dict
+        uuids_and_names_in_offline_evcl_for_dict = dbsession.query(OfflineEventClass).with_entities(
+            OfflineEventClass.uuid,
+            OfflineEventClass.name).filter(OfflineEventClass.valid == 1).all()
+
+        for offline_ec in uuids_and_names_in_offline_evcl_for_dict:
             # offname存在, {"offuuid": "onuuid"}, offname不存在, {"offuuid": "offuuid"}
             event_class_uuid_dict_trans[offline_ec[0]] = online_dict_trans[
                 offline_ec[1]] if online_dict_trans.get(offline_ec[1], "") else offline_ec[0]
 
         # offline-online：计算是否有要插入的数据
-        offline_names = list(set(names_in_offline).difference(set(names_in_online)))
+        offline_names_to_insert = list(set(names_in_offline).difference(set(names_in_online)))
+        # offline-online：计算是否有要更新的数据
+        offline_names_to_update = list(set(names_in_offline).intersection(set(names_in_online)))
 
         # 如果有要插入的数据
-        if offline_names:
+        if offline_names_to_insert:
             offline_event_classes = dbsession.query(OfflineEventClass).filter(
-                OfflineEventClass.name.in_(offline_names)).all()
+                OfflineEventClass.name.in_(offline_names_to_insert)).all()
             sync_event_classes = [EventClass(uuid=i.uuid,
                                              name=i.name,
                                              valid=i.valid,
@@ -403,6 +473,16 @@ def sync_offline():
                                              create_time=i.create_time,
                                              update_time=i.update_time) for i in offline_event_classes]
             db.session.add_all(sync_event_classes)
+            db.session.commit()
+
+        # 如果有要更新的数据
+        if offline_names_to_update:
+            offline_event_classes = dbsession.query(OfflineEventClass).filter(
+                OfflineEventClass.name.in_(offline_names_to_update)).all()
+            for offline_evcl in offline_event_classes:
+                online_evcl = EventClass.query.filter_by(uuid=offline_evcl.uuid, _source=offline_evcl._source, valid=1).first()
+                online_evcl.name = offline_evcl.name
+                online_evcl.update_time = offline_evcl.update_time
             db.session.commit()
 
         # </editor-fold>
@@ -448,24 +528,42 @@ def sync_offline():
             if i[0] not in online_dict_trans.keys():
                 online_dict_trans[i[0]] = i[1]  # {"online_name": "onuuid"}
 
-        for offline_event_category in names_and_class_uuids_in_offline:
+        # offline所有name, 构造dict
+        names_and_class_uuids_in_offline_for_dict = dbsession.query(OfflineEventCategory).with_entities(
+            OfflineEventCategory.name, OfflineEventCategory.uuid).filter(OfflineEventCategory.valid == 1).all()
+
+        for offline_event_category in names_and_class_uuids_in_offline_for_dict:
             # offname存在, {"offuuid": "onuuid"}, offname不存在, {"offuuid": "offuuid"}
             event_cate_uuid_dict_trans[offline_event_category[1]] = online_dict_trans[
                 offline_event_category[0]] if online_dict_trans.get(
                 offline_event_category[0], "") else offline_event_category[1]
 
         # offline-online：计算是否有要插入的数据
-        offline_diff = list(set(diff_sign_in_offline).difference(set(diff_sign_in_online)))
+        offline_diff_to_insert = list(set(diff_sign_in_offline).difference(set(diff_sign_in_online)))
+        # offline-online：计算是否有要更新的数据
+        offline_diff_to_update = list(set(diff_sign_in_offline).intersection(set(diff_sign_in_online)))
 
         # 如果有要插入的数据
-        if offline_diff:
+        if offline_diff_to_insert:
             offline_event_categories = dbsession.query(OfflineEventCategory).filter(
-                OfflineEventCategory.name.in_(offline_diff)).all()
+                OfflineEventCategory.name.in_(offline_diff_to_insert)).all()
             sync_event_categories = [EventCategory(uuid=i.uuid, name=i.name,
                                                    event_class_uuid=i.event_class_uuid, valid=i.valid,
                                                    _source=i._source, create_time=i.create_time,
                                                    update_time=i.update_time) for i in offline_event_categories]
             db.session.add_all(sync_event_categories)
+            db.session.commit()
+
+        # 如果有要更新的数据
+        if offline_diff_to_update:
+            offline_event_categories = dbsession.query(OfflineEventCategory).filter(
+                OfflineEventCategory.name.in_(offline_diff_to_update)).all()
+            for offline_event_cate in offline_event_categories:
+                online_event_cate = EventCategory.query.filter_by(uuid=offline_event_cate.uuid,
+                                                                  _source=offline_event_cate._source, valid=1).first()
+                online_event_cate.name = offline_event_cate.name
+                online_event_cate.event_class_uuid = offline_event_cate.event_class_uuid
+                online_event_cate.update_time = offline_event_cate.update_time
             db.session.commit()
         # </editor-fold>
 
@@ -533,6 +631,14 @@ def sync_offline():
             or_(
                 OfflineDocMarkEntity.create_time > sync_time,
                 OfflineDocMarkEntity.update_time > sync_time)).all()
+
+        # 将doc_mark_entity的entity_uuid更新到dict里
+        entity_uuid_in_dme = dbsession.query(OfflineDocMarkEntity).with_entities(
+            OfflineDocMarkEntity.entity_uuid).filter_by(valid=1).all()
+        for entity_uuid in entity_uuid_in_dme:
+            if entity_uuid not in entity_uuid_dict_trans.keys():
+                entity_uuid_dict_trans[entity_uuid] = entity_uuid
+
         # 更新create_by_uuid、update_by_uuid、entity_uuid
         for i in doc_mark_entity_in_offline:
             i.create_by_uuid = customer_uuid_dict_trans.get(i.create_by_uuid)
@@ -584,6 +690,14 @@ def sync_offline():
             or_(
                 OfflineDocMarkPlace.create_time > sync_time,
                 OfflineDocMarkPlace.update_time > sync_time)).all()
+
+        # 将doc_mark_place的place_uuid更新到dict里
+        place_uuid_in_dmp = dbsession.query(OfflineDocMarkPlace).with_entities(
+            OfflineDocMarkPlace.place_uuid).filter_by(valid=1).all()
+        for place_uuid in place_uuid_in_dmp:
+            if place_uuid not in entity_uuid_dict_trans.keys():
+                entity_uuid_dict_trans[place_uuid] = place_uuid
+
         # 更新create_by_uuid、update_by_uuid、place_uuid
         for i in doc_mark_place_in_offline:
             i.create_by_uuid = customer_uuid_dict_trans.get(i.create_by_uuid)
@@ -994,11 +1108,12 @@ def sync_offline():
             is_favorite = db.Column(db.Integer)
             _source = db.Column(db.String)
             html_path = db.Column(db.String)
+            valid = db.Column(db.Integer)
 
         def __repr__(self):
             return '<Document %r>' % self.name
 
-        offline_document = dbsession.query(OfflineDocument).filter(or_(
+        offline_document = dbsession.query(OfflineDocument).filter(OfflineDocument.valid == 1,or_(
             OfflineDocument.create_time > sync_time,
             OfflineDocument.update_time > sync_time)).all()
         print (sync_time)
@@ -1017,6 +1132,7 @@ def sync_offline():
                                   update_by_uuid=customer_uuid_dict_trans.get(i.update_by_uuid),
                                   catalog_uuid=offline_online_catalog_dict.get(i.catalog_uuid),
                                   html_path=i.html_path,
+                                  valid=1,
                                   update_time=i.update_time) for i in offline_document]
         db.session.add_all(sync_document)
         db.session.commit()
