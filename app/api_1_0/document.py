@@ -325,17 +325,17 @@ def upload_doc():
                                         eventIds = event_id_list
                                         header = {"Content-Type": "application/json; charset=UTF-8"}
                                         url = YC_ROOT_URL + '/doc/preprocess'
-                                        body = {"doc_uuid": str(doc.uuid), "eventIds": eventIds}
+                                        body = {"DocId": str(doc.uuid), "eventIds": eventIds}
                                         data = json.dumps(body)
                                         yc_res_event = requests.post(url=url, data=data, headers=header)
                                         print("yc_res_event.status_code", yc_res_event.status_code)
                                         if event_extraction_res.status_code in (200, 201):
                                             # res_html_path = yc_res_event.json()["data"]
                                             res_html_path = json.loads(yc_res_event.text)
-                                            print("路径结果", res_html_path)
+                                            print("路径结果",res_html_path)
                                             doc_html = Document.query.filter_by(uuid=doc.uuid, catalog_uuid=catalog_uuid, valid=1).first()
                                             doc_html.html_path = res_html_path["data"]
-                                            print("res_html_path", res_html_path, doc_html.html_path)
+                                            print("res_html_path", doc_html.html_path)
                                             db.session.commit()
                                         else:
                                             res = fail_res(msg="调用doc_preprocess接口失败")
@@ -460,7 +460,7 @@ def modify_doc_es_doc_type(doc_ids):
                 url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
                 header = {"Content-Type": "application/json; charset=UTF-8"}
                 search_json = {
-                    "uuid": {"type": "term", "value": doc.uuid}
+                    "uuid": {"type": "term", "value": str(doc.uuid)}
                 }
 
                 es_id_para = {"search_index": "document", "search_json": search_json}
@@ -533,7 +533,7 @@ def move_source_docs_to_target_catalog(source_docs=[], target_catalog_id=""):
                 db.session.commit()
             else:
                 # 目标文件已标注，删除移动文件
-                del_doc_id.append(source_doc_item.uuid)
+                del_doc_id.append(str(source_doc_item.uuid))
         else:
             source_doc_item.catalog_uuid = target_catalog_id
             modify_doc_es_doc_type([str(source_doc_item.uuid)])
@@ -1286,68 +1286,6 @@ def search_advanced_doc_type():
     return jsonify(res)  # doc:原来格式数据 event_list:事件数据
 
 
-def get_event_list_from_docs(doc_uuids=[], start_date='1000-01-01', end_date='9999-12-31'):
-    # <editor-fold desc="construct into event_list from docs order by event_time">
-    event_list = []
-    if doc_uuids:
-        events = DocMarkEvent.query.filter(DocMarkEvent.doc_uuid.in_(doc_uuids),DocMarkEvent.valid == 1).all()
-        for i in events:
-            if i.event_address and isinstance(i.event_address, list):
-                place_uuids = DocMarkPlace.query.with_entities(DocMarkPlace.place_uuid).filter(
-                    DocMarkPlace.uuid.in_(i.event_address),DocMarkPlace.valid == 1).all()
-                if place_uuids:
-                    place_uuids = [str(i[0]) for i in place_uuids]
-                    places = Entity.query.filter(Entity.uuid.in_(place_uuids), Entity.valid == 1).all()
-                    if places:
-                        objects, subjects, form_time = [], [], ""
-
-                        if i.event_object and isinstance(i.event_object, list) and i.event_subject:
-                            object_id_list = i.event_object
-                            if i.event_subject:
-                                object_id_list.extend(i.event_subject)
-                            object_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_uuid).filter(
-                                DocMarkEntity.uuid.in_(object_id_list),DocMarkEntity.valid == 1).all()
-                            if object_ids:
-                                object_ids = [str(i[0]) for i in object_ids]
-                                objects = Entity.query.filter(Entity.uuid.in_(object_ids), Entity.valid == 1).all()
-
-                        # subject和object结合，返回给前端
-
-                        if objects:
-                            if i.event_time and isinstance(i.event_time, list):
-                                mark_time_ids = i.event_time
-                                times = DocMarkTimeTag.query.with_entities(DocMarkTimeTag.format_date, DocMarkTimeTag.format_date_end).filter(
-                                    DocMarkTimeTag.uuid.in_(mark_time_ids),DocMarkTimeTag.valid == 1,
-                                    or_(and_(DocMarkTimeTag.format_date.between(start_date, end_date),
-                                             DocMarkTimeTag.time_type == 1),
-                                        and_(DocMarkTimeTag.format_date > start_date,
-                                             DocMarkTimeTag.format_date_end < end_date,
-                                             DocMarkTimeTag.time_type == 2))
-                                ).all()
-                                for time_tag in times:
-                                    datetime = []
-                                    if time_tag[0]:
-                                        datetime.append(time_tag[0])
-                                    if time_tag[1]:
-                                        datetime.append(time_tag[1])
-
-                                    item = {
-                                        "datetime": datetime,
-                                        "place": [{
-                                            "place_lat": place.latitude,
-                                            "place_lon": place.longitude,
-                                            "place_id": place.uuid,
-                                            # "type": 1,
-                                            "word": place.name,
-                                        } for place in places],
-                                        "title": i.title,
-                                        "object": [i.name for i in objects],
-                                        "event_id": i.uuid
-                                    }
-                                    event_list.append(item)
-        # </editor-fold>
-        event_list = sorted(event_list, key=lambda x: x.get('datetime', '')[0])
-    return event_list
 
 
 def get_event_list_from_docs_group_by_entities(doc_ids=[]):

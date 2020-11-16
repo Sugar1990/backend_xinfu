@@ -170,3 +170,21 @@ def get_doc_mark_mind_by_ids():
         print(str(e))
         res = fail_res(data={})
     return jsonify(res)
+
+
+@blue_print.route('/delete_mark_mind_by_doc', methods=['POST'])
+def delete_mark_mind_by_doc():
+    try:
+        doc_uuid = request.json.get("doc_uuid", None)
+        doc_mark_mind = DocMarkMind.query.filter_by(doc_uuid=doc_uuid, valid=1).first()
+        if doc_mark_mind:
+            doc_mark_mind.valid = 0
+            res = success_res()
+        else:
+            res = fail_res(msg="操作对象不存在!")
+    except Exception as e:
+        print(str(e))
+        db.session.rollback()
+        res = fail_res(msg="删除失败！")
+
+    return jsonify(res)
