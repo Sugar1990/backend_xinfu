@@ -1456,24 +1456,24 @@ def post_json_data_path_to_yc():
     try:
         entity_category_1 = EntityCategory.query.filter_by(valid=1, type=1).all()
         entity_category_2 = EntityCategory.query.filter_by(valid=1, type=2).all()
-        entity_category1_ids = [i.id for i in entity_category_1]
-        entity_category2_ids = [i.id for i in entity_category_2]
+        entity_category1_ids = [str(i.uuid) for i in entity_category_1]
+        entity_category2_ids = [str(i.uuid) for i in entity_category_2]
         if entity_category1_ids:
-            entity_list = Entity.query.filter(Entity.valid == 1, Entity.category_id != 8,
-                                              Entity.category_id.in_(entity_category1_ids)).all()
-        place_list = Entity.query.filter_by(valid=1, category_id=8).all()
+            entity_list = Entity.query.filter(Entity.valid == 1, Entity.category_uuid != "87d323a1-b233-4a82-9883-981da29d7b13",
+                                              Entity.category_uuid.in_(entity_category1_ids)).all()
+        place_list = Entity.query.filter_by(valid=1, category_uuid="87d323a1-b233-4a82-9883-981da29d7b13").all()
         if entity_category2_ids:
-            concept_list = Entity.query.filter(Entity.valid == 1, Entity.category_id.in_(entity_category2_ids)).all()
+            concept_list = Entity.query.filter(Entity.valid == 1, Entity.category_uuid.in_(entity_category2_ids)).all()
 
         root_path = os.getcwd()
         yc_entity_path = os.path.join("/static", "entity.json")
         entity_json_save_path = os.path.join(root_path, "static", "entity.json")
         with open(entity_json_save_path, 'w', encoding='utf-8') as f:
             entity_records = [{
-                "id": entity.id,
+                "uuid": str(entity.uuid),
                 "name": entity.name,
                 "synonyms": entity.synonyms,
-                "category_id": entity.category_id} for entity in entity_list]
+                "category_uuid": str(entity.category_uuid)} for entity in entity_list]
             dict_entity = {"RECORDS": entity_records}
             f.write(json.dumps(dict_entity))
 
@@ -1481,11 +1481,11 @@ def post_json_data_path_to_yc():
         place_json_save_path = os.path.join(root_path, "static", "place.json")
         with open(place_json_save_path, 'w', encoding='utf-8') as f:
             place_records = [{
-                "id": place.id,
+                "uuid": str(place.uuid),
                 "name": place.name,
                 "synonyms": place.synonyms,
                 "props": place.props,
-                "category_id": place.category_id,
+                "category_uuid": str(place.category_uuid),
                 "summary": place.summary,
                 "valid": place.valid,
                 "longitude": place.longitude,
@@ -1497,10 +1497,10 @@ def post_json_data_path_to_yc():
         concept_json_save_path = os.path.join(root_path, "static", "concept.json")
         with open(concept_json_save_path, 'w', encoding='utf-8') as f:
             concept_records = [{
-                "id": concept.id,
+                "uuid": str(concept.uuid),
                 "name": concept.name,
                 "synonyms": concept.synonyms,
-                "category_id": concept.category_id} for concept in concept_list]
+                "category_uuid": str(concept.category_uuid)} for concept in concept_list]
             dict_concept = {"RECORDS": concept_records}
             f.write(json.dumps(dict_concept))
 
