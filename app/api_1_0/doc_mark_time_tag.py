@@ -191,7 +191,7 @@ def modify_doc_mark_time_tag():
                 if word:
                     doc_mark_time_tag.word = word
                 if format_date:
-                    doc_mark_time_tag.type = format_date
+                    doc_mark_time_tag.format_date = format_date
                 if format_date_end:
                     doc_mark_time_tag.format_date_end = format_date_end
                 if mark_position:
