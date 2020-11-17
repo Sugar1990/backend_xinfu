@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 import os
 import time
-
+from flask import jsonify, request
 from sqlalchemy.dialects.postgresql import JSONB
 
 from . import api_sync_offline as blue_print
@@ -14,15 +14,15 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session
 
 
-@blue_print.route('/sync_offline', methods=['GET'])
+
+@blue_print.route('/sync_offline', methods=['POST'])
 def sync_offline():
     try:
-        # todo 改为request请求
-        OFFLINE_PG_USER_NAME = os.getenv('OFFLINE_PG_USER_NAME', 'postgres')
-        OFFLINE_PG_USER_PASSWORD = os.getenv('OFFLINE_PG_USER_PASSWORD', 'postgres')
-        OFFLINE_PG_DB_SERVER_IP = os.getenv('OFFLINE_PG_DB_SERVER_IP', '192.168.2.159')
-        OFFLINE_PG_DB_PORT = os.getenv('OFFLINE_PG_DB_PORT', '5432')
-        OFFLINE_PG_DB_NAME = os.getenv('OFFLINE_PG_DB_NAME', 'offline_tagging_system_for_sync')
+        OFFLINE_PG_USER_NAME = request.json.get('OFFLINE_PG_USER_NAME', 'postgres')
+        OFFLINE_PG_USER_PASSWORD = request.json.get('OFFLINE_PG_USER_PASSWORD', 'postgres')
+        OFFLINE_PG_DB_SERVER_IP = request.json.get('OFFLINE_PG_DB_SERVER_IP', '192.168.2.159')
+        OFFLINE_PG_DB_PORT = request.json.get('OFFLINE_PG_DB_PORT', '5432')
+        OFFLINE_PG_DB_NAME = request.json.get('OFFLINE_PG_DB_NAME','offline_tagging_system_for_sync')
 
         # 建立动态数据库的链接
         offline_postgres = 'postgresql://%s:%s@%s:%s/%s' % (
