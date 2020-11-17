@@ -8,21 +8,57 @@ from . import api_sync_offline as blue_print
 from ..models import Customer, db, EntityCategory, RelationCategory, SyncRecords, Entity, EventClass, EventCategory, \
     DocMarkComment, DocMarkEntity, DocMarkPlace, DocMarkRelationProperty, DocMarkTimeTag, DocMarkMind, DocMarkAdvise, \
     DocumentRecords, DocMarkEvent,Catalog, Document
-
+from .utils import success_res, fail_res
 from sqlalchemy import create_engine, MetaData, Table, or_
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session
+from ..conf import PG_USER_NAME,PG_USER_PASSWORD,PG_DB_SERVER_IP,PG_DB_PORT,PG_DB_NAME
 
+
+@blue_print.route('/show_target_database_information', methods=['GET'])
+def show_target_database_information():
+    data = {"online_pg_db_server_ip":PG_DB_SERVER_IP,"online_pg_db_port":PG_DB_PORT,"online_pg_user_name":PG_USER_NAME,
+            "online_pg_user_password":PG_USER_PASSWORD,"online_pg_db_name":PG_DB_NAME}
+    return data
+
+
+@blue_print.route('/conn_pg', methods=['GET'])
+def conn_pgs():
+    conn = request.args
+    PG_IP = conn.get('offline_pg_db_server_ip')
+    PG_PORT = conn.get('offline_pg_db_port')
+    PG_USER_NAME = conn.get('offline_pg_user_name')
+    PG_PWD = conn.get('offline_pg_user_password')
+    PG_DB_NAME = conn.get('offline_pg_db_name')
+    if not all([PG_IP, PG_PORT, PG_USER_NAME, PG_PWD,PG_DB_NAME]):
+        return jsonify(fail_res())
+    try:
+        offline_postgres = 'postgresql://%s:%s@%s:%s/%s' % (
+            PG_USER_NAME, PG_PWD, PG_IP,
+            PG_PORT,
+            PG_DB_NAME)
+        engine = create_engine(offline_postgres)
+        available_tables = engine.execute('SELECT datname FROM pg_database').fetchall()
+        database_name = []
+        for dataname in available_tables:
+            database_name.append(dataname[0])
+        def is_template(str):
+            return not str.startswith('template')
+        database_names = list(filter(is_template,database_name))
+        res = success_res(msg="连接成功")
+    except:
+        res = fail_res(msg="连接失败")
+    return jsonify(res)
 
 
 @blue_print.route('/sync_offline', methods=['POST'])
 def sync_offline():
     try:
-        OFFLINE_PG_USER_NAME = request.json.get('OFFLINE_PG_USER_NAME', 'postgres')
-        OFFLINE_PG_USER_PASSWORD = request.json.get('OFFLINE_PG_USER_PASSWORD', 'postgres')
-        OFFLINE_PG_DB_SERVER_IP = request.json.get('OFFLINE_PG_DB_SERVER_IP', '192.168.2.159')
-        OFFLINE_PG_DB_PORT = request.json.get('OFFLINE_PG_DB_PORT', '5432')
-        OFFLINE_PG_DB_NAME = request.json.get('OFFLINE_PG_DB_NAME','offline_tagging_system_for_sync')
+        OFFLINE_PG_USER_NAME = request.json.get('offline_pg_user_name', 'postgres')
+        OFFLINE_PG_USER_PASSWORD = request.json.get('offline_pg_user_password', 'postgres')
+        OFFLINE_PG_DB_SERVER_IP = request.json.get('offline_pg_db_server_ip', '192.168.2.159')
+        OFFLINE_PG_DB_PORT = request.json.get('offline_pg_db_port', '5432')
+        OFFLINE_PG_DB_NAME = request.json.get('offline_pg_db_name','offline_tagging_system_for_sync')
 
         # 建立动态数据库的链接
         offline_postgres = 'postgresql://%s:%s@%s:%s/%s' % (
