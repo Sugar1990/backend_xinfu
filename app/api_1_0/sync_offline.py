@@ -694,6 +694,7 @@ def sync_offline():
 
         # 同步offline_doc_mark_comment
         if offline_dmm_to_insert:
+            offline_dmm_to_insert = dbsession.query(OfflineDocMarkComment).filter(OfflineDocMarkComment.uuid.in_(offline_dmm_to_insert)).all()
             sync_doc_mark_comments = [DocMarkComment(uuid=i.uuid, doc_uuid=i.doc_uuid, name=i.name, position=i.position,
                                                     comment=i.comment, create_by_uuid=i.create_by_uuid,
                                                     create_time=i.create_time,
@@ -703,19 +704,21 @@ def sync_offline():
             db.session.add_all(sync_doc_mark_comments)
             db.session.commit()
         if offline_dmm_to_update:
-            for i in offline_dmm_to_update:
-                dmm_online = DocMarkComment.query.filter_by(uuid=i.uuid, valid=1).first()
-                dmm_online.doc_uuid = i.doc_uuid
-                dmm_online.name = i.name
-                dmm_online.position = i.position
-                dmm_online.comment = i.comment
-                dmm_online.create_by_uuid = i.create_by_uuid
-                dmm_online.create_time = i.create_time
-                dmm_online.update_by_uuid = i.update_by_uuid
-                dmm_online.update_time = i.update_time
-                dmm_online.valid = i.valid
-                dmm_online._source = i._source
+            for dmm_uuid_offline in offline_dmm_to_update:
+                dmm_online = DocMarkComment.query.filter_by(uuid=dmm_uuid_offline, valid=1).first()
+                dmm_offline = dbsession.query(OfflineDocMarkComment).filter_by(uuid=dmm_uuid_offline, valid=1).first()
+                dmm_online.doc_uuid = dmm_offline.doc_uuid
+                dmm_online.name = dmm_offline.name
+                dmm_online.position = dmm_offline.position
+                dmm_online.comment = dmm_offline.comment
+                dmm_online.create_by_uuid = dmm_offline.create_by_uuid
+                dmm_online.create_time = dmm_offline.create_time
+                dmm_online.update_by_uuid = dmm_offline.update_by_uuid
+                dmm_online.update_time = dmm_offline.update_time
+                dmm_online.valid = dmm_offline.valid
+                dmm_online._source = dmm_offline._source
             db.session.commit()
+        # print("doc_mark_comment success")
 
         # </editor-fold>
 
@@ -974,6 +977,7 @@ def sync_offline():
                                            valid=i.valid) for i in doc_mark_mind_in_offline]
         db.session.add_all(sync_doc_mark_minds)
         db.session.commit()
+        # print("doc_mark_mind success")
         # </editor-fold>
 
         # <editor-fold desc="sync_offline of DocMarkAdvise">
@@ -1000,11 +1004,12 @@ def sync_offline():
                                                                                   OfflineDocMarkAdvise.create_time > sync_time,
                                                                                   OfflineDocMarkAdvise.update_time > sync_time)).all()
         uuids_in_offline = [i.uuid for i in doc_mark_advise_in_offline]
-        uuids_in_online = DocMarkAdvise.query().with_entities(DocMarkAdvise.uuid).filter_by(valid=1).all()
+        uuids_in_online = DocMarkAdvise.query.with_entities(DocMarkAdvise.uuid).filter_by(valid=1).all()
+        uuids_in_online = [i[0] for i in uuids_in_online]
         # 更新create_by_uuid、update_by_uuid
         for i in doc_mark_advise_in_offline:
-            i.create_by_uuid = customer_uuid_dict_trans.get(i.create_by_uuid)
-            i.update_by_uuid = customer_uuid_dict_trans.get(i.update_by_uuid)
+            i.create_by_uuid = customer_uuid_dict_trans.get(i.create_by_uuid) if i.create_by_uuid else None
+            i.update_by_uuid = customer_uuid_dict_trans.get(i.update_by_uuid) if i.update_by_uuid else None
 
         # offline-online：计算是否有要插入的数据
         doc_mark_advise_to_insert = list(set(uuids_in_offline).difference(set(uuids_in_online)))
@@ -1013,6 +1018,7 @@ def sync_offline():
 
         # 同步doc_mark_advise_in_offline
         if doc_mark_advise_to_insert:
+            doc_mark_advise_to_insert = dbsession.query(OfflineDocMarkAdvise).filter(OfflineDocMarkAdvise.uuid.in_(doc_mark_advise_to_insert)).all()
             sync_doc_mark_advises = [
                 DocMarkAdvise(uuid=i.uuid, doc_uuid=i.doc_uuid, mark_uuid=i.mark_uuid, type=i.type, content=i.content,
                               create_by_uuid=i.create_by_uuid, create_time=i.create_time, update_by_uuid=i.update_by_uuid,
@@ -1020,9 +1026,11 @@ def sync_offline():
                 doc_mark_advise_to_insert]
             db.session.add_all(sync_doc_mark_advises)
             db.session.commit()
+
         if doc_mark_advise_to_update:
-            for dma_offline in doc_mark_advise_to_update:
-                doc_mark_advise = DocMarkAdvise.query.filter_by(uuid=dma_offline.uuid, valid=1).first()
+            for dma_uuid_offline in doc_mark_advise_to_update:
+                doc_mark_advise = DocMarkAdvise.query.filter_by(uuid=dma_uuid_offline, valid=1).first()
+                dma_offline = dbsession.query(OfflineDocMarkAdvise).filter_by(uuid=dma_uuid_offline, valid=1).first()
                 doc_mark_advise.doc_uuid = dma_offline.doc_uuid
                 doc_mark_advise.mark_uuid = dma_offline.mark_uuid
                 doc_mark_advise.type = dma_offline.type
@@ -1034,6 +1042,7 @@ def sync_offline():
                 doc_mark_advise.valid = dma_offline.valid
                 doc_mark_advise._source = dma_offline._source
             db.session.commit()
+        # print("doc_mark_advise success")
         # </editor-fold>
 
         # <editor-fold desc="sync_offline of DocumentRecords">
@@ -1109,8 +1118,8 @@ def sync_offline():
             i.customer_uuid = customer_uuid_dict_trans.get(i.customer_uuid)
             i.event_class_uuid = event_class_uuid_dict_trans.get(i.event_class_uuid)
             i.event_type_uuid = event_cate_uuid_dict_trans.get(i.event_type_uuid)
-            i.create_by_uuid = customer_uuid_dict_trans.get(i.create_by_uuid)
-            i.update_by_uuid = customer_uuid_dict_trans.get(i.update_by_uuid)
+            i.create_by_uuid = customer_uuid_dict_trans.get(i.create_by_uuid) if i.create_by_uuid else None
+            i.update_by_uuid = customer_uuid_dict_trans.get(i.update_by_uuid) if i.update_by_uuid else None
 
         # 同步doc_mark_events_in_offline
         sync_doc_mark_events = [
