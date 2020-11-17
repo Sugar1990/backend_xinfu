@@ -58,7 +58,7 @@ def get_one_doc_mark_place_by_id():
         doc_mark_place_uuid = request.args.get('uuid', None)
         doc_mark_place = DocMarkPlace.query.filter_by(uuid=doc_mark_place_uuid, valid=1).first()
         if doc_mark_place:
-            res = {
+            res = success_res({
             "uuid": doc_mark_place.uuid,
             "doc_uuid": doc_mark_place.doc_uuid,
             "word": doc_mark_place.word,
@@ -87,7 +87,7 @@ def get_one_doc_mark_place_by_id():
             "place_name": Entity.query.filter(Entity.uuid == doc_mark_place.place_uuid,
                                               Entity.valid == 1).first().name
             if Entity.query.filter(Entity.uuid == doc_mark_place.place_uuid, Entity.valid == 1).first() else ""
-        }
+        })
         else:
             res = fail_res(msg="地点信息不存在")
     except Exception as e:
