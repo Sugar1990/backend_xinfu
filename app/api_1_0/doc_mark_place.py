@@ -665,3 +665,22 @@ def get_doc_mark_place_by_place_uuids():
         print(str(e))
         res = fail_res(data=[])
     return jsonify(res)
+
+
+#根据标注词和doc_uuid获取是否被标注
+@blue_print.route('/get_doc_mark_place_by_word_and_doc_id', methods=['GET'])
+def get_doc_mark_place_by_word_and_doc_id():
+    try:
+        doc_mark_place_doc_uuid = request.args.get('doc_uuid', None)
+        doc_mark_place_word = request.args.get('word', '')
+        doc_mark_place = DocMarkPlace.query.filter_by(doc_uuid=doc_mark_place_doc_uuid,
+                                                       word=doc_mark_place_word, valid=1).first()
+        if doc_mark_place:
+            res = success_res(data={"flag": 1})
+        else:
+            res = fail_res(data={"flag": 0}, msg="标注地点信息不存在！")
+
+    except Exception as e:
+        print(str(e))
+        res = fail_res(data=[])
+    return jsonify(res)

@@ -189,3 +189,22 @@ def delete_doc_mark_entity_by_id():
         res = fail_res()
 
     return jsonify(res)
+
+
+#根据标注词和doc_uuid获取是否被标注
+@blue_print.route('/get_doc_mark_entity_by_word_and_doc_id', methods=['GET'])
+def get_doc_mark_entity_by_word_and_doc_id():
+    try:
+        doc_mark_entity_doc_uuid = request.args.get('doc_uuid', None)
+        doc_mark_entity_word = request.args.get('word', '')
+        doc_mark_entity = DocMarkEntity.query.filter_by(doc_uuid=doc_mark_entity_doc_uuid,
+                                                       word=doc_mark_entity_word, valid=1).first()
+        if doc_mark_entity:
+            res = success_res(data={"flag": 1})
+        else:
+            res = fail_res(data={"flag": 0}, msg="标注实体信息不存在！")
+
+    except Exception as e:
+        print(str(e))
+        res = fail_res(data=[])
+    return jsonify(res)
