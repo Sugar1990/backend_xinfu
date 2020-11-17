@@ -121,6 +121,8 @@ def get_ancestorn_doc_mark_mind(uuid, result=[]):
             "children": []
         }
         get_ancestorn_doc_mark_mind(item.uuid, res["children"])
+        if not res["children"]:
+            res["children"] = None
         result.append(res)
 
 
