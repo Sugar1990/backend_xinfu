@@ -829,7 +829,7 @@ def sync_offline():
                     RelationCategory.source_entity_category_uuids.op('@>')(offline_rc_old.source_entity_category_uuids),
                     RelationCategory.target_entity_category_uuids.op('@>')(offline_rc_old.target_entity_category_uuids),
                     RelationCategory.valid == 1).first()
-                i.relation_uuid = rc_uuid_dict_trans.get(rc_online.uuid)
+                i.relation_uuid = rc_online.uuid
 
             i.create_by_uuid = customer_uuid_dict_trans.get(i.create_by_uuid)
             i.update_by_uuid = customer_uuid_dict_trans.get(i.update_by_uuid)
