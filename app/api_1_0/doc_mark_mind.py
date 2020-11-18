@@ -198,3 +198,23 @@ def delete_mark_mind_by_doc():
         res = fail_res(msg="删除失败！")
 
     return jsonify(res)
+
+
+# 按doc_id查询,没有层级结构
+@blue_print.route('/get_doc_mark_mind_by_doc_id', methods=['GET'])
+def get_doc_mark_mind_by_doc_id():
+    try:
+        doc_uuid = request.args.get("doc_uuid", None)
+        doc_mark_minds = DocMarkMind.query.filter_by(doc_uuid=doc_uuid, valid=1).all()
+        res = success_res(data=[{
+            "uuid": doc_mark_mind.uuid,
+            "name": doc_mark_mind.name,
+            "doc_uuid": doc_mark_mind.doc_uuid,
+            "parent_uuid": doc_mark_mind.parent_uuid
+        } for doc_mark_mind in doc_mark_minds])
+
+    except Exception as e:
+        print(str(e))
+        res = fail_res(data=[])
+
+    return jsonify(res)
