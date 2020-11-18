@@ -93,17 +93,21 @@ def get_doc_mark_mind():
         data = []
         doc_mark_mind_doc_uuid = request.args.get("doc_uuid", None)
         doc_mark_minds = DocMarkMind.query.filter_by(doc_uuid=doc_mark_mind_doc_uuid, parent_uuid=None, valid=1).all()
+
         for doc_mark_mind in doc_mark_minds:
             get_ancestorn_doc_mark_mind(doc_mark_mind.uuid, result)
             res_temp = {
                 "uuid": doc_mark_mind.uuid,
                 "name": doc_mark_mind.name,
+                "doc_uuid":doc_mark_mind.doc_uuid,
+                "parent_uuid": doc_mark_mind.parent_uuid,
                 "children": result
             }
             if not res_temp["children"]:
                 res_temp["children"] = None
             data.append(res_temp)
-            res = success_res(data=data)
+        res = success_res(data=data)
+
 
     except Exception as e:
         res_temp = []
@@ -118,6 +122,8 @@ def get_ancestorn_doc_mark_mind(uuid, result=[]):
         res = {
             "uuid": item.uuid,
             "name": item.name,
+            "parent_uuid":item.parent_uuid,
+            "doc_uuid": item.doc_uuid,
             "source": item._source,
             "doc_uuid": item.doc_uuid,
             "children": []
