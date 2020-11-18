@@ -162,18 +162,19 @@ def get_doc_mark_mind_by_parentId():
     return jsonify(res)
 
 
-@blue_print.route('/get_doc_mark_mind_by_ids', methods=['GET'])
+@blue_print.route('/get_doc_mark_mind_by_ids', methods=['POST'])
 def get_doc_mark_mind_by_ids():
     try:
-        ids = request.args.get('uuid', '')
-        if ids:
-            doc_mark_mind = DocMarkMind.query.filter(DocMarkMind.uuid == ids, DocMarkMind.valid == 1).first()
-            res = success_res(data={
+        uuids = request.json.get('uuids', [])
+        if uuids:
+            doc_mark_minds = DocMarkMind.query.filter(DocMarkMind.uuid.in_(uuids), DocMarkMind.valid == 1).all()
+            res = success_res(data=[{
                 "uuid": doc_mark_mind.uuid,
                 "name": doc_mark_mind.name,
                 "doc_uuid": doc_mark_mind.doc_uuid,
                 "parent_uuid": doc_mark_mind.parent_uuid,
-                "_source": doc_mark_mind._source})
+                "_source": doc_mark_mind._source
+            } for doc_mark_mind in doc_mark_minds])
         else:
             res = fail_res(msg="参数不能为空")
     except Exception as e:
