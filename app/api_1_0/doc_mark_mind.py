@@ -90,18 +90,20 @@ def delete_doc_mark_mind():
 def get_doc_mark_mind():
     try:
         result = []
+        data = []
         doc_mark_mind_doc_uuid = request.args.get("doc_uuid", None)
-        doc_mark_mind = DocMarkMind.query.filter_by(doc_uuid=doc_mark_mind_doc_uuid, parent_uuid=None, valid=1).first()
-        if doc_mark_mind:
+        doc_mark_minds = DocMarkMind.query.filter_by(doc_uuid=doc_mark_mind_doc_uuid, parent_uuid=None, valid=1).all()
+        for doc_mark_mind in doc_mark_minds:
             get_ancestorn_doc_mark_mind(doc_mark_mind.uuid, result)
-            res_temp = [{
+            res_temp = {
                 "uuid": doc_mark_mind.uuid,
                 "name": doc_mark_mind.name,
                 "children": result
-            }]
-            res = success_res(data=res_temp)
-        else:
-            res = fail_res(data=[], msg="操作对象不存在!")
+            }
+            if not res_temp["children"]:
+                res_temp["children"] = None
+            data.append(res_temp)
+            res = success_res(data=data)
 
     except Exception as e:
         res_temp = []
