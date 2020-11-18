@@ -380,6 +380,7 @@ class DocMarkEntity(db.Model):
     appear_index_in_text = db.Column(db.JSON)
     valid = db.Column(db.Integer)
     _source = db.Column(db.String)
+    position = db.Column(JSONB)
 
     def __repr__(self):
         return '<DocMarkEntity %r>' % self.word
@@ -414,6 +415,7 @@ class DocMarkEvent(db.Model):
     add_time = db.Column(db.TIMESTAMP)
     valid = db.Column(db.Integer)
     _source = db.Column(db.String)
+    position = db.Column(JSONB)
 
     def get_subject_entity_names(self):
         subject_entity_names = []
@@ -472,6 +474,7 @@ class DocMarkPlace(db.Model):
     word_count = db.Column(db.String)
     word_sentence = db.Column(db.String)
     source_type = db.Column(db.Integer)
+    position = db.Column(JSONB)
     def __repr__(self):
         return '<DocMarkPlace %r>' % self.uuid
 
@@ -495,6 +498,7 @@ class DocMarkTimeTag(db.Model):
     update_time = db.Column(db.TIMESTAMP)
     appear_index_in_text = db.Column(db.JSON)
     _source = db.Column(db.String)
+    position = db.Column(JSONB)
 
     def __repr__(self):
         return '<DocMarkTimeTag %r>' % self.uuid
@@ -520,6 +524,7 @@ class DocMarkRelationProperty(db.Model):
     create_time = db.Column(db.TIMESTAMP)
     update_by_uuid = db.Column(db.String)
     update_time = db.Column(db.TIMESTAMP)
+    position = db.Column(JSONB)
 
     def __repr__(self):
         return '<DocMarkRelationProperty %r>' % self.uuid
@@ -536,6 +541,7 @@ class DocMarkMind(db.Model):
     _source = db.Column(db.String)
     create_time = db.Column(db.TIMESTAMP)
     update_time = db.Column(db.TIMESTAMP)
+    position = db.Column(JSONB)
 
     def __repr__(self):
         return '<DocMarkMind %r>' % self.uuid
