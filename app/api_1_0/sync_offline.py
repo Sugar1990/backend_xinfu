@@ -52,7 +52,7 @@ def conn_pgs():
     return jsonify(res)
 
 
-@blue_print.route('/sync_offline', methods=['POST'])
+@blue_print.route('/sync_data', methods=['POST'])
 def sync_source():
     try:
         SOURCE_PG_USER_NAME = request.json.get('source_pg_user_name')
