@@ -821,6 +821,8 @@ def sync_source():
                 update_time = db.Column(db.TIMESTAMP)
                 valid = db.Column(db.Integer)
                 _source = db.Column(db.String)
+                appear_index_in_text = db.Column(db.String)
+                locate_position = db.Column(JSONB)
 
                 def __repr__(self):
                     return '<DocMarkComment %r>' % self.uuid
