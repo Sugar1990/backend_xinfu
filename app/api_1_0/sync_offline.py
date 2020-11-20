@@ -1,6 +1,10 @@
 # -*- coding: UTF-8 -*-
+import json
 import os
 import time
+import urllib.request
+import requests
+
 from flask import jsonify, request
 from sqlalchemy.dialects.postgresql import JSONB
 
@@ -10,12 +14,12 @@ from .utils import success_res, fail_res
 from sqlalchemy import create_engine, MetaData, Table, or_
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session
-from ..conf import PG_USER_NAME, PG_USER_PASSWORD, PG_DB_SERVER_IP, PG_DB_PORT, PG_DB_NAME
+from ..conf import PG_USER_NAME, PG_USER_PASSWORD, PG_DB_NAME, LOCAL_IP, LOCAL_PG_PORT, LOCAL_PORT
 
 
 @blue_print.route('/show_local_database_information', methods=['GET'])
 def show_target_database_information():
-    data = {"target_pg_db_server_ip": PG_DB_SERVER_IP, "target_pg_db_port": PG_DB_PORT,
+    data = {"target_pg_db_server_ip": LOCAL_IP, "target_pg_db_port": LOCAL_PG_PORT,
             "target_pg_user_name": PG_USER_NAME,
             "target_pg_user_password": PG_USER_PASSWORD, "target_pg_db_name": PG_DB_NAME}
     return data
@@ -1810,6 +1814,19 @@ def sync_source():
             res_records.append("文档表同步失败！")
         # </editor-fold>
 
+        header = {"Content-Type": "application/json; charset=UTF-8"}
+        url = "http://{}:{}/api/get_file_from_source".format(SOURCE_PG_DB_SERVER_IP, LOCAL_PORT)
+        body = {"source_ip": SOURCE_PG_DB_SERVER_IP}
+        data = json.dumps(body)
+        url_list = requests.post(url=url, data=data, headers=header)
+
+        header = {"Content-Type": "application/json; charset=UTF-8"}
+        url_list = json.loads(url_list.text)
+        body_url = {"file_paths": url_list}
+        data_url = json.dumps(body_url)
+        url = "http://{}:{}/api/save_file_to_target".format(TARGET_PG_DB_SERVER_IP, LOCAL_PORT)
+        result = requests.post(url=url, data=data_url, headers=header)
+
         print(res_records)
         res = success_res(data=res_records)
 
@@ -1820,3 +1837,36 @@ def sync_source():
         res = fail_res()
 
     return jsonify(res)
+
+# 保存到目标主机
+@blue_print.route('/save_file_to_target', methods=['POST'])
+def save_file_to_target():
+    file_paths = request.json.get('file_paths', [])
+    for url in file_paths:
+        filename = url.split("/")
+        file_path = os.path.join(os.getcwd(), 'static', 'upload', filename[-1])
+        save_path = os.path.join(os.getcwd(), 'static', 'upload')
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+        try:
+            urllib.request.urlretrieve(url, filename=file_path)
+
+        except Exception as e:
+            print("数据传输错误")
+            print(e)
+
+    res = success_res()
+    return jsonify(res)
+
+
+# 从源主机获取url
+@blue_print.route('/get_file_from_source', methods=['POST'])
+def get_file_from_source():
+    url_list = []
+    source_ip = request.json.get('source_ip', "")
+    file_dir = os.path.join(os.getcwd(), 'static', 'upload')
+    for files in os.walk(file_dir):
+        for file in files:
+            url = "http://{0}:{1}/api/static/upload/{2}".format(source_ip, LOCAL_PORT, file)
+            url_list.append(url)
+    return json.dumps(url_list)
