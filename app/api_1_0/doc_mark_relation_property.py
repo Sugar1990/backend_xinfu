@@ -6,7 +6,7 @@
 
 from flask import jsonify, request
 from . import api_doc_mark_relation_property as blue_print
-from ..models import DocMarkRelationProperty, Entity
+from ..models import DocMarkRelationProperty, Entity, DocMarkEntity
 from .. import db
 from .utils import success_res, fail_res
 import uuid
@@ -95,8 +95,9 @@ def add_doc_mark_relation_property():
         end_type = request.json.get('end_type', 1)
         source_entity_uuid = request.json.get("source_entity_uuid", None)
         target_entity_uuid = request.json.get("target_entity_uuid", None)
-        source_entity = Entity.query.filter_by(uuid=source_entity_uuid, valid=1).first()
-        target_entity = Entity.query.filter_by(uuid=target_entity_uuid, valid=1).first()
+        postion = request.json.get('position', [])
+        source_entity = DocMarkEntity.query.filter_by(uuid=source_entity_uuid, valid=1).first()
+        target_entity = DocMarkEntity.query.filter_by(uuid=target_entity_uuid, valid=1).first()
         if source_entity and target_entity:
             doc_mark_relation_property = DocMarkRelationProperty(
                 uuid=uuid.uuid1(),
@@ -110,6 +111,7 @@ def add_doc_mark_relation_property():
                 end_type=end_type,
                 source_entity_uuid=source_entity_uuid,
                 target_entity_uuid=target_entity_uuid,
+                position=postion,
                 valid=1)
             db.session.add(doc_mark_relation_property)
             db.session.commit()
@@ -138,6 +140,7 @@ def modify_doc_mark_relation_property():
         end_type = request.json.get('end_type', 1)
         source_entity_uuid = request.json.get("source_entity_uuid", None)
         target_entity_uuid = request.json.get("target_entity_uuid", None)
+        position = request.json.get('position', [])
 
         source_entity = Entity.query.filter_by(uuid=source_entity_uuid, valid=1).first()
         target_entity = Entity.query.filter_by(uuid=target_entity_uuid, valid=1).first()
@@ -165,6 +168,9 @@ def modify_doc_mark_relation_property():
                     doc_mark_place_expand.source_entity_uuid = source_entity_uuid
                 if target_entity_uuid:
                     doc_mark_place_expand.source_entity_uuid = target_entity_uuid
+                if position:
+                    doc_mark_place_expand.position = position
+
                 db.session.commit()
                 res = success_res()
             else:
@@ -243,4 +249,115 @@ def get_graph_by_entity_id():
         print(str(e))
         res = fail_res(data={"nodes": [], "edges": []})
 
+    return jsonify(res)
+
+
+@blue_print.route('/delete_doc_mark_relation_property_by_doc_uuid_and_nid', methods=['POST'])
+def delete_doc_mark_relation_property_by_doc_uuid_and_nid():
+    try:
+        doc_uuid = request.json.get("doc_uuid", None)
+        nid = request.json.get('nid', '')
+        doc_mark_relation_property = DocMarkRelationProperty.query.filter_by(doc_uuid=doc_uuid, nid=nid, valid=1).first()
+        if doc_mark_relation_property:
+            doc_mark_relation_property.valid = 0
+            res = success_res()
+        else:
+            res = fail_res(msg="操作对象不存在!")
+
+    except Exception as e:
+        print(str(e))
+        db.session.rollback()
+        res = fail_res(msg="删除失败！")
+
+    return jsonify(res)
+
+
+@blue_print.route('/delete_doc_mark_relation_property_by_nid', methods=['POST'])
+def delete_doc_mark_relation_property_by_nid():
+    try:
+        nid = request.json.get('nid', '')
+        doc_mark_relation_property = DocMarkRelationProperty.query.filter_by(nid=nid, valid=1).first()
+        if doc_mark_relation_property:
+            doc_mark_relation_property.valid = 0
+            res = success_res()
+        else:
+            res = fail_res(msg="操作对象不存在!")
+
+    except Exception as e:
+        print(str(e))
+        db.session.rollback()
+        res = fail_res(msg="删除失败！")
+
+    return jsonify(res)
+
+
+@blue_print.route('/get_doc_mark_relation_property_by_doc_uuid_and_nid', methods=['GET'])
+def get_doc_mark_relation_property_by_doc_uuid_and_nid():
+    try:
+        doc_uuid = request.args.get('doc_uuid', None)
+        nid = request.args.get('nid', '')
+        doc_mark_relation_property = DocMarkRelationProperty.query.filter_by(doc_uuid=doc_uuid, nid=nid, valid=1).first()
+        if doc_mark_relation_property:
+            res = success_res(data={
+                "uuid": doc_mark_relation_property.uuid,
+                "doc_uuid": doc_mark_relation_property.doc_uuid,
+                "nid": doc_mark_relation_property.nid,
+                "relation_uuid": doc_mark_relation_property.relation_uuid,
+                "relation_name": doc_mark_relation_property.relation_name,
+                "start_time": doc_mark_relation_property.start_time.strftime(
+                    '%Y-%m-%d %H:%M:%S') if doc_mark_relation_property.start_time else None,
+                "start_type": doc_mark_relation_property.start_type,
+                "end_time": doc_mark_relation_property.end_time.strftime(
+                    '%Y-%m-%d %H:%M:%S') if doc_mark_relation_property.end_time else None,
+                "end_type": doc_mark_relation_property.end_type,
+                "source_entity_uuid": doc_mark_relation_property.source_entity_uuid,
+                "target_entity_uuid": doc_mark_relation_property.target_entity_uuid,
+                "position": doc_mark_relation_property.position
+            })
+        else:
+            res = fail_res(msg="关联数据不存在")
+    except Exception as e:
+        print(str(e))
+        res = fail_res(data={
+            "uuid": "-1",
+            "doc_uuid": "-1",
+            "nid": '',
+            "relation_uuid": "-1",
+            "relation_name": '',
+            "start_time": None,
+            "start_type": '',
+            "end_time": None,
+            "end_type": '',
+            "source_entity_uuid": "-1",
+            "target_entity_uuid": "-1",
+            "position": []
+        })
+    return jsonify(res)
+
+
+@blue_print.route('/get_doc_mark_relation_property_by_nids', methods=['POST'])
+def get_doc_mark_relation_property_by_nids():
+    try:
+        nids = request.json.get('nids', [])
+        doc_mark_relation_property_list = DocMarkRelationProperty.query.filter(DocMarkRelationProperty.nid.in_(nids),
+                                                                               DocMarkRelationProperty.valid==1).all()
+        res = success_res(data=[{
+            "uuid": doc_mark_relation_property.uuid,
+            "doc_uuid": doc_mark_relation_property.doc_uuid,
+            "nid": doc_mark_relation_property.nid,
+            "relation_uuid": doc_mark_relation_property.relation_uuid,
+            "relation_name": doc_mark_relation_property.relation_name,
+            "start_time": doc_mark_relation_property.start_time.strftime(
+                '%Y-%m-%d %H:%M:%S') if doc_mark_relation_property.start_time else None,
+            "start_type": doc_mark_relation_property.start_type,
+            "end_time": doc_mark_relation_property.end_time.strftime(
+                '%Y-%m-%d %H:%M:%S') if doc_mark_relation_property.end_time else None,
+            "end_type": doc_mark_relation_property.end_type,
+            "source_entity_uuid": doc_mark_relation_property.source_entity_uuid,
+            "target_entity_uuid": doc_mark_relation_property.target_entity_uuid,
+            "position": doc_mark_relation_property.position} for doc_mark_relation_property in doc_mark_relation_property_list])
+
+    except Exception as e:
+        print(str(e))
+        res = fail_res(data=[])
     return jsonify(res)
