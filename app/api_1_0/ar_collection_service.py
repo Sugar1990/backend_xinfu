@@ -157,3 +157,27 @@ def delete_entity_relation_by_entity_id():
         print(str(e))
         res = fail_res()
     return jsonify(res)
+
+
+# 根据节点删除实体关系
+@blue_print.route('/delete_entity_relation_by_entity_id', methods=['POST'])
+def delete_entity_relation_by_entity_id():
+    try:
+        entity_uuid = request.json.get('entity_uuid', None)
+        if entity_uuid:
+            header = {"Content-Type": "application/json; charset=UTF-8"}
+            url = "http://{}:{}".format(ES_SERVER_IP, ES_SERVER_PORT) + '/arango/delete_entity_edges'
+            body = {"uuid": entity_uuid,
+                    "type": "entity"}
+            data = json.dumps(body)
+            result = requests.post(url=url, data=data, headers=header)
+
+        if result.status_code in (200, 201):
+            res = success_res("删除成功！")
+        else:
+            res = fail_res("删除失败！")
+
+    except Exception as e:
+        print(str(e))
+        res = fail_res()
+    return jsonify(res)

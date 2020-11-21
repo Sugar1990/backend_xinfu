@@ -208,3 +208,32 @@ def get_doc_mark_entity_by_word_and_doc_id():
         print(str(e))
         res = fail_res(data=[])
     return jsonify(res)
+
+
+# 按doc_id和entity_id查询
+@blue_print.route('/get_doc_mark_entity_by_doc_id_and_entity_id', methods=['GET'])
+def get_doc_mark_entity_by_doc_id_and_entity_id():
+    try:
+        doc_uuid = request.args.get("doc_uuid", None)
+        entity_uuid = request.args.get("entity_uuid", None)
+        doc_mark_entity_list = DocMarkEntity.query.filter_by(doc_uuid=doc_uuid, entity_uuid=entity_uuid, valid=1).all()
+
+        res = success_res(data=[{
+            "uuid": i.uuid,
+            "doc_uuid": i.doc_uuid,
+            "word": i.word,
+            "entity_uuid": i.entity_uuid,
+            "source": i.source,
+            "create_by_uuid": i.create_by_uuid,
+            "create_time": i.create_time.strftime("%Y-%m-%d %H:%M:%S") if i.create_time else None,
+            "update_by_uuid": i.create_by_uuid,
+            "update_time": i.update_time.strftime("%Y-%m-%d %H:%M:%S") if i.update_time else None,
+            "entity_type_uuid": Entity.get_category_id(i.entity_uuid),
+            "appear_index_in_text": i.appear_index_in_text
+        } for i in doc_mark_entity_list])
+
+    except Exception as e:
+        print(str(e))
+        res = fail_res(data=[])
+
+    return jsonify(res)
