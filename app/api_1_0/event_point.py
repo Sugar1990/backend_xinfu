@@ -8,7 +8,7 @@ from ..models import EventCategory
 from .. import db
 from .utils import success_res, fail_res
 import uuid
-
+from sqlalchemy import create_engine, MetaData, Table, or_,and_
 
 @blue_print.route('/add_event_points', methods=['POST'])
 def add_event_points():
@@ -56,4 +56,42 @@ def add_event_points():
 
     return jsonify(res)
 
+@blue_print.route('/search_during_time_event_point', methods=['GET'])
+def search_during_time_event_point():
+    try:
+        start_time = request.args.get('start_time', '1900-01-01 00:00:00')
+        end_time = request.args.get('end_time', '9999-01-01 00:00:00')
+
+        event_points = EventPoint.query.filter(and_(EventPoint.valid == 1, EventPoint.event_time >= start_time, EventPoint.event_time <= end_time)).order_by(
+            EventPoint.event_time.asc()).all()
+
+        data = []
+        entity_same = {}
+        for event_point in event_points:
+            event_track = EventTrack.query.filter_by(uuid=event_point.title_uuid, valid=1).first()
+            entity = Entity.query.filter_by(uuid=event_point.entity_uuid, valid=1).first()
+            if entity.name not in entity_same.keys():
+                entity_same[entity.name] = {
+                    "uuid": event_track.uuid,
+                    "title": event_track.title_name,
+                    "entity": entity.name,
+                    "data": data,
+                    "endTime": event_point.end_time,
+                    "_source":event_point._source,
+                    "details":[]
+                }
+
+            entity_same[entity.name].get("details").append({
+                "description": event_point.event_desc,
+                "eventName": event_point.event_name,
+                "lon": entity.longitude,
+                "lat": entity.latitude,
+                "timing": event_point.event_time
+            })
+        res = success_res(data=entity_same)
+
+    except Exception as e:
+        print(str(e))
+        res = fail_res(data={})
+    return jsonify(res)
 
