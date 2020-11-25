@@ -596,7 +596,7 @@ class EventPoint(db.Model):
     entity_uuid = db.Column(db.String)
     longitude = db.Column(db.Float)
     latitude = db.Column(db.Float)
-    event_time = db.Column(db.JSON)
+    event_time = db.Column(db.TIMESTAMP)
     create_time = db.Column(db.TIMESTAMP)
     create_by_uuid = db.Column(db.String)
     update_time = db.Column(db.TIMESTAMP)

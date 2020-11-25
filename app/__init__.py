@@ -100,4 +100,7 @@ def create_app(config_name):
     from .api_1_0 import api_event_track as api_1_0_event_track_blueprint
     app.register_blueprint(api_1_0_event_track_blueprint, url_prefix='/event_track')
 
+    from .api_1_0 import api_event_point as api_1_0_event_point_blueprint
+    app.register_blueprint(api_1_0_event_point_blueprint, url_prefix='/event_point')
+
     return app
