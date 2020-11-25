@@ -260,6 +260,7 @@ def get_catalog_files():
                         doc_json["uuid"] = d.uuid
                         doc_json["name"] = d.name
                         doc_json["create_time"] = d.create_time
+                        doc_json["_source"] = d._source
                         doc_json["create_username"] = Customer.get_username_by_id(d.create_by_uuid)
                         doc_json["extension"] = d.category.replace('\n\"', "")
                         doc_json["tag_flag"] = 1 if d.status == 1 else 0

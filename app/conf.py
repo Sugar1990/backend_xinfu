@@ -1,16 +1,13 @@
+# -*- coding:utf-8 -*-
+# author: Scandium
+# work_location: Bei Jing
 import os
 
-# PG_USER_NAME = os.getenv('PG_USER_NAME', 'iecas')
-# PG_USER_PASSWORD = os.getenv('PG_USER_PASSWORD', 'iecas123')
-# PG_DB_SERVER_IP = os.getenv('PG_DB_SERVER_IP', '192.168.2.16')
-# PG_DB_PORT = os.getenv('PG_DB_PORT', '5432')
-# PG_DB_NAME = os.getenv('PG_DB_NAME', 'Tagging System')
-
-PG_USER_NAME = os.getenv('PG_USER_NAME', 'postgres')
-PG_USER_PASSWORD = os.getenv('PG_USER_PASSWORD', '123456a!')
-PG_DB_SERVER_IP = os.getenv('PG_DB_SERVER_IP', '127.0.0.1')
+PG_USER_NAME = os.getenv('PG_USER_NAME', 'iecas')
+PG_USER_PASSWORD = os.getenv('PG_USER_PASSWORD', 'iecas123')
+PG_DB_SERVER_IP = os.getenv('PG_DB_SERVER_IP', '192.168.2.16')
 PG_DB_PORT = os.getenv('PG_DB_PORT', '5432')
-PG_DB_NAME = os.getenv('PG_DB_NAME', 'newdb_11_18')
+PG_DB_NAME = os.getenv('PG_DB_NAME', 'Tagging System')
 
 MINIO_SERVER_IP = os.getenv('MINIO_SERVER_IP', '192.168.3.212')
 MINIO_PORT = os.getenv('MINIO_PORT', '9001')
@@ -48,15 +45,17 @@ USE_PLACE_SERVER = os.getenv('USE_PLACE_SERVER', 0)
 
 # 雨辰团队接口url, http://192.168.3.75:8096/dev
 YC_ROOT_URL = os.getenv('YC_ROOT_URL', "http://192.168.6.82:8096")
-YC_ROOT_URL_PYTHON = os.getenv('YC_ROOT_URL_PYTHON', "http://192.168.6.82:8099")
+YC_ROOT_URL_PYTHON = os.getenv('YC_ROOT_URL_PYTHON', "http://192.168.6.82:8989")
 # 雨辰团队标注页面
 YC_TAGGING_PAGE_URL = os.getenv('YC_TAGGING_PAGE_URL', "http://192.168.6.82:8098/index")
 EVENT_EXTRACTION_URL = os.getenv('EVENT_EXTRACTION_URL', "http://192.168.6.82:8083")
+
+LOCAL_IP = os.getenv('LOCAL_IP', "192.168.6.82")
+LOCAL_PG_PORT = os.getenv('PG_OUT_PORT', 10000)
+LOCAL_PORT = os.getenv('LOCAL_PORT', 8088)
 
 # 标注tab功能
 TAG_TABS = os.getenv('TAG_TABS', "{\"实体标注\":1,\"时间标注\":2,\"地点标注\":3,\"关系标注\":4,\"事件标注\":5,\"批注\":6,\"思维导图\":7,\"实体概念\":8}")
 MIN_PRICISE_OF_PERMSSION = 0.0000001
 
-LOCAL_IP = os.getenv('LOCAL_IP', '192.168.6.82')
-LOCAL_PG_PORT = os.getenv('PG_OUT_PORT', 10000)
-LOCAL_PORT = os.getenv('LOCAL_PORT', 8088)
+LOCAL_SOURCE = os.getenv('LOCAL_SOURCE', "离线")

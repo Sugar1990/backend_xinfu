@@ -24,6 +24,7 @@ def get_doc_mark_comment_by_id():
                 "create_time": doc_mark_comment.create_time.strftime(
                     "%Y-%m-%d %H:%M:%S") if doc_mark_comment.create_time else None,
                 "update_by_uuid": doc_mark_comment.update_by_uuid,
+                "appear_index_in_text":doc_mark_comment.appear_index_in_text,
                 "update_time": doc_mark_comment.update_time.strftime(
                     "%Y-%m-%d %H:%M:%S") if doc_mark_comment.update_time else None
             })
@@ -41,7 +42,8 @@ def get_doc_mark_comment_by_id():
             "create_by_uuid": '',
             "create_time": None,
             "update_by_uuid": '',
-            "update_time": None
+            "update_time": None,
+            "appear_index_in_text": None
         })
 
     return jsonify(res)
@@ -62,6 +64,7 @@ def get_doc_mark_comment_by_doc_id():
             "create_by_uuid": i.create_by_uuid,
             "create_time": i.create_time.strftime("%Y-%m-%d %H:%M:%S") if i.create_time else None,
             "update_by_uuid": i.update_by_uuid,
+            "appear_index_in_text": i.appear_index_in_text,
             "update_time": i.update_time.strftime("%Y-%m-%d %H:%M:%S") if i.update_time else None
         } for i in doc_mark_comment_list])
 
@@ -84,6 +87,8 @@ def add_doc_mark_comment():
         create_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         update_by_uuid = request.json.get("update_by_uuid", None)
         update_time = request.json.get("update_time", None)
+        locate_position = request.json.get("locate_position", [])
+        appear_index_in_text = request.json.get("appear_index_in_text", [])
 
         doc_mark_comment_same = DocMarkComment.query.filter_by(doc_uuid=doc_uuid, name=name,
                                                                position=position, comment=comment, valid=1).first()
@@ -92,12 +97,14 @@ def add_doc_mark_comment():
         else:
             doc_mark_comment = DocMarkComment(uuid=uuid.uuid1(), doc_uuid=doc_uuid, name=name, position=position,
                                               comment=comment, create_by_uuid=create_by_uuid, create_time=create_time,
-                                              update_by_uuid=update_by_uuid, update_time=update_time, valid=1)
+                                              update_by_uuid=update_by_uuid, update_time=update_time, valid=1,
+                                              locate_position=locate_position, appear_index_in_text=appear_index_in_text)
             db.session.add(doc_mark_comment)
             db.session.commit()
             res = success_res(data={"uuid": doc_mark_comment.uuid})
 
     except Exception as e:
+        db.session.rollback()
         print(str(e))
         res = fail_res()
 
@@ -117,6 +124,8 @@ def modify_doc_mark_comment():
         create_time = request.json.get("create_time", None)
         update_by_uuid = request.json.get("update_by_uuid", None)
         update_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+        locate_position = request.json.get("locate_position", [])
+        appear_index_in_text = request.json.get("appear_index_in_text", [])
         doc_mark_comment_same = DocMarkComment.query.filter_by(doc_uuid=doc_uuid, name=name,
                                                                position=position, comment=comment, valid=1).first()
         if doc_mark_comment_same:
@@ -140,6 +149,10 @@ def modify_doc_mark_comment():
                     doc_mark_comment.update_by_uuid = update_by_uuid
                 if update_time:
                     doc_mark_comment.update_time = update_time
+                if locate_position:
+                    doc_mark_comment.locate_position = locate_position
+                if appear_index_in_text:
+                    doc_mark_comment.appear_index_in_text = appear_index_in_text
                 db.session.commit()
                 res = success_res()
             else:

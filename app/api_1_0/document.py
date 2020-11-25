@@ -18,7 +18,7 @@ from werkzeug.utils import secure_filename
 # from app.swagger.document_dict import *
 from . import api_document as blue_print
 from .get_leader_ids import get_leader_ids
-from .utils import success_res, fail_res
+from .utils import success_res, fail_res, devide_str
 from .. import db, lock
 from ..conf import LEXICON_IP, LEXICON_PORT, SUMMARY_IP, SUMMARY_PORT, YC_ROOT_URL, ES_SERVER_IP, ES_SERVER_PORT, \
     YC_TAGGING_PAGE_URL, YC_ROOT_URL_PYTHON, EVENT_EXTRACTION_URL, PLACE_BASE_NAME
@@ -72,7 +72,7 @@ def upload_doc():
                             file_md5 = md5_hash.hexdigest()
 
                         if file_md5:
-                            doc = Document.query.filter_by(md5=file_md5, catalog_uuid=catalog_uuid,valid=1).first()
+                            doc = Document.query.filter_by(md5=file_md5, catalog_uuid=catalog_uuid, valid=1).first()
                             if doc:
                                 url = YC_TAGGING_PAGE_URL + "?doc_id={0}&uid={1}".format(doc.uuid, uid)
                                 doc_power = doc.get_power() if doc else 0
@@ -83,7 +83,7 @@ def upload_doc():
                                 res = fail_res(data=url, msg="{0}文档已存在\n".format(path[-1]))
                             else:
                                 datetime_now = datetime.datetime.now()
-                                doc = Document(uuid=uuid.uuid1(),name=path[-1],
+                                doc = Document(uuid=uuid.uuid1(), name=path[-1],
                                                category=os.path.splitext(filename)[1],
                                                savepath='/static/{0}'.format(save_filename),
                                                catalog_uuid=catalog_uuid,
@@ -99,6 +99,8 @@ def upload_doc():
 
                                 db.session.add(doc)
                                 db.session.commit()
+
+                                print("------------preprocess start--------------")
 
                                 if YC_ROOT_URL_PYTHON:
 
@@ -129,12 +131,16 @@ def upload_doc():
                                                 doc_mark_entity.word = item_entity["word"]
                                                 entity_json["name"] = item_entity["word"]
                                             if item_entity.get("entity_id", ""):
-                                                doc_mark_entity.entity_uuid = item_entity["entity_id"]
+                                                doc_mark_entity.entity_uuid = str(item_entity["entity_id"])
                                             if item_entity.get("entity_type_id", ""):
-                                                entity_json["category_id"] = item_entity["entity_type_id"]
+                                                entity_json["category_id"] = str(item_entity["entity_type_id"])
                                             if item_entity.get("word_count", ""):
                                                 word_count_list = list(item_entity["word_count"].split(','))
                                                 doc_mark_entity.appear_index_in_text = word_count_list
+
+                                            # 插入position
+                                            if item_entity.get("position", []):
+                                                doc_mark_entity.position = item_entity["position"]
 
                                             db.session.add(doc_mark_entity)
                                             db.session.commit()
@@ -149,12 +155,16 @@ def upload_doc():
                                                 doc_mark_entity.word = item_entity["word"]
                                                 entity_json["name"] = item_entity["word"]
                                             if item_entity.get("concept_id", ""):
-                                                doc_mark_entity.entity_uuid = item_entity["concept_id"]
+                                                doc_mark_entity.entity_uuid = str(item_entity["concept_id"])
                                             if item_entity.get("concept_type_id", ""):
-                                                entity_json["category_id"] = item_entity["concept_type_id"]
+                                                entity_json["category_id"] = str(item_entity["concept_type_id"])
                                             if item_entity.get("word_count", ""):
                                                 word_count_list = list(item_entity["word_count"].split(','))
                                                 doc_mark_entity.appear_index_in_text = word_count_list
+
+                                            # 插入position
+                                            if item_entity.get("position", []):
+                                                doc_mark_entity.position = item_entity["position"]
 
                                             db.session.add(doc_mark_entity)
                                             db.session.commit()
@@ -172,7 +182,35 @@ def upload_doc():
                                             if item_place.get("type", 0):
                                                 doc_mark_place.type = item_place["type"]
                                             if item_place.get("place_id", 0):
-                                                doc_mark_place.place_uuid = item_place["place_id"]
+                                                doc_mark_place.place_uuid = str(item_place["place_id"])
+
+                                            # 插入position
+                                            if item_place.get("position", []):
+                                                doc_mark_place.position = item_place["position"]
+                                            # 插入direction
+                                            if item_place.get("direction", ""):
+                                                doc_mark_place.direction = item_place["direction"]
+                                            # 插入distance
+                                            if item_place.get("distance", 0.0):
+                                                doc_mark_place.distance = item_place["distance"]
+                                            # 插入unit
+                                            if item_place.get("unit", ""):
+                                                doc_mark_place.unit = item_place["unit"]
+                                            # 插入source_type
+                                            if item_place.get("source_type", 0):
+                                                doc_mark_place.source_type = item_place["source_type"]
+                                            # 插入dms
+                                            if item_place.get("dms", []):
+                                                doc_mark_place.dms = item_place["dms"]
+                                            # 插入relation
+                                            if item_place.get("relation", ""):
+                                                doc_mark_place.relation = item_place["relation"]
+                                            # 插入height
+                                            if item_place.get("height", ""):
+                                                doc_mark_place.height = item_place["height"]
+                                            # 插入entity_or_sys
+                                            if item_place.get("entity_or_sys", 0):
+                                                doc_mark_place.entity_or_sys = item_place["entity_or_sys"]
 
                                             # doc_mark_place是经纬度时必须含有lon和lat
                                             if doc_mark_place.type == 2:
@@ -197,7 +235,7 @@ def upload_doc():
                                                 if item_place.get("place_lat", ""):
                                                     doc_mark_place.place_lat = item_place["place_lat"]
 
-                                                # location_json["lat"] = item_place["place_lat"]
+                                                    # location_json["lat"] = item_place["place_lat"]
                                             if item_place.get("word_count", ""):
                                                 word_count_list = list(item_place["word_count"].split(','))
                                                 doc_mark_place.appear_index_in_text = word_count_list
@@ -207,7 +245,7 @@ def upload_doc():
                                                 if doc_mark_place.place_lon and doc_mark_place.place_lat:
                                                     db.session.add(doc_mark_place)
                                                     db.session.commit()
-                                                    item_place["doc_mark_id"] = doc_mark_place.uuid
+                                                    item_place["doc_mark_id"] = str(doc_mark_place.uuid)
                                                     # 合格的地名才同步es
                                                     data_insert_place.append(doc_mark_place.word)
                                             else:
@@ -217,7 +255,7 @@ def upload_doc():
 
                                                 data_insert_place.append(doc_mark_place.word)
 
-                                            # data_insert_location.append(location_json)
+                                                # data_insert_location.append(location_json)
                                         # print("doc_mark_place数据插入成功")
 
                                         data_insert_date = []
@@ -230,6 +268,11 @@ def upload_doc():
                                                 doc_mark_time_tag.time_type = item_time["time_type"]
                                             if item_time.get("word", ""):
                                                 doc_mark_time_tag.word = item_time["word"]
+
+                                            # 插入position
+                                            if item_time.get("position", []):
+                                                doc_mark_time_tag.position = item_time["position"]
+
                                             if item_time.get("format_date", ""):
                                                 doc_mark_time_tag.format_date = item_time["format_date"]
                                             if item_time.get("format_date_end", ""):
@@ -268,7 +311,7 @@ def upload_doc():
 
                                         print("yc_res: ", yc_res)
 
-                                        #<editor-fold desc="返回event带解析封装接口">
+                                        # <editor-fold desc="返回event带解析封装接口">
                                         event_id_list = []
                                         event_res = {}
                                         event_res['content'] = doc.content
@@ -277,27 +320,29 @@ def upload_doc():
                                         url = EVENT_EXTRACTION_URL + '/event_extraction'
 
                                         data = json.dumps(event_res)
+                                        # print("jw接口传参：", event_res)
                                         event_extraction_res = requests.post(url=url, data=data, headers=header)
 
                                         print("event_extraction_res.status_code", event_extraction_res.status_code)
 
                                         if event_extraction_res.status_code in (200, 201):
-                                            print("jw接口结果",event_extraction_res.json()["result"])
+                                            print("jw接口结果", event_extraction_res.json()["result"])
                                             data_insert_event = []
 
                                             for item in event_extraction_res.json()["result"]:
                                                 print("a")
                                                 event_json = {}
-                                                doc_mark_event = DocMarkEvent(uuid=uuid.uuid1(), doc_uuid=doc.uuid, valid=1)
+                                                doc_mark_event = DocMarkEvent(uuid=uuid.uuid1(), doc_uuid=doc.uuid,
+                                                                              valid=1)
                                                 if item.get("event_address", []):
-                                                    print("b")
+                                                    # print("b")
                                                     doc_mark_event.event_address = item["event_address"]
-                                                # if item.get("event_class_id", None):
-                                                #     doc_mark_event.event_class_uuid = item["event_class_id"]
-                                                #     event_json["event_class_id"] = item["event_class_id"]
-                                                # if item.get("event_category_id", None):
-                                                #     doc_mark_event.event_type_uuid = item["event_category_id"]
-                                                #     event_json["category_id"] = item["event_category_id"]
+                                                if item.get("event_class_id", None):
+                                                    doc_mark_event.event_class_uuid = item["event_class_id"]
+                                                    event_json["event_class_id"] = item["event_class_id"]
+                                                if item.get("event_category_id", None):
+                                                    doc_mark_event.event_type_uuid = item["event_category_id"]
+                                                    event_json["category_id"] = item["event_category_id"]
                                                 if item.get("event_desc", ""):
                                                     doc_mark_event.event_desc = item["event_desc"]
                                                 if item.get("event_object", []):
@@ -319,35 +364,39 @@ def upload_doc():
                                         else:
                                             res = fail_res(msg="调用event_extraction接口失败")
                                             return res
-                                        #</editor-fold>
+                                        # </editor-fold>
 
-                                        #<editor-fold desc="调用yc文档预处理接口,eventIds暂时为空列表">
+                                        # <editor-fold desc="调用yc文档预处理接口,eventIds暂时为空列表">
                                         eventIds = event_id_list
                                         header = {"Content-Type": "application/json; charset=UTF-8"}
                                         url = YC_ROOT_URL + '/doc/preprocess'
-                                        body = {"DocId": str(doc.uuid), "eventIds": eventIds}
+                                        # print(doc.uuid)
+                                        body = {"docId": str(doc.uuid), "eventIds": eventIds}
                                         data = json.dumps(body)
                                         yc_res_event = requests.post(url=url, data=data, headers=header)
                                         print("yc_res_event.status_code", yc_res_event.status_code)
-                                        if event_extraction_res.status_code in (200, 201):
-                                            # res_html_path = yc_res_event.json()["data"]
-                                            res_html_path = json.loads(yc_res_event.text)
-                                            print("路径结果",res_html_path)
-                                            doc_html = Document.query.filter_by(uuid=doc.uuid, catalog_uuid=catalog_uuid, valid=1).first()
-                                            doc_html.html_path = res_html_path["data"]
+                                        if yc_res_event.status_code in (200, 201):
+                                            print(json.loads(yc_res_event.text))
+                                            res_html_path = yc_res_event.json()["data"]
+                                            # res_html_path = json.loads(yc_res_event.text)
+                                            print("路径结果", res_html_path)
+                                            doc_html = Document.query.filter_by(uuid=doc.uuid,
+                                                                                catalog_uuid=catalog_uuid,
+                                                                                valid=1).first()
+                                            doc_html.html_path = res_html_path
                                             print("res_html_path", doc_html.html_path)
                                             db.session.commit()
                                         else:
                                             res = fail_res(msg="调用doc_preprocess接口失败")
                                             return res
-                                        #</editor-fold>
+                                            # </editor-fold>
                                     else:
                                         res = fail_res(msg="上传成功，但预处理失败")
                                         return res
 
-                                #抽取id、name、content插入es数据库中
+                                # 抽取id、name、content插入es数据库中
                                 data_insert_json = [{
-                                    "id": str(doc.uuid),
+                                    "uuid": str(doc.uuid),
                                     "name": doc.name,
                                     "content": doc.content,
                                     "create_time": datetime_now.isoformat(),
@@ -555,6 +604,43 @@ def get_content():
     return jsonify(res)
 
 
+# 获取文档内容
+@blue_print.route('/modify_keywords', methods=['POST'])
+# @swag_from(modify_keywords)
+def modify_keywords():
+    try:
+        doc_uuid = request.json.get('doc_uuid', '')
+        keywords = request.json.get('keywords', [])
+        doc = Document.query.filter_by(uuid=doc_uuid, valid=1).first()
+        if doc:
+            doc.keywords = keywords
+            db.session.commit()
+            res = success_res()
+        else:
+            res = fail_res(msg="该文档不存在")
+    except Exception as e:
+        print(str(e))
+        res = fail_res(msg="更新异常")
+    return jsonify(res)
+
+
+# 获取文档内容
+@blue_print.route('/get_keywords', methods=['GET'])
+# @swag_from(get_keywords)
+def get_keywords():
+    try:
+        doc_uuid = request.args.get('doc_uuid')
+        doc = Document.query.filter_by(uuid=doc_uuid, valid=1).first()
+        if doc:
+            res = success_res(data=doc.keywords)
+        else:
+            res = fail_res(data=[], msg="该文档不存在")
+    except Exception as e:
+        print(str(e))
+        res = fail_res(data=[])
+    return jsonify(res)
+
+
 # 更新文档信息
 @blue_print.route('/modify_doc_info', methods=['PUT'])
 # @swag_from(modify_doc_info_dict)
@@ -619,7 +705,7 @@ def del_doc():
         if customer:
             del_doc_ids = []
             for doc_uuid in doc_uuids:
-                doc = Document.query.filter_by(uuid=doc_uuid, valid =1).first()
+                doc = Document.query.filter_by(uuid=doc_uuid, valid=1).first()
                 if doc:
                     if doc.get_power() > customer.get_power():
                         permission_flag = True
@@ -852,7 +938,7 @@ def get_info():
 
             doc_info = {
                 "uuid": str(doc.uuid),
-                "name": doc.name,
+                "name": doc.name[0:doc.name.rindex(".")] if doc.name else "",
                 "category": str(doc.catalog_uuid),
                 "create_time": doc.create_time.strftime('%Y-%m-%d %H:%M:%S'),
                 "keywords": doc.keywords if doc.keywords else [],
@@ -905,16 +991,16 @@ def get_entity_in_list_pagination():
                     for doc_mark_entity in doc_mark_entity_list:
                         doc_id_list.append(str(doc_mark_entity.doc_uuid))
 
-                # if YC_ROOT_URL:
-                #     url = YC_ROOT_URL + "/doc/get_entity_in_list_pagination"
-                #     print(url, flush=True)
-                #     resp = requests.get(url=url, params={"cusotmer_id": customer_id,
-                #                                          "entity_id": entitiy.id,
-                #                                          "cur_page": cur_page,
-                #                                          "page_size": page_size})
-                #
-                #     print(resp.text, flush=True)
-                    #rows = json.loads(resp.text).get("rows", [])
+                        # if YC_ROOT_URL:
+                        #     url = YC_ROOT_URL + "/doc/get_entity_in_list_pagination"
+                        #     print(url, flush=True)
+                        #     resp = requests.get(url=url, params={"cusotmer_id": customer_id,
+                        #                                          "entity_id": entitiy.id,
+                        #                                          "cur_page": cur_page,
+                        #                                          "page_size": page_size})
+                        #
+                        #     print(resp.text, flush=True)
+                    # rows = json.loads(resp.text).get("rows", [])
                     data = []
                     leader_ids = get_leader_ids()
                     for doc_uuid in list(set(doc_id_list)):
@@ -932,11 +1018,11 @@ def get_entity_in_list_pagination():
                                                                                 DocMarkComment.create_by_uuid.in_(
                                                                                     leader_ids),
                                                                                 DocMarkComment.valid == 1).all()
-                                #i["leader_operate"] = 1 if doc_mark_comments else 0
+                                # i["leader_operate"] = 1 if doc_mark_comments else 0
                                 res = {
                                     "uuid": doc.uuid,
                                     "name": doc.name,
-                                    "create_time":doc.create_time.strftime('%Y-%m-%d %H:%M:%S'),
+                                    "create_time": doc.create_time.strftime('%Y-%m-%d %H:%M:%S'),
                                     "create_username": Customer.get_username_by_id(doc.create_by_uuid),
                                     'path': doc.get_full_path() if doc.get_full_path() else '已失效',
                                     'extension': doc.category,
@@ -953,8 +1039,9 @@ def get_entity_in_list_pagination():
             data = []
             leader_ids = get_leader_ids()
 
-            pagination = Document.query.filter(Document.valid == 1).order_by(Document.create_time.desc()).paginate(cur_page, page_size, False)
-            #pagination = Document.query.filter().order_by(Document.create_time.desc()).limit(100).offset(100).all()
+            pagination = Document.query.filter(Document.valid == 1).order_by(Document.create_time.desc()).paginate(
+                cur_page, page_size, False)
+            # pagination = Document.query.filter().order_by(Document.create_time.desc()).limit(100).offset(100).all()
             if leader_ids:
                 for doc in pagination.items:
                     doc_mark_comments = DocMarkComment.query.filter(DocMarkComment.doc_uuid == doc.uuid,
@@ -1049,7 +1136,7 @@ def get_search_pagination():
                                                                     DocMarkComment.valid == 1).all()
 
                     data_item = {
-                        'uuid': doc['_source']['uuid'], #修改es后改称uuid
+                        'uuid': doc['_source']['uuid'],  # 修改es后改称uuid
                         'name': doc['_source']['name'],
                         'create_username': create_username,
                         'path': path,
@@ -1250,9 +1337,10 @@ def search_advanced_doc_type():
         # 组装ids，和结构化数据
         doc_ids = []
         data_by_doc_id = {}
+        print(data_screen)
         for data in data_screen:
             if not data["name"]:
-                doc = Document.query.filter_by(uuid=data['uuid'], valid=1).first()
+                doc = Document.query.filter_by(uuid=data["uuid"], valid=1).first()
                 if doc:
                     data["name"] = doc.name if doc else ""
             if data["name"]:
@@ -1268,8 +1356,8 @@ def search_advanced_doc_type():
         data_forms = [
             {"name": Catalog.get_name_by_id(doc_type), "data": data_by_doc_id[doc_type]}
             for doc_type in data_by_doc_id if Catalog.get_name_by_id(doc_type)]
-        print(doc_ids, flush=True)
 
+        print(doc_ids, flush=True)
 
         res = {
             "doc": data_forms,
@@ -1286,220 +1374,94 @@ def search_advanced_doc_type():
     return jsonify(res)  # doc:原来格式数据 event_list:事件数据
 
 
-
-def get_event_list_from_docs(doc_uuids=[], start_date='1000-01-01', end_date='9999-12-31'):
-    # <editor-fold desc="construct into event_list from docs order by event_time">
-    event_list = []
-    if doc_uuids:
-        events = DocMarkEvent.query.filter(DocMarkEvent.doc_uuid.in_(doc_uuids),DocMarkEvent.valid == 1).all()
-        for i in events:
-            if i.event_address and isinstance(i.event_address, list):
-                place_uuids = DocMarkPlace.query.with_entities(DocMarkPlace.place_uuid).filter(
-                    DocMarkPlace.uuid.in_(i.event_address),DocMarkPlace.valid == 1).all()
-                if place_uuids:
-                    place_uuids = [str(i[0]) for i in place_uuids]
-                    places = Entity.query.filter(Entity.uuid.in_(place_uuids), Entity.valid == 1).all()
-                    if places:
-                        objects, subjects, form_time = [], [], ""
-
-                        if i.event_object and isinstance(i.event_object, list) and i.event_subject:
-                            object_id_list = i.event_object
-                            if i.event_subject:
-                                object_id_list.extend(i.event_subject)
-                            object_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_uuid).filter(
-                                DocMarkEntity.uuid.in_(object_id_list),DocMarkEntity.valid == 1).all()
-                            if object_ids:
-                                object_ids = [str(i[0]) for i in object_ids]
-                                objects = Entity.query.filter(Entity.uuid.in_(object_ids), Entity.valid == 1).all()
-
-                        # subject和object结合，返回给前端
-
-                        if objects:
-                            if i.event_time and isinstance(i.event_time, list):
-                                mark_time_ids = i.event_time
-                                times = DocMarkTimeTag.query.with_entities(DocMarkTimeTag.format_date, DocMarkTimeTag.format_date_end).filter(
-                                    DocMarkTimeTag.uuid.in_(mark_time_ids),DocMarkTimeTag.valid == 1,
-                                    or_(and_(DocMarkTimeTag.format_date.between(start_date, end_date),
-                                             DocMarkTimeTag.time_type == 1),
-                                        and_(DocMarkTimeTag.format_date > start_date,
-                                             DocMarkTimeTag.format_date_end < end_date,
-                                             DocMarkTimeTag.time_type == 2))
-                                ).all()
-                                for time_tag in times:
-                                    datetime = []
-                                    if time_tag[0]:
-                                        datetime.append(time_tag[0])
-                                    if time_tag[1]:
-                                        datetime.append(time_tag[1])
-
-                                    item = {
-                                        "datetime": datetime,
-                                        "place": [{
-                                            "place_lat": place.latitude,
-                                            "place_lon": place.longitude,
-                                            "place_id": place.uuid,
-                                            # "type": 1,
-                                            "word": place.name,
-                                        } for place in places],
-                                        "title": i.title,
-                                        "object": [i.name for i in objects],
-                                        "event_id": i.uuid
-                                    }
-                                    event_list.append(item)
-        # </editor-fold>
-        event_list = sorted(event_list, key=lambda x: x.get('datetime', '')[0])
-    return event_list
-
-
-def get_event_list_from_docs_group_by_entities(doc_ids=[]):
-    # <editor-fold desc="construct into event_list from docs group by subjects & objects order by event_time">
-    event_list = []
-    if doc_ids:
-        event_dict = {}
-        events = DocMarkEvent.query.filter(DocMarkEvent.doc_uuid.in_(doc_ids),DocMarkEvent.valid == 1).all()
-        for i in events:
-            if i.event_address and isinstance(i.event_address, list):
-                place_ids = DocMarkPlace.query.with_entities(DocMarkPlace.place_uuid).filter(
-                    DocMarkPlace.uuid.in_(i.event_address)).all()
-                if place_ids:
-                    place_ids = [str(i[0]) for i in place_ids]
-                    places = Entity.query.filter(Entity.uuid.in_(place_ids), Entity.valid == 1).all()
-                    if places:
-                        object_ids, subject_ids = [], []
-                        objects, subjects, form_time = [], [], []
-
-                        if i.event_object and isinstance(i.event_object, list):
-                            object_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_uuid).filter(
-                                DocMarkEntity.uuid.in_(i.event_object),DocMarkEntity.valid == 1).all()
-                            if object_ids:
-                                object_ids = [str(i[0]) for i in object_ids]
-                                objects = Entity.query.filter(Entity.uuid.in_(object_ids), Entity.valid == 1).all()
-
-                        if i.event_subject and isinstance(i.event_subject, list):
-                            subject_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_uuid).filter(
-                                DocMarkEntity.uuid.in_(i.event_subject),DocMarkEntity.valid == 1).all()
-                            if subject_ids:
-                                subject_ids = [str(i[0]) for i in subject_ids]
-                                subjects = Entity.query.filter(Entity.uuid.in_(subject_ids), Entity.valid == 1).all()
-
-                        # subject和object结合，返回给前端
-                        objects.extend(subjects)
-                        if objects:
-                            if i.event_time and isinstance(i.event_time, list):
-                                mark_time_ids = i.event_time
-                                times = DocMarkTimeTag.query.with_entities(DocMarkTimeTag.format_date, DocMarkTimeTag.format_date_end).filter(
-                                    DocMarkTimeTag.uuid.in_(mark_time_ids),DocMarkTimeTag.valid == 1,
-                                    DocMarkTimeTag.time_type.in_(['1', '2'])).all()
-                                if times[0]:
-                                    form_time.append(times[0])
-                                if times[1]:
-                                    form_time.append(times[1])
-                            if object_ids + subject_ids and form_time:
-                                # 确立时间线的key值
-                                timeline_key = ",".join([str(i) for i in sorted(list(set(object_ids + subject_ids)))])
-
-                                item = {
-                                    "datetime": form_time,
-                                    "place": [{
-                                        "place_lat": place.latitude,
-                                        "place_lon": place.longitude,
-                                        "place_id": place.uuid,
-                                        # "type": 1,
-                                        "word": place.name,
-                                    } for place in places],
-                                    "title": i.title,
-                                    "object": [i.name for i in objects],
-                                    "event_id": i.uuid
-                                }
-                                if event_dict.get(timeline_key, []):
-                                    event_dict[timeline_key].append(item)
-                                else:
-                                    event_dict[timeline_key] = [item]
-        # </editor-fold>
-        event_list = [sorted(i, key=lambda x: x.get('datetime', '')[0]) for i in event_dict.values()]
-    return event_list
-
-
 def get_doc_events_to_earth(doc_ids):
-    doc_mark_event_list = DocMarkEvent.query.filter(DocMarkEvent.doc_uuid.in_(doc_ids)).all()
-    result = []
-    for doc_mark_event in doc_mark_event_list:
-        places = doc_mark_event.get_places()
-        place_list = [{
-            "word": i.word,
-            "place_uuid": i.place_uuid,
-            "place_lon": i.place_lon,
-            "place_lat": i.place_lat
-        } for i in places if i.place_lon and i.place_lat]
-        if place_list:
-            datetime = []
-            if doc_mark_event.event_time:
-                time_tag = DocMarkTimeTag.query.filter(DocMarkTimeTag.uuid.in_(doc_mark_event.event_time)).first()
-                if time_tag:
-                    if time_tag.format_date:
-                        datetime.append(time_tag.format_date.strftime("%Y-%m-%d %H:%M:%S"))
-                    if time_tag.format_date_end:
-                        datetime.append(time_tag.format_date_end.strftime("%Y-%m-%d %H:%M:%S"))
-            if datetime:
-                object_list = doc_mark_event.get_object_entity_names()
-                object_list.extend(doc_mark_event.get_subject_entity_names())
-                if object_list:
-                    result.append({
-                        "title": doc_mark_event.title,
-                        "object": object_list,
-                        "datetime": datetime,
-                        "place": place_list,
-                        "event_uuid": doc_mark_event.uuid})
-    res = sorted(result, key=lambda x: x.get('datetime', '')[0])
+    if isinstance(doc_ids, list):
+        doc_mark_event_list = DocMarkEvent.query.filter(DocMarkEvent.doc_uuid.in_(doc_ids)).all()
+        result = []
+        for doc_mark_event in doc_mark_event_list:
+            places = doc_mark_event.get_places()
+            place_list = [{
+                "word": i.word,
+                "place_uuid": i.place_uuid,
+                "place_lon": i.place_lon,
+                "place_lat": i.place_lat
+            } for i in places if i.place_lon and i.place_lat]
+            if place_list:
+                datetime = []
+                if doc_mark_event.event_time and isinstance(doc_mark_event.event_time, list):
+                    time_tag = DocMarkTimeTag.query.filter(DocMarkTimeTag.uuid.in_(doc_mark_event.event_time)).first()
+                    if time_tag:
+                        if time_tag.format_date:
+                            datetime.append(time_tag.format_date.strftime("%Y-%m-%d %H:%M:%S"))
+                        if time_tag.format_date_end:
+                            datetime.append(time_tag.format_date_end.strftime("%Y-%m-%d %H:%M:%S"))
+                if datetime:
+                    object_list = doc_mark_event.get_object_entity_names()
+                    object_list.extend(doc_mark_event.get_subject_entity_names())
+                    if object_list:
+                        result.append({
+                            "title": doc_mark_event.title,
+                            "object": object_list,
+                            "datetime": datetime,
+                            "place": place_list,
+                            "event_uuid": doc_mark_event.uuid})
+        print("result", result)
+        res = sorted(result, key=lambda x: x.get('datetime', '')[0])
+    else:
+        res = []
     return res
 
 
 def get_doc_events_to_earth_by_entities(doc_ids):
-    doc_mark_event_list = DocMarkEvent.query.filter(DocMarkEvent.doc_uuid.in_(doc_ids)).all()
-    event_dict = {}
+    if isinstance(doc_ids, list):
+        doc_mark_event_list = DocMarkEvent.query.filter(DocMarkEvent.doc_uuid.in_(doc_ids)).all()
+        event_dict = {}
 
-    for doc_mark_event in doc_mark_event_list:
-        object_uni_list = []
-        places = doc_mark_event.get_places()
-        place_list = [{
-            "word": i.word,
-            "place_uuid": i.place_uuid,
-            "place_lon": i.place_lon,
-            "place_lat": i.place_lat
-        } for i in places if i.place_lon and i.place_lat]
-        if place_list:
-            datetime = []
-            if doc_mark_event.event_time:
-                time_tag = DocMarkTimeTag.query.filter(DocMarkTimeTag.uuid.in_(doc_mark_event.event_time)).first()
-                if time_tag:
-                    if time_tag.format_date:
-                        datetime.append(time_tag.format_date.strftime("%Y-%m-%d %H:%M:%S"))
-                    if time_tag.format_date_end:
-                        datetime.append(time_tag.format_date_end.strftime("%Y-%m-%d %H:%M:%S"))
-            if datetime:
-                object_list = doc_mark_event.get_object_entity_names()
-                if doc_mark_event.get_subject_entity_names():
-                    object_list.extend(doc_mark_event.get_subject_entity_names())
-                object_uni_list = list(set(object_list))
-            if object_uni_list:
+        for doc_mark_event in doc_mark_event_list:
+            object_uni_list = []
+            places = doc_mark_event.get_places()
+            place_list = [{
+                "word": i.word,
+                "place_uuid": i.place_uuid,
+                "place_lon": i.place_lon,
+                "place_lat": i.place_lat
+            } for i in places if i.place_lon and i.place_lat]
+            if place_list:
+                datetime = []
+                if doc_mark_event.event_time and isinstance(doc_mark_event.event_time, list):
+                    time_tag = DocMarkTimeTag.query.filter(DocMarkTimeTag.uuid.in_(doc_mark_event.event_time)).first()
+                    if time_tag:
+                        if time_tag.format_date:
+                            datetime.append(time_tag.format_date.strftime("%Y-%m-%d %H:%M:%S"))
+                        if time_tag.format_date_end:
+                            datetime.append(time_tag.format_date_end.strftime("%Y-%m-%d %H:%M:%S"))
+                if datetime:
+                    object_list = doc_mark_event.get_object_entity_names()
+                    if doc_mark_event.get_subject_entity_names():
+                        object_list.extend(doc_mark_event.get_subject_entity_names())
+                    object_uni_list = list(set(object_list))
+                if object_uni_list:
 
-                # 确立时间线的key值
-                timeline_key = ",".join([str(i) for i in sorted(object_uni_list)])
+                    # 确立时间线的key值
+                    timeline_key = ",".join([str(i) for i in sorted(object_uni_list)])
 
-                item = {
-                    "datetime": datetime,
-                    "place": place_list,
-                    "title": doc_mark_event.title,
-                    "object": object_uni_list,
-                    "event_uuid": doc_mark_event.uuid
-                }
+                    item = {
+                        "datetime": datetime,
+                        "place": place_list,
+                        "title": doc_mark_event.title,
+                        "object": object_uni_list,
+                        "event_uuid": doc_mark_event.uuid
+                    }
 
-                if event_dict.get(timeline_key, []):
-                    event_dict[timeline_key].append(item)
-                else:
-                    event_dict[timeline_key] = [item]
-        # </editor-fold>
+                    if event_dict.get(timeline_key, []):
+                        event_dict[timeline_key].append(item)
+                    else:
+                        event_dict[timeline_key] = [item]
+            # </editor-fold>
+
         res = [sorted(i, key=lambda x: x.get('datetime', '')[0]) for i in event_dict.values()]
+    else:
+        res = []
     return res
 
 
@@ -1588,7 +1550,8 @@ def search_advanced_pagination():
     data_screen_res = []
     leader_ids = get_leader_ids()
     for data in data_screen:
-        doc = Document.query.filter_by(uuid=data['uuid'], valid=1).first()
+        print(data)
+        doc = Document.query.filter_by(uuid=data["uuid"], valid=1).first()
         if doc:
             if not data["name"]:
                 data["name"] = doc.name if doc else ""
@@ -1627,7 +1590,7 @@ def search_advanced_pagination():
 def save_tagging_result():
     try:
 
-        doc_uuid = request.json.get('doc_uuid','')
+        doc_uuid = request.json.get('doc_uuid', '')
         date = request.json.get('date', [])
         time_range = request.json.get('time_range', [])
         time_period = request.json.get('time_period', [])
@@ -1687,7 +1650,7 @@ def save_tagging_result():
             url = f"http://{ES_SERVER_IP}:{ES_SERVER_PORT}"
             header = {"Content-Type": "application/json; charset=UTF-8"}
             search_json = {
-                "id": {"type": "id", "value": doc_uuid}
+                "uuid": {"type": "term", "value": doc_uuid}
             }
             es_id_para = {"search_index": "document", "search_json": search_json}
 
@@ -1802,8 +1765,8 @@ def get_es_doc(url, customer_uuid=0, date=[], time_range=[], time_period=[], pla
     esurl = url + "/searchCustom"
     search_result = requests.post(url=esurl, data=json.dumps(para), headers=header)
     data = [doc['_source'] for doc in search_result.json()['data']['dataList']]
-    data_screen = screen_doc(data, time_range=time_range, degrees=degrees, entities=entities)#event_categories=event_categories)
-
+    data_screen = screen_doc(data, time_range=time_range, degrees=degrees,
+                             entities=entities)  # event_categories=event_categories)
 
     return data_screen
 
@@ -1989,6 +1952,139 @@ def get_keywords(content):
 
 
 # ——————————————————————— 提取关键词 —————————————————————————————
+def get_event_list_from_docs(doc_uuids=[], start_date='1000-01-01', end_date='9999-12-31'):
+    # <editor-fold desc="construct into event_list from docs order by event_time">
+    event_list = []
+    if doc_uuids:
+        events = DocMarkEvent.query.filter(DocMarkEvent.doc_uuid.in_(doc_uuids), DocMarkEvent.valid == 1).all()
+        for i in events:
+            if i.event_address and isinstance(i.event_address, list):
+                place_uuids = DocMarkPlace.query.with_entities(DocMarkPlace.place_uuid).filter(
+                    DocMarkPlace.uuid.in_(i.event_address), DocMarkPlace.valid == 1).all()
+                if place_uuids:
+                    place_uuids = [str(i[0]) for i in place_uuids]
+                    places = Entity.query.filter(Entity.uuid.in_(place_uuids), Entity.valid == 1).all()
+                    if places:
+                        objects, subjects, form_time = [], [], ""
+
+                        if i.event_object and isinstance(i.event_object, list) and i.event_subject:
+                            object_id_list = i.event_object
+                            if i.event_subject:
+                                object_id_list.extend([ele for ele in i.event_subject if ele])
+                            object_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_uuid).filter(
+                                DocMarkEntity.uuid.in_(object_id_list), DocMarkEntity.valid == 1).all()
+                            if object_ids:
+                                object_ids = [str(i[0]) for i in object_ids]
+                                objects = Entity.query.filter(Entity.uuid.in_(object_ids), Entity.valid == 1).all()
+
+                        # subject和object结合，返回给前端
+
+                        if objects:
+                            if i.event_time and isinstance(i.event_time, list):
+                                mark_time_ids = i.event_time
+                                times = DocMarkTimeTag.query.with_entities(DocMarkTimeTag.format_date,
+                                                                           DocMarkTimeTag.format_date_end).filter(
+                                    DocMarkTimeTag.uuid.in_(mark_time_ids), DocMarkTimeTag.valid == 1,
+                                    or_(and_(DocMarkTimeTag.format_date.between(start_date, end_date),
+                                             DocMarkTimeTag.time_type == 1),
+                                        and_(DocMarkTimeTag.format_date > start_date,
+                                             DocMarkTimeTag.format_date_end < end_date,
+                                             DocMarkTimeTag.time_type == 2))
+                                ).all()
+                                for time_tag in times:
+                                    datetime = []
+                                    if time_tag[0]:
+                                        datetime.append(time_tag[0])
+                                    if time_tag[1]:
+                                        datetime.append(time_tag[1])
+
+                                    item = {
+                                        "datetime": datetime,
+                                        "place": [{
+                                            "place_lat": place.latitude,
+                                            "place_lon": place.longitude,
+                                            "place_id": place.uuid,
+                                            # "type": 1,
+                                            "word": place.name,
+                                        } for place in places],
+                                        "title": i.title,
+                                        "object": [i.name for i in objects],
+                                        "event_id": i.uuid
+                                    }
+                                    event_list.append(item)
+        # </editor-fold>
+        event_list = sorted(event_list, key=lambda x: x.get('datetime', '')[0])
+    return event_list
+
+
+def get_event_list_from_docs_group_by_entities(doc_ids=[]):
+    # <editor-fold desc="construct into event_list from docs group by subjects & objects order by event_time">
+    event_list = []
+    if doc_ids:
+        event_dict = {}
+        events = DocMarkEvent.query.filter(DocMarkEvent.doc_uuid.in_(doc_ids), DocMarkEvent.valid == 1).all()
+        for i in events:
+            if i.event_address and isinstance(i.event_address, list):
+                place_ids = DocMarkPlace.query.with_entities(DocMarkPlace.place_uuid).filter(
+                    DocMarkPlace.uuid.in_(i.event_address)).all()
+                if place_ids:
+                    place_ids = [str(i[0]) for i in place_ids]
+                    places = Entity.query.filter(Entity.uuid.in_(place_ids), Entity.valid == 1).all()
+                    if places:
+                        object_ids, subject_ids = [], []
+                        objects, subjects, form_time = [], [], []
+
+                        if i.event_object and isinstance(i.event_object, list):
+                            object_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_uuid).filter(
+                                DocMarkEntity.uuid.in_(i.event_object), DocMarkEntity.valid == 1).all()
+                            if object_ids:
+                                object_ids = [str(i[0]) for i in object_ids]
+                                objects = Entity.query.filter(Entity.uuid.in_(object_ids), Entity.valid == 1).all()
+
+                        if i.event_subject and isinstance(i.event_subject, list):
+                            subject_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_uuid).filter(
+                                DocMarkEntity.uuid.in_(i.event_subject), DocMarkEntity.valid == 1).all()
+                            if subject_ids:
+                                subject_ids = [str(i[0]) for i in subject_ids]
+                                subjects = Entity.query.filter(Entity.uuid.in_(subject_ids), Entity.valid == 1).all()
+
+                        # subject和object结合，返回给前端
+                        objects.extend(subjects)
+                        if objects:
+                            if i.event_time and isinstance(i.event_time, list):
+                                mark_time_ids = i.event_time
+                                times = DocMarkTimeTag.query.with_entities(DocMarkTimeTag.format_date,
+                                                                           DocMarkTimeTag.format_date_end).filter(
+                                    DocMarkTimeTag.uuid.in_(mark_time_ids), DocMarkTimeTag.valid == 1,
+                                    DocMarkTimeTag.time_type.in_(['1', '2'])).all()
+                                if times[0]:
+                                    form_time.append(times[0])
+                                if times[1]:
+                                    form_time.append(times[1])
+                            if object_ids + subject_ids and form_time:
+                                # 确立时间线的key值
+                                timeline_key = ",".join([str(i) for i in sorted(list(set(object_ids + subject_ids)))])
+
+                                item = {
+                                    "datetime": form_time,
+                                    "place": [{
+                                        "place_lat": place.latitude,
+                                        "place_lon": place.longitude,
+                                        "place_id": place.uuid,
+                                        # "type": 1,
+                                        "word": place.name,
+                                    } for place in places],
+                                    "title": i.title,
+                                    "object": [i.name for i in objects],
+                                    "event_id": i.uuid
+                                }
+                                if event_dict.get(timeline_key, []):
+                                    event_dict[timeline_key].append(item)
+                                else:
+                                    event_dict[timeline_key] = [item]
+        # </editor-fold>
+        event_list = [sorted(i, key=lambda x: x.get('datetime', '')[0]) for i in event_dict.values()]
+    return event_list
 
 #------------------处理经纬度----------------------------
 
@@ -2001,4 +2097,327 @@ def find_int_in_str(string):
 def find_dfm(dfm_string):
     d_ = find_int_in_str(dfm_string.split("°")[0])
     f_ = find_int_in_str(dfm_string.split("°")[1])
-    return d_ + f_/60
+    return d_ + f_ / 60
+
+
+@blue_print.route('search_advance_for_doc_uuids', methods=['POST'])
+def search_advance_for_doc_uuids():
+    # def search_advance_for_doc_uuids(dates, places, event_categories, entities):
+    try:
+        dates = request.json.get('dates', None)
+        places = request.json.get('places', None)
+        event_categories = request.json.get('event_categories', None)
+        entities = request.json.get('entities', None)
+        '''
+        :param dates: {"date_type":"date/time_range/time_period/frequency", "value":"时间戳/{"start_time:"时间戳}"}
+        :param places: {“place_type": "place", "value":""}
+        places: {place_type: "place_direction_distance", value: [{place: "南海", direction: "东", distance: "0米"}]}
+        {"place_type": "degrees", value: [{lat: {degree: "22", minute: "22", second: "22"}, lon: {degree: "32", minute: "22", second: "22"}}]}
+        :param event_categories: {event_class: "", event_category_uuid: ""}
+        : 
+        :return: 
+        '''
+        doc_uuids_by_dates = []
+        doc_uuids_by_place = []
+        doc_uuids_by_event = []
+        doc_uuids_by_entities = []
+        if dates:
+            time_tag_ids = []
+            if dates.get("date_type", False):
+                date_type = dates.get("date_type", "")
+                date_value = dates.get("value", None)
+                if date_type == 'date':
+                    time_tags = DocMarkTimeTag.query.filter_by(format_date=date_value, time_type=1, valid=1).all()
+                    doc_uuids_by_dates = [i.doc_uuid for i in time_tags]
+                elif date_type == "time_range":
+                    time_range = date_value
+                    start_time = time_range.get("start_time", '')  # 前段输的是时间戳，要转成年月日形式
+                    end_time = time_range.get("end_time", '')
+                    if start_time and end_time:
+                        time_range_time_tags = DocMarkTimeTag.query.filter_by(time_type=2, valid=1).all()
+                        # 取出与该时间段有交集的事件
+                        for time_range_time_tag in time_range_time_tags:
+                            if not (end_time < time_range_time_tag.format_date.strftime('%Y-%m-%d %H:%M:%S') or
+                                            start_time > time_range_time_tag.format_date_end.strftime(
+                                            '%Y-%m-%d %H:%M:%S')):
+                                time_tag_ids.append(str(time_range_time_tag.uuid))
+                        # 取出时间点在该时间段内的事件
+                        date_time_tags = DocMarkTimeTag.query.filter_by(time_type=1, valid=1).all()
+                        for date_time_tag in date_time_tags:
+                            if start_time < date_time_tag.format_date.strftime('%Y-%m-%d %H:%M:%S') < end_time:
+                                time_tag_ids.append(str(date_time_tag.uuid))
+                        time_tags = DocMarkTimeTag.query.filter(DocMarkTimeTag.uuid.in_(time_tag_ids),
+                                                                DocMarkTimeTag.valid == 1).all()
+                        doc_uuids_by_dates = [i.doc_uuid for i in time_tags]
+                elif date_type == 'time_period':
+                    time_tags = DocMarkTimeTag.query.filter_by(word=date_value, time_type=3, valid=1).all()
+                    doc_uuids_by_dates = [i.doc_uuid for i in time_tags]
+                else:  # date_type == 'frequency':
+                    time_tags = DocMarkTimeTag.query.filter_by(word=date_value, time_type=4, valid=1).all()
+                    doc_uuids_by_dates = [i.uuid for i in time_tags]
+
+        if places:
+            if places.get("place_type", False):
+                place_type = places.get("place_type", "")
+                place_value = places.get("value", None)
+                if place_type == "place" and place_value:
+                    base_entities = Entity.query.filter_by(name=place_value, valid=1).all()
+                    for base_entity in base_entities:
+                        if base_entity.category_name() == PLACE_BASE_NAME:
+                            doc_mark_places = DocMarkPlace.query.filter_by(place_uuid=base_entity.uuid, valid=1,
+                                                                           type=1).all()  # multi
+                            doc_uuids_by_place = [i.doc_uuid for i in doc_mark_places]
+
+                elif place_type == "place_direction_distance" and place_value:
+                    place_value = place_value[0]
+                    if place_value.get('place') and place_value.get('direction') and place_value.get('distance'):
+                        place_uuid_in_entity = Entity.query.filter_by(name=place_value.get('place'), valid=1).all()
+                        for base_place in place_uuid_in_entity:
+                            if base_place.category_name() == PLACE_BASE_NAME:
+                                doc_mark_places = DocMarkPlace.query.filter_by(place_uuid=base_place.uuid,
+                                                                               direction=place_value.get('direction'),
+                                                                               distance=place_value.get('distance'),
+                                                                               type=5, valid=1).all()
+                                doc_uuids_by_place = [i.doc_uuid for i in doc_mark_places]
+                                break
+
+                elif place_type == "degrees" and place_value:
+                    degrees = place_value
+                    doc_mark_places = DocMarkPlace.query.filter_by(dms=degrees).all()
+                    doc_uuids_by_place = [i.doc_uuid for i in doc_mark_places]
+                    # if degrees.get("lon", None) and degrees.get("lat", None):
+                    #     lon = degrees["lon"]
+                    #     lat = degrees["lat"]
+                    #     if lon.get("degrees", 0) and lon.get("direction", 0) and lon.get("distance", 0) and lat.get(
+                    #             "degrees", 0) and lat.get("direction", 0) and lat.get("distance", 0):
+                    #         lon = dfm_convert(lon.get("degrees"), lon.get("direction"), lon.get("distance", 0))
+                    #         lat = dfm_convert(lat.get("degrees"), lat.get("direction"), lat.get("distance", 0))
+                    #         # entity = Entity.query.filter_by(longitude=lon, latitude=lat, category_uuid="87d323a1-b233-4a82-9883-981da29d7b13", valid=1).first()
+                    #         entities = Entity.query.filter_by(longitude=lon, latitude=lat, valid=1).all()
+                    #         for entity in entities:
+                    #             if entity.category_name() == PLACE_BASE_NAME:
+                    #                 doc_mark_places = DocMarkPlace.query.filter_by(place_uuid=entity.uuid, valid=1).all()
+                    #                 doc_mark_place_ids = [str(i.uuid) for i in doc_mark_places]
+                    #                 break
+                # places: {place_type: "location", value: [{lat: "22.22", lon: "111.11"}]}
+                elif place_type == 'location':
+                    location = place_value
+                    if location.get("lon", None) and location.get("lat", None):
+                        lon = location["lon"]
+                        lat = location["lat"]
+                        # entity = Entity.query.filter_by(longitude=lon, latitude=lat, category_uuid="87d323a1-b233-4a82-9883-981da29d7b13", valid=1).first()
+                        base_entities = Entity.query.filter_by(longitude=lon, latitude=lat, valid=1).all()
+                        for base_entity in base_entities:
+                            if base_entity.category_name() == PLACE_BASE_NAME:
+                                doc_mark_places = DocMarkPlace.query.filter_by(place_uuid=base_entity.uuid,
+                                                                               valid=1).all()
+                                doc_uuids_by_place = [i.doc_uuid for i in doc_mark_places]
+                elif place_type == 'length':
+                    height, unit = devide_str(place_value)
+                    doc_mark_places = DocMarkPlace.query.filter_by(height=str(height), unit=unit, valid=1, type=4).all()
+                    doc_uuids_by_place = [i.doc_uuid for i in doc_mark_places]
+                else:  # place_type == 'route'
+                    place_list = []
+                    route = set(place_value)
+                    doc_mark_places = DocMarkPlace.query.filter_by(valid=1, type=6).all()
+                    for doc_mark_place in doc_mark_places:
+                        route_set = set(doc_mark_place.relation.split(','))
+                        if (route_set - route):
+                            place_list.append(doc_mark_place)
+                    doc_uuids_by_place = [i.doc_uuid for i in place_list]
+
+        if event_categories:
+            condition = []
+            event_categories = event_categories[0]
+            event_class = event_categories.get('event_class')
+            event_category = event_categories.get('event_category_uuid')
+            if event_class:
+                condition.append(DocMarkEvent.event_class_uuid == event_class)
+            if event_category:
+                condition.append(DocMarkEvent.event_type_uuid == event_category)
+            condition = tuple(condition)
+            doc_mark_events = DocMarkEvent.query.filter(and_(*condition), DocMarkEvent.valid == 1).all()
+            doc_uuids_by_event = [i.doc_uuid for i in doc_mark_events]
+
+        if entities:
+            condition = []
+            # entities: [{id: 0, entity: "中华", category_uuid: "7d2a3e03-7eac-4080-a9c3-735ca122b29a"}]
+            data = entities[0]
+            if data.get('entity'):
+                condition.append(Entity.name == data.get('entity'))
+            if data.get('category_uuid'):
+                condition.append(Entity.category_uuid == data.get('category_uuid'))
+            condition = tuple(condition)
+            entity_uuids = Entity.query.with_entities(Entity.uuid).filter(and_(*condition), Entity.valid == 1).all()
+            if entity_uuids:
+                entity_uuids = [i[0] for i in entity_uuids]
+            # print("a", entity_uuids)
+            if entity_uuids:
+                doc_mark_entities = DocMarkEntity.query.filter(DocMarkEntity.entity_uuid.in_(entity_uuids),
+                                                               DocMarkEntity.valid == 1).all()  # multi
+                print("a", len(doc_mark_entities))
+                doc_uuids_by_entities = [i.doc_uuid for i in doc_mark_entities]
+
+        print("时间，地点，实体，事件：", doc_uuids_by_dates, doc_uuids_by_place, doc_uuids_by_entities, doc_uuids_by_event)
+        result_list = [i for i in [doc_uuids_by_dates, doc_uuids_by_place, doc_uuids_by_entities, doc_uuids_by_event] if
+                       i]
+        print("result_list:", result_list)
+        result = []
+        if result_list:
+            result = result_list[0]
+            for i in range(len(result_list) - 1):
+                result = list(set(result_list[i]).intersection(set(result_list[i + 1])))
+        res = success_res(data=result)
+    except Exception as e:
+        print(str(e))
+        res = fail_res(msg=str(e))
+    return jsonify(res)
+
+
+def search_advance_for_doc_uuids(dates, places, event_categories, entities):
+    # def search_advance_for_doc_uuids(dates, places, event_categories, entities):
+
+    '''
+    :param dates: {"date_type":"date/time_range/time_period/frequency", "value":"时间戳/{"start_time:"时间戳}"}
+    :param places: {“place_type": "place", "value":""}
+    places: {place_type: "place_direction_distance", value: [{place: "南海", direction: "东", distance: "0米"}]}
+    {"place_type": "degrees", value: [{lat: {degree: "22", minute: "22", second: "22"}, lon: {degree: "32", minute: "22", second: "22"}}]}
+    :param event_categories: {event_class: "", event_category_uuid: ""}
+    :
+    :return:
+    '''
+    doc_uuids_by_dates = []
+    doc_uuids_by_place = []
+    doc_uuids_by_event = []
+    doc_uuids_by_entities = []
+    if dates:
+        time_tag_ids = []
+        if dates.get("date_type", False):
+            date_type = dates.get("date_type", "")
+            date_value = dates.get("value", None)
+            if date_type == 'date':
+                time_tags = DocMarkTimeTag.query.filter_by(format_date=date_value, time_type=1, valid=1).all()
+                doc_uuids_by_dates = [i.doc_uuid for i in time_tags]
+            elif date_type == "time_range":
+                time_range = date_value
+                start_time = time_range.get("start_time", '')  # 前段输的是时间戳，要转成年月日形式
+                end_time = time_range.get("end_time", '')
+                if start_time and end_time:
+                    time_range_time_tags = DocMarkTimeTag.query.filter_by(time_type=2, valid=1).all()
+                    # 取出与该时间段有交集的事件
+                    for time_range_time_tag in time_range_time_tags:
+                        if not (end_time < time_range_time_tag.format_date.strftime('%Y-%m-%d %H:%M:%S') or
+                                        start_time > time_range_time_tag.format_date_end.strftime('%Y-%m-%d %H:%M:%S')):
+                            time_tag_ids.append(str(time_range_time_tag.uuid))
+                    # 取出时间点在该时间段内的事件
+                    date_time_tags = DocMarkTimeTag.query.filter_by(time_type=1, valid=1).all()
+                    for date_time_tag in date_time_tags:
+                        if start_time < date_time_tag.format_date.strftime('%Y-%m-%d %H:%M:%S') < end_time:
+                            time_tag_ids.append(str(date_time_tag.uuid))
+                    time_tags = DocMarkTimeTag.query.filter(DocMarkTimeTag.uuid.in_(time_tag_ids),
+                                                            DocMarkTimeTag.valid == 1).all()
+                    doc_uuids_by_dates = [i.doc_uuid for i in time_tags]
+            elif date_type == 'time_period':
+                time_tags = DocMarkTimeTag.query.filter_by(word=date_value, time_type=3, valid=1).all()
+                doc_uuids_by_dates = [i.doc_uuid for i in time_tags]
+            else:  # date_type == 'frequency':
+                time_tags = DocMarkTimeTag.query.filter_by(word=date_value, time_type=4, valid=1).all()
+                doc_uuids_by_dates = [i.uuid for i in time_tags]
+
+    if places:
+        doc_mark_place_ids = []
+        if places.get("place_type", False):
+            place_type = places.get("place_type", "")
+            place_value = places.get("value", None)
+            if place_type == "place" and place_value:
+                entities = Entity.query.filter_by(name=place_value, valid=1).all()
+                for entity in entities:
+                    if entity.category_name() == PLACE_BASE_NAME:
+                        doc_mark_places = DocMarkPlace.query.filter_by(place_uuid=entity.uuid, valid=1,
+                                                                       type=1).all()  # multi
+                        doc_uuids_by_place = [i.doc_uuid for i in doc_mark_places]
+
+            elif place_type == "place_direction_distance" and place_value:
+                place_value = place_value[0]
+                if place_value.get('place') and place_value.get('direction') and place_value.get('distance'):
+                    doc_mark_places = DocMarkPlace.query.filter_by(word=place_value.get('place'), direction=place_value.get('direction'), distance=place_value.get('distance'),
+                                                                   type=5, valid=1).all()
+                    doc_uuids_by_place = [i.doc_uuid for i in doc_mark_places]
+
+            elif place_type == "degrees" and place_value:
+                degrees = place_value
+                doc_mark_places = DocMarkPlace.query.filter_by(dms=degrees).all()
+                doc_uuids_by_place = [i.doc_uuid for i in doc_mark_places]
+                # if degrees.get("lon", None) and degrees.get("lat", None):
+                #     lon = degrees["lon"]
+                #     lat = degrees["lat"]
+                #     if lon.get("degrees", 0) and lon.get("direction", 0) and lon.get("distance", 0) and lat.get(
+                #             "degrees", 0) and lat.get("direction", 0) and lat.get("distance", 0):
+                #         lon = dfm_convert(lon.get("degrees"), lon.get("direction"), lon.get("distance", 0))
+                #         lat = dfm_convert(lat.get("degrees"), lat.get("direction"), lat.get("distance", 0))
+                #         # entity = Entity.query.filter_by(longitude=lon, latitude=lat, category_uuid="87d323a1-b233-4a82-9883-981da29d7b13", valid=1).first()
+                #         entities = Entity.query.filter_by(longitude=lon, latitude=lat, valid=1).all()
+                #         for entity in entities:
+                #             if entity.category_name() == PLACE_BASE_NAME:
+                #                 doc_mark_places = DocMarkPlace.query.filter_by(place_uuid=entity.uuid, valid=1).all()
+                #                 doc_mark_place_ids = [str(i.uuid) for i in doc_mark_places]
+                #                 break
+            # places: {place_type: "location", value: [{lat: "22.22", lon: "111.11"}]}
+            elif place_type == 'location':
+                location = place_value[0]
+                if location.get("lon", None) and location.get("lat", None):
+                    lon = location["lon"]
+                    lat = location["lat"]
+                    # entity = Entity.query.filter_by(longitude=lon, latitude=lat, category_uuid="87d323a1-b233-4a82-9883-981da29d7b13", valid=1).first()
+                    entities = Entity.query.filter_by(longitude=lon, latitude=lat, valid=1, type=2).all()
+                    for entity in entities:
+                        if entity.category_name() == PLACE_BASE_NAME:
+                            doc_mark_places = DocMarkPlace.query.filter_by(place_uuid=entity.uuid, valid=1).all()
+                            doc_uuids_by_place = [i.doc_uuid for i in doc_mark_places]
+            elif place_type == 'length':
+                doc_mark_places = DocMarkPlace.query.filter_by(height=place_value, valid=1, type=4).all()
+                doc_uuids_by_place = [i.doc_uuid for i in doc_mark_places]
+            else:  # place_type == 'route'
+                place_list = []
+                route = set(place_value)
+                doc_mark_places = DocMarkPlace.query.filter_by(valid=1, type=6).all()
+                for doc_mark_place in doc_mark_places:
+                    route_set = set(doc_mark_place.relation.split(','))
+                    if (route_set - route):
+                        place_list.append(doc_mark_place)
+                doc_uuids_by_place = [i.doc_uuid for i in place_list]
+
+    if event_categories:
+        condition = []
+        event_class = event_categories.get('event_class')
+        event_category = event_categories.get('event_category_uuid')
+        if event_class:
+            condition.append(DocMarkEvent.event_class == event_class)
+        if event_category:
+            condition.append(DocMarkEvent.event_type == event_category)
+        condition = tuple(condition)
+        doc_mark_events = DocMarkEvent.query.filter(and_(*condition), DocMarkEvent.valid == 1).all()
+        doc_uuids_by_event = [i.doc_uuid for i in doc_mark_events]
+
+    if entities:
+        condition = []
+        # entities: [{id: 0, entity: "中华", category_uuid: "7d2a3e03-7eac-4080-a9c3-735ca122b29a"}]
+        data = entities[0]
+        if data.get('entity'):
+            condition.append(Entity.name == data.get('entity'))
+        if data.get('category_uuid'):
+            condition.append(Entity.category_uuid == data.get('category_uuid'))
+        condition = tuple(condition)
+        entity_uuids = Entity.query.with_entities(Entity.uuid).filter(and_(*condition), Entity.valid == 1).all()[0]
+        doc_mark_entities = DocMarkEntity.query.filter(DocMarkEntity.entity_uuid.in_(entity_uuids),
+                                                       DocMarkEntity.valid == 1).all()  # multi
+        doc_uuids_by_entities = [i.doc_uuid for i in doc_mark_entities]
+
+    print("时间，地点，实体，事件：", doc_uuids_by_dates, doc_uuids_by_place, doc_uuids_by_entities, doc_uuids_by_event)
+    result_list = [i for i in [doc_uuids_by_dates, doc_uuids_by_place, doc_uuids_by_entities, doc_uuids_by_event] if i]
+    print("result_list:", result_list)
+    result = result_list[0]
+    for i in range(len(result_list) - 1):
+        result = list(set(result_list[i]).intersection(set(result_list[i + 1])))
+    res = result
+    return res

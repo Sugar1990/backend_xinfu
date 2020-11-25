@@ -1,9 +1,7 @@
 # -*- coding: UTF-8 -*-
 import datetime
-import json
 import time
-
-import requests
+import json, requests
 from flask import jsonify, request
 from sqlalchemy import or_, and_
 from sqlalchemy.dialects.postgresql import Any
@@ -88,6 +86,47 @@ def get_doc_mark_event_by_id():
     return jsonify(res)
 
 
+# 按id的list查询
+@blue_print.route('/get_doc_mark_event_by_ids', methods=['POST'])
+def get_doc_mark_event_by_ids():
+    try:
+        uuids = request.json.get("uuids",[])
+        doc_mark_events = db.session.query(DocMarkEvent).filter(
+            DocMarkEvent.uuid.in_(uuids), DocMarkEvent.valid == 1).all()
+
+        res = success_res(data=[{
+            "uuid": i.uuid,
+            "event_id": i.event_id,
+            "event_desc": i.event_desc,
+            "event_subject": i.event_subject,
+            "event_predicate": i.event_predicate,
+            "event_object": i.event_object,
+            "event_time": i.event_time,
+            "event_address": i.event_address,
+            "event_why": i.event_why,
+            "event_result": i.event_result,
+            "event_conduct": i.event_conduct,
+            "event_talk": i.event_talk,
+            "event_how": i.event_how,
+            "doc_uuid": i.doc_uuid,
+            "customer_uuid": i.customer_uuid,
+            "parent_uuid": i.parent_uuid,
+            "title": i.title,
+            "event_class_uuid": i.event_class_uuid,
+            "event_type_uuid": i.event_type_uuid,
+            "create_by_uuid": i.create_by_uuid,
+            "create_time": i.create_time.strftime("%Y-%m-%d %H:%M:%S") if i.create_time else None,
+            "update_by_uuid": i.update_by_uuid,
+            "update_time": i.update_time.strftime("%Y-%m-%d %H:%M:%S") if i.update_time else None,
+            "add_time": i.add_time.strftime("%Y-%m-%d %H:%M:%S") if i.add_time else None
+        } for i in doc_mark_events])
+
+    except Exception as e:
+        print(str(e))
+        res = fail_res(data=[])
+
+    return jsonify(res)
+
 # 按doc_id查询
 @blue_print.route('/get_doc_mark_event_by_doc_id', methods=['GET'])
 def get_doc_mark_event_by_doc_id():
@@ -162,7 +201,7 @@ def add_doc_mark_event():
         subject_insert_ids = []
         time_tag_insert_ids = []
 
-        if event_address:
+        if event_address and isinstance(event_address,list):
             place_ids = DocMarkPlace.query.with_entities(DocMarkPlace.place_uuid).filter(
                 DocMarkPlace.uuid.in_(event_address)).all()
             if place_ids:
@@ -178,28 +217,31 @@ def add_doc_mark_event():
                         # object_id_list = event_object
                         # if event_subject:
                         #     object_id_list.extend(event_subject)
-                        object_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_uuid).filter(
-                            DocMarkEntity.uuid.in_(event_object)).all()
-                        subject_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_uuid).filter(
-                            DocMarkEntity.uuid.in_(event_subject)).all()
+                        subject_ids,object_ids = [],[]
+                        if event_object and isinstance(event_object,list):
+                            object_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_uuid).filter(
+                                DocMarkEntity.uuid.in_(event_object), DocMarkEntity.valid == 1).all()
+                        if event_subject and isinstance(event_subject, list):
+                            subject_ids = DocMarkEntity.query.with_entities(DocMarkEntity.entity_uuid).filter(
+                                DocMarkEntity.uuid.in_(event_subject), DocMarkEntity.valid == 1).all()
                         if object_ids or subject_ids:
                             object_ids = [str(i[0]) for i in object_ids]
                             subject_ids = [str(i[0]) for i in subject_ids]
                             objects = Entity.query.filter(Entity.uuid.in_(object_ids), Entity.valid == 1).all()
                             subjects = Entity.query.filter(Entity.uuid.in_(subject_ids), Entity.valid == 1).all()
                             if objects or subjects:
+                                object_insert_ids, subject_insert_ids = [],[]
                                 for object in objects:
                                     doc_mark_entity = DocMarkEntity.query.filter_by(entity_uuid=object.uuid, doc_uuid=doc_uuid,
                                                                                     valid=1).first()
                                     if doc_mark_entity:
                                         object_insert_ids.append(str(doc_mark_entity.uuid))
                                 for subject in subjects:
-                                    print(subject.uuid)
                                     doc_mark_entity = DocMarkEntity.query.filter_by(entity_uuid=subject.uuid,
                                                                                     doc_uuid=doc_uuid, valid=1).first()
                                     if doc_mark_entity:
                                         subject_insert_ids.append(str(doc_mark_entity.uuid))
-                                if event_time:
+                                if event_time and isinstance(event_time,list):
                                     times = DocMarkTimeTag.query.filter(DocMarkTimeTag.uuid.in_(event_time)).all()
                                     if times:
                                         for time_tag in times:
@@ -221,7 +263,7 @@ def add_doc_mark_event():
                                                                       event_type_uuid=event_type_uuid,
                                                                       create_by_uuid=create_by_uuid, create_time=create_time,
                                                                       update_by_uuid=update_by_uuid, update_time=update_time,
-                                                                      add_time=add_time, position=position,
+                                                                      add_time=add_time, position = position,
                                                                       valid=1)
                                         db.session.add(doc_mark_event)
                                         db.session.commit()
@@ -655,10 +697,11 @@ def get_advanced_search_of_events():
                                 datetime.append(doc_mark_time_tag.format_date.strftime('%Y-%m-%d %H:%M:%S'))
                                 datetime.append(doc_mark_time_tag.format_date_end.strftime('%Y-%m-%d %H:%M:%S'))
 
-                event_id = doc_mark_event.uuid
+                event_uuid = doc_mark_event.uuid
 
                 place = []
-                for doc_mark_place_id in doc_mark_event.event_address:
+                doc_mark_place_id_list = doc_mark_event.event_address if doc_mark_event.event_address else []
+                for doc_mark_place_id in doc_mark_place_id_list:
                     temp = {}
                     doc_mark_place = DocMarkPlace.query.filter_by(uuid=doc_mark_place_id, valid=1).first()
                     if doc_mark_place:
@@ -682,20 +725,22 @@ def get_advanced_search_of_events():
                             object.append(doc_mark_entity.word)
 
                 timeline_key = ",".join([str(i) for i in sorted(object)])
-                event = {
-                    "event_id": event_id,
-                    "datetime": sorted(datetime) if datetime else sorted(event_datetime),
-                    "place": place,
-                    "title": title,
-                    "object": object
-                }
-                event_list.append(event)
-                if event_dict.get(timeline_key, []):
-                    event_dict[timeline_key].append(event)
-                else:
-                    event_dict[timeline_key] = [event]
+
+                if place:
+                    event = {
+                        "event_uuid": event_uuid,
+                        "datetime": sorted(datetime) if datetime else sorted(event_datetime),
+                        "place": place,
+                        "title": title,
+                        "object": object
+                    }
+                    event_list.append(event)
+                    if event_dict.get(timeline_key, []):
+                        event_dict[timeline_key].append(event)
+                    else:
+                        event_dict[timeline_key] = [event]
             event_list_entity = [sorted(i, key=lambda x: x.get('datetime', '')) for i in event_dict.values()]
-            res = success_res(data={"event_list": event_list,"event_list_entity": event_list_entity})
+            res = success_res(data={"event_list": event_list, "event_list_entity": event_list_entity})
         else:
             event_result = []
             for doc_mark_event in doc_mark_events:

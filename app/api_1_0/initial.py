@@ -1,4 +1,4 @@
-# from flasgger import swag_from
+﻿# from flasgger import swag_from
 from flask import jsonify, request
 import json
 from . import api_initial as blue_print
@@ -9,6 +9,7 @@ from ..conf import ADMIN_NAME, ADMIN_PWD, ASSIS_NAME, ASSIS_PWD, TAG_TABS, PLACE
 from .utils import success_res, fail_res
 import requests
 import math
+import datetime
 
 
 # from ..swagger.initial_dict import *
@@ -60,86 +61,245 @@ def init():
     return jsonify(res)
 
 
-@blue_print.route('/pg_insert_es', methods=['GET'])
+@blue_print.route('/pg_insert_es', methods=['GET','POST'])
 # @swag_from(pg_insert_es_dict)
 def pg_insert_es():
-    pg_table = request.args.get('pg_table', '')  # 同步数据为entity或者document
     try:
-        if pg_table == 'entity':
-            es_mapping_dict = {
-                #"id": "id",
-                "name": "ik_keyword",
-                # "synonyms": "ik",
-                # "props": "ik",
-                "summary": "ik",
-                # "category_uuid": "id",
-                "latitude": "id",
-                "longitude": "id",
-                "location": "location"
-            }
-            pg_dict = {"uuid": {"col_type": "align", "entity": "uuid"},
-                       "name": {"col_type": "", "entity": "name"},
-                       "synonyms": {"col_type": "", "entity": "synonyms"},
-                       "props": {"col_type": "", "entity": "props"},
-                       "category_uuid": {"col_type": "", "entity": "category_uuid"},
-                       "summary": {"col_type": "", "entity": "summary"},
-                       "latitude": {"col_type": "", "entity": "latitude"},
-                       "longitude": {"col_type": "", "entity": "longitude"}}
-
-        elif pg_table == 'document':
-            es_mapping_dict = {
-                #"id": "id",
-                "name": "ik_keyword",
-                # "content": "ik",
-                # "keywords": "ik",
-                # "create_time": "time",
-                # "dates": "ik",  # 多个时间，
-                # "places": "ik",  # 多个地点
-                # "entities": "ik",  # [{name: category_id}, …]  # 多个实体，含名称和类型id
-                # "event_categories": "ik",  # [{event_class: event_category}, …]
-                #"doc_type": "ik_keyword",
-                # "notes": "ik"
-            }
-            pg_dict = {"uuid": {"col_type": "align", "document": "uuid"},
-                       "name": {"col_type": "", "document": "name"},
-                       "content": {"col_type": "", "document": "content"},
-                       "keywords": {"col_type": "", "document": "keywords"},
-                       "create_time": {"col_type": "", "document": "create_time"}
-                       }
-
         url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
         header = {"Content-Type": "application/json"}
         esurl = url + "/pg_insert_es"
+
+        pg_table = 'entity'
+        es_mapping_dict = {
+            "name": "ik_keyword",
+            "summary": "ik",
+            "latitude": "id",
+            "longitude": "id",
+            "location": "location"
+        }
+        pg_dict = {"uuid": {"col_type": "align", "entity": "uuid"},
+                   "name": {"col_type": "", "entity": "name"},
+                   "synonyms": {"col_type": "", "entity": "synonyms"},
+                   "props": {"col_type": "", "entity": "props"},
+                   "category_uuid": {"col_type": "", "entity": "category_uuid"},
+                   "summary": {"col_type": "", "entity": "summary"},
+                   "latitude": {"col_type": "", "entity": "latitude"},
+                   "longitude": {"col_type": "", "entity": "longitude"}}
         para = {"pg_dict": pg_dict, "es_index_name": pg_table, "es_mapping_dict": es_mapping_dict}
+        search_result = requests.post(url=esurl, data=json.dumps(para), headers=header)
+        pg_table_doc = 'document'
+        es_mapping_dict_doc = {
+            #"id": "id",
+            "name": "ik_keyword",
+            "content": "ik"
+            # "keywords": "ik",
+            # "create_time": "time",
+            # "dates": "ik",  # 多个时间，
+            # "places": "ik",  # 多个地点
+            # "entities": "ik",  # [{name: category_id}, …]  # 多个实体，含名称和类型id
+            # "event_categories": "ik",  # [{event_class: event_category}, …]
+            #"doc_type": "ik_keyword",
+            # "notes": "ik"
+        }
+        pg_dict_doc = {"uuid": {"col_type": "align", "document": "uuid"},
+                   "name": {"col_type": "", "document": "name"},
+                   "content": {"col_type": "", "document": "content"},
+                   "keywords": {"col_type": "", "document": "keywords"},
+                   "create_time": {"col_type": "", "document": "create_time"},
+                   "doc_type": {"col_type": "", "document": "catalog_uuid"}
+                   }
+
+        para = {"pg_dict": pg_dict_doc, "es_index_name": pg_table_doc, "es_mapping_dict": es_mapping_dict_doc}
         search_result = requests.post(url=esurl, data=json.dumps(para), headers=header)
         print(search_result, flush=True)
         res = success_res()
     except Exception as e:
         print(str(e))
-        db.session.rollback()
+        res = fail_res()
+    return jsonify(res)
+
+@blue_print.route('/delete_all_in_es', methods=['GET', 'POST'])
+# @swag_from(delete_index_dict)
+def delete_all_in_es():
+    try:
+        para = {"delete_index": 'entity'}
+        url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+        esurl = url + "/deleteIndex"
+        delete_result = requests.get(url=esurl, params=para, headers={})
+
+        para1 = {"delete_index": 'document'}
+        delete_result1 = requests.get(url=esurl, params=para1, headers={})
+        res = success_res(msg = f"{str(delete_result)},{str(delete_result1)}")
+    except Exception as e:
+        print(str(e))
         res = fail_res()
     return jsonify(res)
 
 
-@blue_print.route('/delete_index', methods=['GET'])
-# @swag_from(delete_index_dict)
-def delete_index():
-    es_index = request.args.get('es_index', '')  # 删除数据为entity或者document
+@blue_print.route('/pg_insert_arango', methods=['GET','POST'])
+def pg_insert_arango():
     try:
-        if es_index == 'entity' or es_index == 'document':
-            para = {"delete_index": es_index}
-            url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
-            esurl = url + "/deleteIndex"
-            search_result = requests.get(url=esurl, params=para, headers={})
-            res = success_res()
-        else:
-            res = fail_res(msg="only support es_index == 'entity' or es_index == 'document' ")
+        root_url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+        header = {"Content-Type": "application/json"}
+        serve_url = root_url + "/arango/insert_data"
+        # 插入实体
+        entities = Entity.query.with_entities(Entity.uuid, Entity.name, Entity.category_uuid).filter_by(
+            valid=1).all()
+        print("entities[0].uuid: ", entities[0].uuid)
+        batch_size = 20000
+        for i in range(math.ceil(len(entities) / batch_size)):
+            nodes = [{
+                "_key": str(entity.uuid),
+                "uuid": str(entity.uuid),
+                "name": entity.name,
+                "category_uuid": str(entity.category_uuid)
+            } for entity in entities if entity.uuid and entity.name and entity.category_uuid][
+                    i * batch_size:(i + 1) * batch_size]
+            para = {"collection": "entity", "data": nodes}
+            search_result = requests.post(url=serve_url, data=json.dumps(para), headers=header)
+            # print(search_result.status_code, flush=True)
+            # print(search_result.text, flush=True)
+            if search_result.status_code != 200 or not json.loads(search_result.text).get("code", 0):
+                return fail_res(msg="arango serve error: {}".format(json.loads(search_result.text).get("msg", "")))
+
+        # 插入事件
+        serve_url = root_url + "/arango/insert_data"
+        events = DocMarkEvent.query.filter_by(valid=1).all()
+        insert_nodes = []
+        for doc_mark_event in events:
+            event_time = []
+            for event_time_uuid in doc_mark_event.event_time:
+                event_time_tag = DocMarkTimeTag.query.filter_by(uuid=event_time_uuid, valid=1).first()
+                if event_time_tag:
+                    if event_time_tag.format_date:
+                        event_time.append(event_time_tag.format_date.strftime('%Y-%m-%d %H:%M:%S'))
+            nodes = {
+                "_key": str(doc_mark_event.uuid),
+                "event_uuid": str(doc_mark_event.uuid),
+                "event_subject": doc_mark_event.event_subject,
+                "event_object": doc_mark_event.event_object,
+                "event_time": event_time
+            }
+            insert_nodes.append(nodes)
+
+        para = {"collection": "event", "data": insert_nodes}
+        result = requests.post(url=serve_url, data=json.dumps(para), headers=header)
+        # print(result.status_code, flush=True)
+        # print(result.text, flush=True)
+        if result.status_code != 200 or not json.loads(result.text).get("code", 0):
+            return fail_res(
+                msg="arango serve error: {}".format(json.loads(result.text).get("msg", "")))
+
+        # 插入实体关系
+        serve_url = root_url + "/arango/insert_edge_data"
+        entity_relations = DocMarkRelationProperty.query.filter_by(start_type='1', end_type='1', valid=1).all()
+        nodes = [{
+            "_key": str(item.uuid),
+            "_from": 'entity/' + str(item.source_entity_uuid),
+            "_to": 'entity/' + str(item.target_entity_uuid),
+            "relation_uuid": str(item.relation_uuid),
+            "relation_name": item.relation_name,
+            "start_time": item.start_time.strftime('%Y-%m-%d %H:%M:%S') if item.start_time else None,
+            "end_time": item.end_time.strftime('%Y-%m-%d %H:%M:%S') if item.end_time else None,
+            "doc_uuid": str(item.doc_uuid)
+        } for item in entity_relations]
+
+        para = {"collection": "entity_relation", "data": nodes}
+        result = requests.post(url=serve_url, data=json.dumps(para), headers=header)
+        # print(result.status_code, flush=True)
+        # print(result.text, flush=True)
+        if result.status_code != 200 or not json.loads(result.text).get("code", 0):
+            return fail_res(
+                msg="arango serve error: {}".format(json.loads(result.text).get("msg", "")))
+
+        # 插入事件关系
+        serve_url = root_url + "/arango/insert_edge_data"
+        event_relations = DocMarkRelationProperty.query.filter_by(start_type='2', end_type='2', valid=1).all()
+        # print(event_relations[0].uuid)
+        nodes = [{
+            "_key": str(item.uuid),
+            "_from": 'event/' + str(item.source_entity_uuid),
+            "_to": 'event/' + str(item.target_entity_uuid),
+            "relation_uuid": str(item.relation_uuid),
+            "relation_name": item.relation_name,
+            "start_time": item.start_time.strftime("%Y-%m-%d %H:%M:%S") if item.start_time else None,
+            "end_time": item.end_time.strftime('%Y-%m-%d %H:%M:%S') if item.end_time else None,
+            "doc_uuid": str(item.doc_uuid)
+        } for item in event_relations]
+
+        para = {"collection": "event_relation", "data": nodes}
+        result = requests.post(url=serve_url, data=json.dumps(para), headers=header)
+        # print(result.status_code, flush=True)
+        # print(result.text, flush=True)
+        if result.status_code != 200 or not json.loads(result.text).get("code", 0):
+            return fail_res(
+                msg="arango serve error: {}".format(json.loads(result.text).get("msg", "")))
+
+        res = success_res()
+
     except Exception as e:
         print(str(e))
         db.session.rollback()
         res = fail_res()
+
     return jsonify(res)
 
+
+@blue_print.route('/delete_all_in_arango', methods=['GET','POST'])
+def delete_all_in_arango():
+    try:
+        collection_list = ['entity', 'entity_relation', 'event', 'event_relation']
+        for collection in collection_list:
+            para = {
+                "collection": collection,
+                "key": "all"
+            }
+            header = {"Content-Type": "application/json; charset=UTF-8"}
+            url = "http://{}:{}".format(ES_SERVER_IP, ES_SERVER_PORT) + '/arango/delete_data'
+            data = json.dumps(para)
+            result = requests.post(url=url, data=data, headers=header)
+            if result.status_code in (200, 201):
+                res = success_res(data=json.loads(result.text))
+            else:
+                res = fail_res(msg="接口调用失败！")
+    except Exception as e:
+        print(str(e))
+        res = fail_res()
+    return jsonify(res)
+
+
+#
+# @blue_print.route('/pg_insert_neo4j', methods=['GET'])
+# # @swag_from(pg_insert_es_dict)
+# def pg_insert_neo4j():
+#     try:
+#         root_url = f'http://{NEO4J_SERVER_IP}:{NEO4J_SERVER_PORT}'
+#         header = {"Content-Type": "application/json"}
+#         serve_url = root_url + "/create_node/init_nodes"
+#         entities = Entity.query.with_entities(Entity.id, Entity.name, Entity.category_id).filter_by(valid=1).all()
+#         batch_size = 20000
+#         for i in range(math.ceil(len(entities) / batch_size)):
+#             nodes = [{
+#                 "id": str(i.id),
+#                 "name": i.name,
+#                 "category_id": str(i.category_id)
+#             } for i in entities if i.id and i.name and i.category_id][i * batch_size:(i + 1) * batch_size]
+#             para = {"label": "Entity", "nodes": nodes}
+#             search_result = requests.post(url=serve_url, data=json.dumps(para), headers=header)
+#             print(search_result.status_code, flush=True)
+#             print(search_result.text, flush=True)
+#             if search_result.status_code != 200 or not json.loads(search_result.text).get("code", 0):
+#                 return fail_res(msg="neo4j serve error: {}".format(json.loads(search_result.text).get("msg", "")))
+#         res = success_res()
+#     except Exception as e:
+#         print(str(e))
+#         db.session.rollback()
+#         res = fail_res()
+#     return jsonify(res)
+
+
+
+#__________________________________ 暂时不用的接口
 
 @blue_print.route('/update_es_doc', methods=['GET'])
 # @swag_from(update_es_doc_dict)
@@ -177,62 +337,6 @@ def update_es_doc():
     return res
 
 
-@blue_print.route('/pg_insert_es_test', methods=['GET'])
-def pg_insert_test():
-    pg_table = request.args.get('pg_table', '')  # 同步数据为entity或者document
-
-    if pg_table == 'entity':
-        es_mapping_dict = {
-            "id": "id",
-            "name": "ik_keyword",
-            # "synonyms": "ik",
-            # "props": "ik",
-            "summary": "ik",
-            "category_id": "id"
-        }
-        pg_dict = {"id": {"col_type": "align", "entity": "id"},
-                   "name": {"col_type": "", "entity": "name"},
-                   "synonyms": {"col_type": "", "entity": "synonyms"},
-                   "props": {"col_type": "", "entity": "props"},
-                   "category_id": {"col_type": "", "entity": "category_id"},
-                   "summary": {"col_type": "", "entity": "summary"}}
-    elif pg_table != 'entity':
-        es_mapping_dict = {
-            "id": "id",
-            "name": "ik_keyword",
-            "create_time": "time",
-
-        }
-        pg_dict = {"id": {"col_type": "align", pg_table: "id"},
-                   "name": {"col_type": "", pg_table: "name"},
-                   "content": {"col_type": "", pg_table: "content"},
-                   "keywords": {"col_type": "", pg_table: "keywords"},
-                   "create_time": {"col_type": "", pg_table: "create_time"},
-                   "entities": {"col_type": "", pg_table: "entities"},
-                   "event_categories": {"col_type": "", pg_table: "event_categories"},
-                   "doc_type": {"col_type": "", pg_table: "doc_type"},
-                   "place": {"col_type": "", pg_table: "place"},
-                   "place_direction_distance": {"col_type": "", pg_table: "place_direction_distance"},
-                   "location": {"col_type": "", pg_table: "location"},
-                   "degrees": {"col_type": "", pg_table: "degrees"},
-                   "length": {"col_type": "", pg_table: "length"},
-                   "route": {"col_type": "", pg_table: "route"},
-                   "notes": {"col_type": "", pg_table: "notes"},
-                   "date": {"col_type": "", pg_table: "date"},
-                   "time_range": {"col_type": "", pg_table: "time_range"},
-                   "time_period": {"col_type": "", pg_table: "time_period"},
-                   }
-
-    url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
-    header = {"Content-Type": "application/json"}
-    esurl = url + "/pg_insert_es"
-    para = {"pg_dict": pg_dict, "es_index_name": "document1", "es_mapping_dict": es_mapping_dict}
-    print(para, flush=True)
-    search_result = requests.post(url=esurl, data=json.dumps(para), headers=header)
-    print(search_result, flush=True)
-    return success_res()
-
-
 @blue_print.route('/entity_update_loaction', methods=['GET'])
 def entity_update_loaction():
     try:
@@ -263,140 +367,3 @@ def entity_update_loaction():
         print(str(e))
         res = fail_res(str(e))
     return res
-
-
-@blue_print.route('/pg_insert_neo4j', methods=['GET'])
-# @swag_from(pg_insert_es_dict)
-def pg_insert_neo4j():
-    try:
-        root_url = f'http://{NEO4J_SERVER_IP}:{NEO4J_SERVER_PORT}'
-        header = {"Content-Type": "application/json"}
-        serve_url = root_url + "/create_node/init_nodes"
-        entities = Entity.query.with_entities(Entity.id, Entity.name, Entity.category_id).filter_by(valid=1).all()
-        batch_size = 20000
-        for i in range(math.ceil(len(entities) / batch_size)):
-            nodes = [{
-                "id": str(i.id),
-                "name": i.name,
-                "category_id": str(i.category_id)
-            } for i in entities if i.id and i.name and i.category_id][i * batch_size:(i + 1) * batch_size]
-            para = {"label": "Entity", "nodes": nodes}
-            search_result = requests.post(url=serve_url, data=json.dumps(para), headers=header)
-            print(search_result.status_code, flush=True)
-            print(search_result.text, flush=True)
-            if search_result.status_code != 200 or not json.loads(search_result.text).get("code", 0):
-                return fail_res(msg="neo4j serve error: {}".format(json.loads(search_result.text).get("msg", "")))
-        res = success_res()
-    except Exception as e:
-        print(str(e))
-        db.session.rollback()
-        res = fail_res()
-    return jsonify(res)
-
-@blue_print.route('/pg_insert_arango', methods=['GET'])
-def pg_insert_arango():
-    try:
-        root_url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
-        header = {"Content-Type": "application/json"}
-        serve_url = root_url + "/arango/insert_data"
-        # 插入实体
-        entities = Entity.query.with_entities(Entity.uuid, Entity.name, Entity.category_uuid).filter_by(
-            valid=1).all()
-        print("entities[0].uuid: ", entities[0].uuid)
-        batch_size = 20000
-        for i in range(math.ceil(len(entities) / batch_size)):
-            nodes = [{
-                "_key": str(entity.uuid),
-                "uuid": str(entity.uuid),
-                "name": entity.name,
-                "category_uuid": str(entity.category_uuid)
-            } for entity in entities if entity.uuid and entity.name and entity.category_uuid][
-                    i * batch_size:(i + 1) * batch_size]
-            para = {"collection": "entity", "data": nodes}
-            search_result = requests.post(url=serve_url, data=json.dumps(para), headers=header)
-            print(search_result.status_code, flush=True)
-            print(search_result.text, flush=True)
-            if search_result.status_code != 200 or not json.loads(search_result.text).get("code", 0):
-                return fail_res(msg="arango serve error: {}".format(json.loads(search_result.text).get("msg", "")))
-
-        # 插入事件
-        serve_url = root_url + "/arango/insert_data"
-        events = DocMarkEvent.query.filter_by(valid=1).all()
-        insert_nodes = []
-        for doc_mark_event in events:
-            event_time = []
-            for event_time_uuid in doc_mark_event.event_time:
-                event_time_tag = DocMarkTimeTag.query.filter_by(uuid=event_time_uuid, valid=1).first()
-                if event_time_tag:
-                    if event_time_tag.format_date:
-                        event_time.append(event_time_tag.format_date.strftime('%Y-%m-%d %H:%M:%S'))
-            nodes = {
-                "_key": str(doc_mark_event.uuid),
-                "event_uuid": str(doc_mark_event.uuid),
-                "event_subject": doc_mark_event.event_subject,
-                "event_object": doc_mark_event.event_object,
-                "event_time": event_time
-            }
-            insert_nodes.append(nodes)
-
-        para = {"collection": "event", "data": insert_nodes}
-        result = requests.post(url=serve_url, data=json.dumps(para), headers=header)
-        print(result.status_code, flush=True)
-        print(result.text, flush=True)
-        if result.status_code != 200 or not json.loads(result.text).get("code", 0):
-            return fail_res(
-                msg="arango serve error: {}".format(json.loads(result.text).get("msg", "")))
-
-        # 插入实体关系
-        serve_url = root_url + "/arango/insert_edge_data"
-        entity_relations = DocMarkRelationProperty.query.filter_by(start_type='1', end_type='1', valid=1).all()
-        nodes = [{
-            "_key": str(item.uuid),
-            "_from": 'entity/' + item.source_entity_uuid,
-            "_to": 'entity/' + item.target_entity_uuid,
-            "relation_uuid": item.relation_uuid,
-            "relation_name": item.relation_name,
-            "start_time": item.start_time,
-            "end_time": item.end_time,
-            "doc_uuid": item.doc_uuid
-        } for item in entity_relations]
-
-        para = {"collection": "entity_relation", "data": nodes}
-        result = requests.post(url=serve_url, data=json.dumps(para), headers=header)
-        print(result.status_code, flush=True)
-        print(result.text, flush=True)
-        if result.status_code != 200 or not json.loads(result.text).get("code", 0):
-            return fail_res(
-                msg="arango serve error: {}".format(json.loads(result.text).get("msg", "")))
-
-        # 插入事件关系
-        serve_url = root_url + "/arango/insert_edge_data"
-        event_relations = DocMarkRelationProperty.query.filter_by(start_type='2', end_type='2', valid=1).all()
-        # print(event_relations[0].uuid)
-        nodes = [{
-            "_key": str(item.uuid),
-            "_from": 'event/' + item.source_entity_uuid,
-            "_to": 'event/' + item.target_entity_uuid,
-            "relation_uuid": item.relation_uuid,
-            "relation_name": item.relation_name,
-            "start_time": item.start_time,
-            "end_time": item.end_time,
-            "doc_uuid": item.doc_uuid
-        } for item in event_relations]
-
-        para = {"collection": "event_relation", "data": nodes}
-        result = requests.post(url=serve_url, data=json.dumps(para), headers=header)
-        print(result.status_code, flush=True)
-        print(result.text, flush=True)
-        if result.status_code != 200 or not json.loads(result.text).get("code", 0):
-            return fail_res(
-                msg="arango serve error: {}".format(json.loads(result.text).get("msg", "")))
-
-        res = success_res()
-
-    except Exception as e:
-        print(str(e))
-        db.session.rollback()
-        res = fail_res()
-
-    return jsonify(res)

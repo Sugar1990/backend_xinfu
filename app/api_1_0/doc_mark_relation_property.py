@@ -6,10 +6,11 @@
 
 from flask import jsonify, request
 from . import api_doc_mark_relation_property as blue_print
-from ..models import DocMarkRelationProperty, Entity, DocMarkEntity, DocMarkEvent
+from ..models import DocMarkRelationProperty, Entity, DocMarkEntity, DocMarkEvent, EntityCategory
 from .. import db
 from .utils import success_res, fail_res
 import uuid
+from sqlalchemy.sql.elements import and_, or_
 
 @blue_print.route('/get_one_doc_mark_relation_property', methods=['GET'])
 def get_one_doc_mark_relation_property():
@@ -96,56 +97,65 @@ def add_doc_mark_relation_property():
         source_entity_uuid = request.json.get("source_entity_uuid", None)
         target_entity_uuid = request.json.get("target_entity_uuid", None)
         postion = request.json.get('position', [])
-        if start_type == '1' and end_type == '1':
-            source_entity = DocMarkEntity.query.filter_by(uuid=source_entity_uuid, valid=1).first()
-            target_entity = DocMarkEntity.query.filter_by(uuid=target_entity_uuid, valid=1).first()
-            if source_entity and target_entity:
-                doc_mark_relation_property = DocMarkRelationProperty(
-                    uuid=uuid.uuid1(),
-                    doc_uuid=doc_uuid,
-                    nid=nid,
-                    relation_uuid=relation_uuid,
-                    relation_name=relation_name,
-                    start_time=start_time,
-                    start_type=start_type,
-                    end_time=end_time,
-                    end_type=end_type,
-                    source_entity_uuid=source_entity_uuid,
-                    target_entity_uuid=target_entity_uuid,
-                    position=postion,
-                    valid=1)
-                db.session.add(doc_mark_relation_property)
-                db.session.commit()
-                res = success_res(data={"uuid": doc_mark_relation_property.uuid})
-            else:
-                res = fail_res(msg="关联实体不存在")
 
-        if start_type == '2' and end_type == '2':
-            source_event = DocMarkEvent.query.filter_by(uuid=source_entity_uuid, valid=1).first()
-            target_event = DocMarkEvent.query.filter_by(uuid=target_entity_uuid, valid=1).first()
-            if source_event and target_event:
-                doc_mark_relation_property = DocMarkRelationProperty(
-                    uuid=uuid.uuid1(),
-                    doc_uuid=doc_uuid,
-                    nid=nid,
-                    relation_uuid=relation_uuid,
-                    relation_name=relation_name,
-                    start_time=start_time,
-                    start_type=start_type,
-                    end_time=end_time,
-                    end_type=end_type,
-                    source_entity_uuid=source_entity_uuid,
-                    target_entity_uuid=target_entity_uuid,
-                    position=postion,
-                    valid=1)
-                db.session.add(doc_mark_relation_property)
-                db.session.commit()
-                res = success_res(data={"uuid": doc_mark_relation_property.uuid})
-            else:
-                res = fail_res(msg="关联事件不存在")
+        doc_mark_relation_property_same = DocMarkRelationProperty.query.filter_by(relation_uuid=relation_uuid,
+                                                                                  source_entity_uuid=source_entity_uuid,
+                                                                                  target_entity_uuid=target_entity_uuid,
+                                                                                  valid=1).first()
+        if not doc_mark_relation_property_same:
+            if start_type == '1' and end_type == '1':
+                source_entity = Entity.query.filter_by(uuid=source_entity_uuid, valid=1).first()
+                target_entity = Entity.query.filter_by(uuid=target_entity_uuid, valid=1).first()
+                if source_entity and target_entity:
+                    doc_mark_relation_property = DocMarkRelationProperty(
+                        uuid=uuid.uuid1(),
+                        doc_uuid=doc_uuid,
+                        nid=nid,
+                        relation_uuid=relation_uuid,
+                        relation_name=relation_name,
+                        start_time=start_time,
+                        start_type=start_type,
+                        end_time=end_time,
+                        end_type=end_type,
+                        source_entity_uuid=source_entity_uuid,
+                        target_entity_uuid=target_entity_uuid,
+                        position=postion,
+                        valid=1)
+                    db.session.add(doc_mark_relation_property)
+                    db.session.commit()
+                    res = success_res(data={"uuid": doc_mark_relation_property.uuid})
+                else:
+                    res = fail_res(msg="关联实体不存在")
 
+            elif start_type == '2' and end_type == '2':
+                source_event = DocMarkEvent.query.filter_by(uuid=source_entity_uuid, valid=1).first()
+                target_event = DocMarkEvent.query.filter_by(uuid=target_entity_uuid, valid=1).first()
+                if source_event and target_event:
+                    doc_mark_relation_property = DocMarkRelationProperty(
+                        uuid=uuid.uuid1(),
+                        doc_uuid=doc_uuid,
+                        nid=nid,
+                        relation_uuid=relation_uuid,
+                        relation_name=relation_name,
+                        start_time=start_time,
+                        start_type=start_type,
+                        end_time=end_time,
+                        end_type=end_type,
+                        source_entity_uuid=source_entity_uuid,
+                        target_entity_uuid=target_entity_uuid,
+                        position=postion,
+                        valid=1)
+                    db.session.add(doc_mark_relation_property)
+                    db.session.commit()
+                    res = success_res(data={"uuid": doc_mark_relation_property.uuid})
+                else:
+                    res = fail_res(msg="关联事件不存在")
+
+            else:
+                res = fail_res(msg='请插入实体关系或事件关系数据')
         else:
-            res = fail_res(msg='请插入实体关系或事件关系数据')
+            res = fail_res(msg="关联实体已存在")
+
     except Exception as e:
         print(str(e))
         db.session.rollback()
@@ -205,6 +215,7 @@ def modify_doc_mark_relation_property():
                 res = fail_res(msg="uuid不存在!")
         else:
             res = fail_res(msg="关联实体不存在")
+
     except Exception as e:
         print(str(e))
         db.session.rollback()
@@ -344,6 +355,7 @@ def get_doc_mark_relation_property_by_doc_uuid_and_nid():
             })
         else:
             res = fail_res(msg="关联数据不存在")
+
     except Exception as e:
         print(str(e))
         res = fail_res(data={
@@ -384,6 +396,103 @@ def get_doc_mark_relation_property_by_nids():
             "source_entity_uuid": doc_mark_relation_property.source_entity_uuid,
             "target_entity_uuid": doc_mark_relation_property.target_entity_uuid,
             "position": doc_mark_relation_property.position} for doc_mark_relation_property in doc_mark_relation_property_list])
+
+    except Exception as e:
+        print(str(e))
+        res = fail_res(data=[])
+    return jsonify(res)
+
+
+@blue_print.route('/get_doc_mark_relation_property_by_uuid_sets', methods=['GET'])
+def get_doc_mark_relation_property_by_uuid_sets():
+    try:
+        source_uuid = request.json.get('source_uuid', None)
+        target_uuid = request.json.get('target_uuid', None)
+        relation_uuid = request.args.get('relation_uuid', None)
+
+        doc_mark_relation_property = DocMarkRelationProperty.query.filter_by(source_entity_uuid=source_uuid,
+                                                                             target_entity_uuid=target_uuid,
+                                                                             relation_uuid=relation_uuid,valid=1).first()
+        if doc_mark_relation_property:
+            res = success_res(data={
+                "uuid": doc_mark_relation_property.uuid,
+                "doc_uuid": doc_mark_relation_property.doc_uuid,
+                "relation_uuid": doc_mark_relation_property.relation_uuid,
+                "relation_name": doc_mark_relation_property.relation_name,
+                "start_time": doc_mark_relation_property.start_time.strftime(
+                    '%Y-%m-%d %H:%M:%S') if doc_mark_relation_property.start_time else None,
+                "start_type": doc_mark_relation_property.start_type,
+                "end_time": doc_mark_relation_property.end_time.strftime(
+                    '%Y-%m-%d %H:%M:%S') if doc_mark_relation_property.end_time else None,
+                "end_type": doc_mark_relation_property.end_type,
+                "source_entity_uuid": doc_mark_relation_property.source_entity_uuid,
+                "target_entity_uuid": doc_mark_relation_property.target_entity_uuid
+            })
+        else:
+            res = fail_res(msg='关系记录不存在！')
+
+    except Exception as e:
+        print(str(e))
+        res = fail_res(data=[])
+    return jsonify(res)
+	
+@blue_print.route('/get_advanced_search_of_relation_property', methods=['POST'])
+def get_advanced_search_of_relation_property():
+    try:
+        entity_uuid = request.json.get("entity_uuid", None)
+        category_uuid = request.json.get("category_uuid", [])
+        relation_uuid = request.json.get("relation_uuid", [])
+        start_time = request.json.get("start_time", None)
+        end_time = request.json.get("end_time", None)
+
+        condition = []
+        if entity_uuid:
+            condition.append(or_(DocMarkRelationProperty.source_entity_uuid==entity_uuid,
+                                 DocMarkRelationProperty.target_entity_uuid==entity_uuid))
+        if category_uuid:
+            categories = EntityCategory.query.with_entities(EntityCategory.uuid).filter(EntityCategory.uuid.in_(category_uuid),
+                                                                                        EntityCategory.valid==1).all()
+            category_uuids = [i[0] for i in categories]
+            if category_uuids:
+                entities = Entity.query.with_entities(Entity.uuid).filter(Entity.category_uuid.in_(category_uuids),
+                                                                          Entity.valid==1).all()
+                entity_uuids = [i[0] for i in entities]
+                if entity_uuids:
+                    condition.append(or_(DocMarkRelationProperty.source_entity_uuid.in_(entity_uuids),
+                                         DocMarkRelationProperty.target_entity_uuid.in_(entity_uuids)))
+
+        if start_time and end_time:
+            condition.append(DocMarkRelationProperty.start_time>=start_time, DocMarkRelationProperty.end_time<=end_time)
+
+        if relation_uuid:
+            condition.append(DocMarkRelationProperty.relation_uuid.in_(relation_uuid))
+
+        condition = tuple(condition)
+        relation_properties = DocMarkRelationProperty.query.filter(and_(*condition), DocMarkRelationProperty.valid==1).all()
+
+        '''
+        <id,  start_node(source_entity_uuid, name, entity_category_uuid, category_name),  
+        end_node(target_entity_uuid, name, entity_category_uuid, category_name),   
+        realtion_uuid,  doc_uuid>
+        '''
+        result = []
+        for item in relation_properties:
+            source_entity = Entity.query.filter_by(uuid=item.source_entity_uuid, valid=1).first()
+            target_entity = Entity.query.filter_by(uuid=item.target_entity_uuid, valid=1).first()
+            if source_entity and target_entity:
+                res = {
+                    "uuid": item.uuid,
+                    "source_entity_uuid": item.source_entity_uuid,
+                    "source_entity_name": source_entity.name,
+                    "target_entity_uuid": item.target_entity_uuid,
+                    "target_entity_name": target_entity.name,
+                    "source_entity_category_uuid": source_entity.category_uuid,
+                    "target_entity_category_uuid": target_entity.category_uuid,
+                    "relation_uuid": item.relation_uuid,
+                    "doc_uuid": item.doc_uuid
+                }
+                result.append(res)
+        res = success_res(data=result)
 
     except Exception as e:
         print(str(e))

@@ -91,4 +91,7 @@ def create_app(config_name):
     from .api_1_0 import api_doc_mark_advise as api_1_0_doc_mark_advise_blueprint
     app.register_blueprint(api_1_0_doc_mark_advise_blueprint, url_prefix='/doc_mark_advise')
 
+    from .api_1_0 import api_ar_collection_service as api_1_0_ar_collection_service_blueprint
+    app.register_blueprint(api_1_0_ar_collection_service_blueprint, url_prefix='/ar_collection_service')
+
     return app

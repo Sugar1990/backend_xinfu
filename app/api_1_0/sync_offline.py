@@ -14,7 +14,7 @@ from .utils import success_res, fail_res
 from sqlalchemy import create_engine, MetaData, Table, or_
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session
-from ..conf import PG_USER_NAME, PG_USER_PASSWORD, PG_DB_NAME, LOCAL_IP, LOCAL_PG_PORT, LOCAL_PORT
+from ..conf import PG_USER_NAME, PG_USER_PASSWORD, PG_DB_NAME, LOCAL_IP, LOCAL_PG_PORT, LOCAL_PORT, LOCAL_SOURCE
 
 
 @blue_print.route('/show_local_database_information', methods=['GET'])
@@ -51,7 +51,8 @@ def conn_pgs():
 
         database_names = list(filter(is_template, database_name))
         res = success_res(msg="连接成功")
-    except:
+    except Exception as e:
+        print(str(e))
         res = fail_res(msg="连接失败")
     return jsonify(res)
 
@@ -104,12 +105,21 @@ def sync_source():
                 return '<SyncRecords %r>' % self.system_name
 
         # 获取上次同步时间
+        print(SOURCE_PG_DB_SERVER_IP)
         sync_record = target_dbsession.query(SyncRecords).filter_by(system_name=SOURCE_PG_DB_SERVER_IP).first()
-        sync_time = sync_record.sync_time
+        if sync_record:
+            sync_time = sync_record.sync_time
+            sync_record.sync_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+            target_dbsession.commit()
+        else:
+            sync_time = '1900-01-01 00:00:00'
+            sync_record = SyncRecords(system_name=SOURCE_PG_DB_SERVER_IP, sync_time=time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+            target_dbsession.add(sync_record)
+            target_dbsession.commit()
 
         # 更新同步时间
-        sync_record.sync_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-        target_dbsession.commit()
+        # sync_record.sync_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+        # target_dbsession.commit()
 
         # 记录同步结果
         res_records = []
@@ -125,7 +135,7 @@ def sync_source():
                 permission_id = db.Column(db.Integer)
                 valid = db.Column(db.Integer)
                 token = db.Column(db.String)
-                _source = db.Column(db.String)
+                _source = db.Column(db.String, default = LOCAL_SOURCE)
                 power_score = db.Column(db.Float)
                 troop_number = db.Column(db.String)
                 create_time = db.Column(db.DateTime)
@@ -143,7 +153,7 @@ def sync_source():
                 permission_id = db.Column(db.Integer)
                 valid = db.Column(db.Integer)
                 token = db.Column(db.String)
-                _source = db.Column(db.String)
+                _source = db.Column(db.String, default = LOCAL_SOURCE)
                 power_score = db.Column(db.Float)
                 troop_number = db.Column(db.String)
                 create_time = db.Column(db.DateTime)
@@ -154,42 +164,49 @@ def sync_source():
 
             # offline所有uuid/troop_number，唯一性（去重）判断
             uuids_and_troop_in_offline = dbsession.query(OfflineCustomer).with_entities(OfflineCustomer.uuid,
-                                                                                        OfflineCustomer.troop_number).filter(
+                                                                                        OfflineCustomer.troop_number, OfflineCustomer.username).filter(
                 OfflineCustomer.valid == 1, or_(OfflineCustomer.create_time > sync_time, OfflineCustomer.update_time > sync_time)).all()
             troop_numbers_in_offline = [i[1] for i in uuids_and_troop_in_offline]
+            customer_diff_in_offline = [i[1]+':'+i[2] for i in uuids_and_troop_in_offline]
 
             # online所有uuid/troop_number，唯一性（去重）判断
-            uuids_and_troop_in_online = target_dbsession.query(Customer).with_entities(Customer.uuid, Customer.troop_number).filter(
+            uuids_and_troop_in_online = target_dbsession.query(Customer).with_entities(Customer.uuid, Customer.troop_number, Customer.username).filter(
                 Customer.valid==1).all()
             troop_numbers_in_online = [i[1] for i in uuids_and_troop_in_online]
+            customer_diff_in_online = [i[1] +':'+ i[2] for i in uuids_and_troop_in_online]
 
             # 记录uuid变化----customer_uuid_dict_trans
             online_dict_trans = {}
             customer_uuid_dict_trans = {}
 
             for i in uuids_and_troop_in_online:
-                if i[1] not in online_dict_trans.keys():
-                    online_dict_trans[i[1]] = i[0]  # [{"troop_number": "uuid"}]
+                if i[1]+i[2] not in online_dict_trans.keys():
+                    online_dict_trans[i[1]+':'+i[2]] = i[0]  # [{"troop_number+username": "uuid"}]
 
             # 遍历offline所有数据，不做时间筛选，构造dict
             uuids_and_troop_in_offline_for_dict = dbsession.query(OfflineCustomer).with_entities(OfflineCustomer.uuid,
-                                                                                                 OfflineCustomer.troop_number).filter_by(
+                                                                                                 OfflineCustomer.troop_number, OfflineCustomer.username).filter_by(
                 valid=1).all()
 
             for offline_customer in uuids_and_troop_in_offline_for_dict:
                 # offtroop存在, {"offuuid": "onuuid"}, offtroop不存在, {"offuuid": "offuuid"}
                 customer_uuid_dict_trans[offline_customer[0]] = online_dict_trans[
-                    offline_customer[1]] if online_dict_trans.get(offline_customer[1], "") else offline_customer[0]
+                    offline_customer[1]+':'+offline_customer[2]] if online_dict_trans.get(offline_customer[1]+':'+offline_customer[2], "") else offline_customer[0]
 
             # offline-online：计算是否有要插入的数据
-            offline_troop_numbers_to_insert = list(set(troop_numbers_in_offline).difference(set(troop_numbers_in_online)))
+            offline_troop_numbers_to_insert = list(set(customer_diff_in_offline).difference(set(customer_diff_in_online)))
+            troop_numbers_to_insert = [item.split(':')[0] for item in offline_troop_numbers_to_insert]
+            username_to_insert = [item.split(':')[1] for item in offline_troop_numbers_to_insert]
             # offline-online：计算是否有要更新的数据
-            offline_troop_numbers_to_update = list(set(troop_numbers_in_offline).intersection(set(troop_numbers_in_online)))
+            offline_troop_numbers_to_update = list(set(customer_diff_in_offline).intersection(set(customer_diff_in_online)))
+            troop_numbers_to_update = [item.split(':')[0] for item in offline_troop_numbers_to_update]
+            username_to_update = [item.split(':')[1] for item in offline_troop_numbers_to_update]
+
 
             # 如果有要插入的数据
             if offline_troop_numbers_to_insert:
                 offline_customers = dbsession.query(OfflineCustomer).filter(
-                    OfflineCustomer.troop_number.in_(offline_troop_numbers_to_insert)).all()
+                    OfflineCustomer.troop_number.in_(troop_numbers_to_insert), OfflineCustomer.username.in_(username_to_insert)).all()
                 sync_customers = [Customer(uuid=i.uuid,
                                            username=i.username,
                                            pwd=i.pwd,
@@ -201,15 +218,13 @@ def sync_source():
                                            troop_number=i.troop_number,
                                            create_time=i.create_time,
                                            update_time=i.update_time) for i in offline_customers]
-                # target_dbsession.add_all(sync_customers)
-                # target_dbsession.commit()
                 target_dbsession.add_all(sync_customers)
                 target_dbsession.commit()
 
                 # 如果有要更新的数据  即_source相同，off_uuid=on_uuid
                 if offline_troop_numbers_to_update:
                     offline_customers = dbsession.query(OfflineCustomer).filter(
-                        OfflineCustomer.troop_number.in_(offline_troop_numbers_to_update)).all()
+                        OfflineCustomer.troop_number.in_(troop_numbers_to_update), OfflineCustomer.username.in_(username_to_update)).all()
                     for offline_customer in offline_customers:
                         online_customer = target_dbsession.query(Customer).filter_by(uuid=offline_customer.uuid,
                                                                    _source=offline_customer._source, valid=1).first()
@@ -238,7 +253,7 @@ def sync_source():
                 name = db.Column(db.Text)
                 valid = db.Column(db.Integer)  # 取值0或1，0表示已删除，1表示正常
                 type = db.Column(db.Integer)  # 1：实体（地名、国家、人物...）；2：概念（条约公约、战略、战法...）
-                _source = db.Column(db.String)
+                _source = db.Column(db.String, default = LOCAL_SOURCE)
                 create_time = db.Column(db.DateTime)
                 update_time = db.Column(db.DateTime)
 
@@ -252,7 +267,7 @@ def sync_source():
                 name = db.Column(db.Text)
                 valid = db.Column(db.Integer)  # 取值0或1，0表示已删除，1表示正常
                 type = db.Column(db.Integer)  # 1：实体（地名、国家、人物...）；2：概念（条约公约、战略、战法...）
-                _source = db.Column(db.String)
+                _source = db.Column(db.String, default = LOCAL_SOURCE)
                 create_time = db.Column(db.DateTime)
                 update_time = db.Column(db.DateTime)
 
@@ -344,7 +359,7 @@ def sync_source():
                 target_entity_category_uuids = db.Column(db.JSON)
                 relation_name = db.Column(db.Text)
                 valid = db.Column(db.Integer)
-                _source = db.Column(db.String)
+                _source = db.Column(db.String, default = LOCAL_SOURCE)
                 create_time = db.Column(db.DateTime)
                 update_time = db.Column(db.DateTime)
 
@@ -358,7 +373,7 @@ def sync_source():
                 target_entity_category_uuids = db.Column(db.JSON)
                 relation_name = db.Column(db.Text)
                 valid = db.Column(db.Integer)
-                _source = db.Column(db.String)
+                _source = db.Column(db.String, default = LOCAL_SOURCE)
                 create_time = db.Column(db.DateTime)
                 update_time = db.Column(db.DateTime)
 
@@ -499,7 +514,7 @@ def sync_source():
                 valid = db.Column(db.Integer)
                 longitude = db.Column(db.Float)
                 latitude = db.Column(db.Float)
-                _source = db.Column(db.String)
+                _source = db.Column(db.String, default = LOCAL_SOURCE)
                 create_time = db.Column(db.DateTime)
                 update_time = db.Column(db.DateTime)
 
@@ -517,7 +532,7 @@ def sync_source():
                 valid = db.Column(db.Integer)
                 longitude = db.Column(db.Float)
                 latitude = db.Column(db.Float)
-                _source = db.Column(db.String)
+                _source = db.Column(db.String, default = LOCAL_SOURCE)
                 create_time = db.Column(db.DateTime)
                 update_time = db.Column(db.DateTime)
 
@@ -617,7 +632,7 @@ def sync_source():
                 uuid = db.Column(db.String, primary_key=True)
                 name = db.Column(db.Text)
                 valid = db.Column(db.Integer)
-                _source = db.Column(db.String)
+                _source = db.Column(db.String, default = LOCAL_SOURCE)
                 create_time = db.Column(db.TIMESTAMP)
                 update_time = db.Column(db.TIMESTAMP)
 
@@ -630,7 +645,7 @@ def sync_source():
                 uuid = db.Column(db.String, primary_key=True)
                 name = db.Column(db.Text)
                 valid = db.Column(db.Integer)
-                _source = db.Column(db.String)
+                _source = db.Column(db.String, default = LOCAL_SOURCE)
                 create_time = db.Column(db.TIMESTAMP)
                 update_time = db.Column(db.TIMESTAMP)
 
@@ -715,7 +730,7 @@ def sync_source():
                 name = db.Column(db.Text)
                 event_class_uuid = db.Column(db.String)
                 valid = db.Column(db.Integer)
-                _source = db.Column(db.String)
+                _source = db.Column(db.String, default = LOCAL_SOURCE)
                 create_time = db.Column(db.TIMESTAMP)
                 update_time = db.Column(db.TIMESTAMP)
 
@@ -728,7 +743,7 @@ def sync_source():
                 name = db.Column(db.Text)
                 event_class_uuid = db.Column(db.String)
                 valid = db.Column(db.Integer)
-                _source = db.Column(db.String)
+                _source = db.Column(db.String, default = LOCAL_SOURCE)
                 create_time = db.Column(db.TIMESTAMP)
                 update_time = db.Column(db.TIMESTAMP)
 
@@ -824,8 +839,8 @@ def sync_source():
                 update_by_uuid = db.Column(db.String)
                 update_time = db.Column(db.TIMESTAMP)
                 valid = db.Column(db.Integer)
-                _source = db.Column(db.String)
-                appear_index_in_text = db.Column(db.String)
+                _source = db.Column(db.String, default = LOCAL_SOURCE)
+                appear_index_in_text = db.Column(db.JSON)
                 locate_position = db.Column(JSONB)
 
                 def __repr__(self):
@@ -843,8 +858,8 @@ def sync_source():
                 update_by_uuid = db.Column(db.String)
                 update_time = db.Column(db.TIMESTAMP)
                 valid = db.Column(db.Integer)
-                _source = db.Column(db.String)
-                appear_index_in_text = db.Column(db.String)
+                _source = db.Column(db.String, default = LOCAL_SOURCE)
+                appear_index_in_text = db.Column(db.JSON)
                 locate_position = db.Column(JSONB)
 
                 def __repr__(self):
@@ -857,11 +872,12 @@ def sync_source():
                                                                                             OfflineDocMarkComment.update_time > sync_time)).all()
             doc_mark_comment_uuids_in_offline = [i.uuid for i in doc_mark_comment_in_offline]
             doc_mark_comment_uuids_in_online = target_dbsession.query(DocMarkComment).with_entities(DocMarkComment.uuid).filter_by(valid=1).all()
+            doc_mark_comment_uuids_in_online = [i[0] for i in doc_mark_comment_uuids_in_online]
 
             # 更新create_by_uuid、update_by_uuid
             for i in doc_mark_comment_in_offline:
-                i.create_by_uuid = customer_uuid_dict_trans.get(i.create_by_uuid)
-                i.update_by_uuid = customer_uuid_dict_trans.get(i.update_by_uuid)
+                i.create_by_uuid = customer_uuid_dict_trans.get(i.create_by_uuid) if i.create_by_uuid else None
+                i.update_by_uuid = customer_uuid_dict_trans.get(i.update_by_uuid) if i.update_by_uuid else None
 
             # offline-online：计算是否有要插入的数据
             offline_dmm_to_insert = list(set(doc_mark_comment_uuids_in_offline).difference(set(doc_mark_comment_uuids_in_online)))
@@ -908,6 +924,7 @@ def sync_source():
 
         # 同步doc_mark相关表
         def insert_and_update_records(source_db, target_db, fields=[]):
+            print("iaur target_db", target_db, flush=True)
             records_in_source_db = dbsession.query(source_db).filter(source_db.valid == 1,
                                                                    or_(
                                                                        source_db.create_time > sync_time,
@@ -922,8 +939,10 @@ def sync_source():
 
             # source_db-target_db：计算是否有要插入的数据
             records_to_insert = list(set(uuids_in_source_db).difference(set(uuids_in_target_db)))
+            # print("records_to_insert",records_to_insert)
             # source_db-target_db：计算是否有要更新的数据
             records_to_update = list(set(uuids_in_source_db).intersection(set(uuids_in_target_db)))
+            # print("records_to_update",records_to_update)
 
             # 同步
             if records_to_insert:
@@ -965,7 +984,7 @@ def sync_source():
                 update_time = db.Column(db.TIMESTAMP)
                 appear_index_in_text = db.Column(db.JSON)
                 valid = db.Column(db.Integer)
-                _source = db.Column(db.String)
+                _source = db.Column(db.String, default = LOCAL_SOURCE)
                 appear_text = db.Column(db.String)
                 position = db.Column(JSONB)
 
@@ -986,7 +1005,7 @@ def sync_source():
                 appear_text = db.Column(db.String)
                 appear_index_in_text = db.Column(db.JSON)
                 valid = db.Column(db.Integer)
-                _source = db.Column(db.String)
+                _source = db.Column(db.String, default = LOCAL_SOURCE)
                 position = db.Column(JSONB)
 
                 def __repr__(self):
@@ -1013,9 +1032,9 @@ def sync_source():
 
             # 更新create_by_uuid、update_by_uuid、entity_uuid
             for i in doc_mark_entity_in_offline:
-                i.create_by_uuid = customer_uuid_dict_trans.get(i.create_by_uuid)
-                i.update_by_uuid = customer_uuid_dict_trans.get(i.update_by_uuid)
-                i.entity_uuid = entity_uuid_dict_trans.get(i.entity_uuid)
+                i.create_by_uuid = customer_uuid_dict_trans.get(i.create_by_uuid) if i.create_by_uuid else None
+                i.update_by_uuid = customer_uuid_dict_trans.get(i.update_by_uuid) if i.update_by_uuid else None
+                i.entity_uuid = entity_uuid_dict_trans.get(i.entity_uuid) if i.entity_uuid else None
 
             fields = ["uuid", "doc_uuid", "word", "entity_uuid", "source", "create_by_uuid", "create_time",
                       "update_by_uuid", "update_time", "appear_text", "appear_index_in_text", "_source", "valid", "position"]
@@ -1055,7 +1074,7 @@ def sync_source():
                 valid = db.Column(db.Integer)
                 entity_or_sys = db.Column(db.Integer)
                 appear_index_in_text = db.Column(db.JSON)
-                _source = db.Column(db.String)
+                _source = db.Column(db.String, default = LOCAL_SOURCE)
                 word_count = db.Column(db.String)
                 word_sentence = db.Column(db.String)
                 source_type = db.Column(db.Integer)
@@ -1086,7 +1105,7 @@ def sync_source():
                 valid = db.Column(db.Integer)
                 entity_or_sys = db.Column(db.Integer)
                 appear_index_in_text = db.Column(db.JSON)
-                _source = db.Column(db.String)
+                _source = db.Column(db.String, default = LOCAL_SOURCE)
                 word_count = db.Column(db.String)
                 word_sentence = db.Column(db.String)
                 source_type = db.Column(db.Integer)
@@ -1104,20 +1123,23 @@ def sync_source():
             # 将doc_mark_place的place_uuid更新到dict里
             place_uuid_in_dmp = dbsession.query(OfflineDocMarkPlace).with_entities(
                 OfflineDocMarkPlace.place_uuid).filter_by(valid=1).distinct().all()
+
+            place_uuid_list = [i[0] for i in place_uuid_in_dmp if place_uuid_in_dmp if i[0]]
             for place_uuid in place_uuid_in_dmp:
                 if place_uuid not in entity_uuid_dict_trans.keys():
                     entity_sign_in_offline = dbsession.query(OfflineEntity).with_entities(OfflineEntity.name,
                                                                                                    OfflineEntity.category_uuid,
                                                                                                    OfflineEntity.uuid).filter_by(
                         valid=1, uuid=place_uuid).first()
-                    entity_sign_in_offline = entity_sign_in_offline[0] + str(ec_uuid_dict_trans.get(entity_sign_in_offline[1]))
-                    entity_uuid_dict_trans[place_uuid] = online_dict_trans_entity.get(entity_sign_in_offline)
+                    if entities_in_offline:
+                        entity_sign_in_offline = entity_sign_in_offline[0] + str(ec_uuid_dict_trans.get(entity_sign_in_offline[1]))
+                        entity_uuid_dict_trans[place_uuid] = online_dict_trans_entity.get(entity_sign_in_offline)
 
             # 更新create_by_uuid、update_by_uuid、place_uuid
             for i in doc_mark_place_in_offline:
-                i.create_by_uuid = customer_uuid_dict_trans.get(i.create_by_uuid)
-                i.update_by_uuid = customer_uuid_dict_trans.get(i.update_by_uuid)
-                i.place_uuid = entity_uuid_dict_trans.get(i.place_uuid)
+                i.create_by_uuid = customer_uuid_dict_trans.get(i.create_by_uuid) if i.create_by_uuid else None
+                i.update_by_uuid = customer_uuid_dict_trans.get(i.update_by_uuid) if i.update_by_uuid else None
+                i.place_uuid = entity_uuid_dict_trans.get(i.place_uuid) if i.place_uuid else None
 
             # 同步offline_doc_mark_place
             fields = ["uuid", "doc_uuid", "word", "type", "place_uuid", "direction", "place_lon", "place_lat",
@@ -1152,7 +1174,7 @@ def sync_source():
                 source_entity_uuid = db.Column(db.String)
                 target_entity_uuid = db.Column(db.String)
                 valid = db.Column(db.Integer)
-                _source = db.Column(db.String)
+                _source = db.Column(db.String, default = LOCAL_SOURCE)
                 create_by_uuid = db.Column(db.String)
                 create_time = db.Column(db.TIMESTAMP)
                 update_by_uuid = db.Column(db.String)
@@ -1176,7 +1198,7 @@ def sync_source():
                 source_entity_uuid = db.Column(db.String)
                 target_entity_uuid = db.Column(db.String)
                 valid = db.Column(db.Integer)
-                _source = db.Column(db.String)
+                _source = db.Column(db.String, default = LOCAL_SOURCE)
                 create_by_uuid = db.Column(db.String)
                 create_time = db.Column(db.TIMESTAMP)
                 update_by_uuid = db.Column(db.String)
@@ -1245,7 +1267,7 @@ def sync_source():
                 update_by_uuid = db.Column(db.String)
                 update_time = db.Column(db.TIMESTAMP)
                 appear_index_in_text = db.Column(db.JSON)
-                _source = db.Column(db.String)
+                _source = db.Column(db.String, default = LOCAL_SOURCE)
                 position = db.Column(JSONB)
 
                 def __repr__(self):
@@ -1268,7 +1290,7 @@ def sync_source():
                 update_by_uuid = db.Column(db.String)
                 update_time = db.Column(db.TIMESTAMP)
                 appear_index_in_text = db.Column(db.JSON)
-                _source = db.Column(db.String)
+                _source = db.Column(db.String, default = LOCAL_SOURCE)
                 position = db.Column(JSONB)
 
                 def __repr__(self):
@@ -1307,7 +1329,7 @@ def sync_source():
                 parent_uuid = db.Column(db.String)
                 doc_uuid = db.Column(db.String)
                 valid = db.Column(db.Integer)
-                _source = db.Column(db.String)
+                _source = db.Column(db.String, default = LOCAL_SOURCE)
                 create_by_uuid = db.Column(db.String)
                 create_time = db.Column(db.TIMESTAMP)
                 update_by_uuid = db.Column(db.String)
@@ -1324,7 +1346,7 @@ def sync_source():
                 parent_uuid = db.Column(db.String)
                 doc_uuid = db.Column(db.String)
                 valid = db.Column(db.Integer)
-                _source = db.Column(db.String)
+                _source = db.Column(db.String, default = LOCAL_SOURCE)
                 create_by_uuid = db.Column(db.String)
                 create_time = db.Column(db.TIMESTAMP)
                 update_by_uuid = db.Column(db.String)
@@ -1367,7 +1389,7 @@ def sync_source():
                 update_by_uuid = db.Column(db.String)
                 update_time = db.Column(db.TIMESTAMP)
                 valid = db.Column(db.Integer)
-                _source = db.Column(db.String)
+                _source = db.Column(db.String, default = LOCAL_SOURCE)
 
                 def __repr__(self):
                     return '<DocMarkAdvise %r>' % self.uuid
@@ -1384,7 +1406,7 @@ def sync_source():
                 update_by_uuid = db.Column(db.String)
                 update_time = db.Column(db.TIMESTAMP)
                 valid = db.Column(db.Integer)
-                _source = db.Column(db.String)
+                _source = db.Column(db.String, default = LOCAL_SOURCE)
 
                 def __repr__(self):
                     return '<DocMarkAdvise %r>' % self.uuid
@@ -1452,7 +1474,7 @@ def sync_source():
                 create_by_uuid = db.Column(db.String)
                 create_time = db.Column(db.TIMESTAMP)
                 operate_type = db.Column(db.Integer)
-                _source = db.Column(db.String)
+                _source = db.Column(db.String, default = LOCAL_SOURCE)
 
                 def __repr__(self):
                     return '<DocumentRecords %r>' % self.uuid
@@ -1464,7 +1486,7 @@ def sync_source():
                 create_by_uuid = db.Column(db.String)
                 create_time = db.Column(db.TIMESTAMP)
                 operate_type = db.Column(db.Integer)
-                _source = db.Column(db.String)
+                _source = db.Column(db.String, default = LOCAL_SOURCE)
 
                 def __repr__(self):
                     return '<DocumentRecords %r>' % self.uuid
@@ -1520,7 +1542,7 @@ def sync_source():
                 update_time = db.Column(db.TIMESTAMP)
                 add_time = db.Column(db.TIMESTAMP)
                 valid = db.Column(db.Integer)
-                _source = db.Column(db.String)
+                _source = db.Column(db.String, default = LOCAL_SOURCE)
                 position = db.Column(JSONB)
 
                 def __repr__(self):
@@ -1553,7 +1575,7 @@ def sync_source():
                 update_time = db.Column(db.TIMESTAMP)
                 add_time = db.Column(db.TIMESTAMP)
                 valid = db.Column(db.Integer)
-                _source = db.Column(db.String)
+                _source = db.Column(db.String, default = LOCAL_SOURCE)
                 position = db.Column(JSONB)
 
                 def __repr__(self):
@@ -1601,7 +1623,7 @@ def sync_source():
                 update_by_uuid = db.Column(db.String)
                 update_time = db.Column(db.TIMESTAMP)
                 tagging_tabs = db.Column(db.JSON)
-                _source = db.Column(db.String)
+                _source = db.Column(db.String, default = LOCAL_SOURCE)
                 sort = db.Column(db.Integer)
 
                 def __repr__(self):
@@ -1617,7 +1639,7 @@ def sync_source():
                 update_by_uuid = db.Column(db.String)
                 update_time = db.Column(db.TIMESTAMP)
                 tagging_tabs = db.Column(db.JSON)
-                _source = db.Column(db.String)
+                _source = db.Column(db.String, default = LOCAL_SOURCE)
                 sort = db.Column(db.Integer)
 
                 def __repr__(self):
@@ -1752,7 +1774,7 @@ def sync_source():
                 keywords = db.Column(db.JSON)
                 md5 = db.Column(db.String)
                 is_favorite = db.Column(db.Integer)
-                _source = db.Column(db.String)
+                _source = db.Column(db.String, default = LOCAL_SOURCE)
                 html_path = db.Column(db.String)
                 valid = db.Column(db.Integer)
 
@@ -1776,7 +1798,7 @@ def sync_source():
                 keywords = db.Column(db.JSON)
                 md5 = db.Column(db.String)
                 is_favorite = db.Column(db.Integer)
-                _source = db.Column(db.String)
+                _source = db.Column(db.String, default = LOCAL_SOURCE)
                 html_path = db.Column(db.String)
                 valid = db.Column(db.Integer)
 
@@ -1787,26 +1809,32 @@ def sync_source():
                 OfflineDocument.create_time > sync_time,
                 OfflineDocument.update_time > sync_time)).all()
             print (sync_time)
-            sync_document = [Document(uuid=i.uuid,
-                                      name=i.name,
-                                      category=i.category,
-                                      savepath=i.savepath,
-                                      content=i.content,
-                                      create_time=i.create_time,
-                                      status=i.status,
-                                      keywords=i.keywords,
-                                      md5=i.md5,
-                                      is_favorite=i.is_favorite,
-                                      _source=i._source,
-                                      create_by_uuid=customer_uuid_dict_trans.get(i.create_by_uuid),
-                                      update_by_uuid=customer_uuid_dict_trans.get(i.update_by_uuid),
-                                      catalog_uuid=offline_online_catalog_dict.get(i.catalog_uuid),
-                                      html_path=i.html_path,
-                                      valid=1,
-                                      update_time=i.update_time) for i in offline_document]
-            target_dbsession.add_all(sync_document)
+            documents = target_dbsession.query(Document).filter_by(valid=1).all()
+            document_uuids = [doc.uuid for doc in documents]
+            count = 0
+            for i in offline_document:
+                if i.uuid not in document_uuids:
+                    sync_document = Document(uuid=i.uuid,
+                                             name=i.name,
+                                             category=i.category,
+                                             savepath=i.savepath,
+                                             content=i.content,
+                                             create_time=i.create_time,
+                                             status=i.status,
+                                             keywords=i.keywords,
+                                             md5=i.md5,
+                                             is_favorite=i.is_favorite,
+                                             _source=i._source,
+                                             create_by_uuid=customer_uuid_dict_trans.get(i.create_by_uuid),
+                                             update_by_uuid=customer_uuid_dict_trans.get(i.update_by_uuid),
+                                             catalog_uuid=offline_online_catalog_dict.get(i.catalog_uuid),
+                                             html_path=i.html_path,
+                                             valid=1,
+                                             update_time=i.update_time)
+                    target_dbsession.add(sync_document)
+                    count += 1
             target_dbsession.commit()
-            res_records.append(f"文档表同步完成！新增{len(sync_document)}条数据。")
+            res_records.append(f"文档表同步完成！新增{count}条数据。")
 
         except Exception as e:
             print(str(e))
@@ -1814,20 +1842,55 @@ def sync_source():
             res_records.append("文档表同步失败！")
         # </editor-fold>
 
-        header = {"Content-Type": "application/json; charset=UTF-8"}
-        url = "http://{}:{}/api/get_file_from_source".format(SOURCE_PG_DB_SERVER_IP, LOCAL_PORT)
-        body = {"source_ip": SOURCE_PG_DB_SERVER_IP}
-        data = json.dumps(body)
-        url_list = requests.post(url=url, data=data, headers=header)
+        # <editor-fold desc="Document trans">
+        try:
+            header = {"Content-Type": "application/json; charset=UTF-8"}
+            url = "http://{}:{}/api/sync_offline/get_file_from_source".format(SOURCE_PG_DB_SERVER_IP, LOCAL_PORT)
+            body = {"source_ip": SOURCE_PG_DB_SERVER_IP}
+            data = json.dumps(body)
+            url_list = requests.post(url=url, data=data, headers=header)
 
-        header = {"Content-Type": "application/json; charset=UTF-8"}
-        url_list = json.loads(url_list.text)
-        body_url = {"file_paths": url_list}
-        data_url = json.dumps(body_url)
-        url = "http://{}:{}/api/save_file_to_target".format(TARGET_PG_DB_SERVER_IP, LOCAL_PORT)
-        result = requests.post(url=url, data=data_url, headers=header)
+            header = {"Content-Type": "application/json; charset=UTF-8"}
+            url_list = json.loads(url_list.text)
+            body_url = {"file_paths": url_list}
+            data_url = json.dumps(body_url)
+            url = "http://{}:{}/api/sync_offline/save_file_to_target".format(TARGET_PG_DB_SERVER_IP, LOCAL_PORT)
+            result = requests.post(url=url, data=data_url, headers=header)
+        except Exception as e:
+            print(str(e))
 
-        print(res_records)
+        # </editor-fold>
+
+        # print(res_records)
+
+        try:
+            print("es arango")
+            # delete all in arango
+            header = {"Content-Type": "application/json; charset=UTF-8"}
+            url = "http://{}:{}".format(LOCAL_IP, '10001') + '/initial/delete_all_in_arango'
+            result = requests.post(url=url, headers=header)
+            print(json.loads(result.text))
+
+            # pg_to_arango
+            url = "http://{}:{}".format(LOCAL_IP, '10001') + '/initial/pg_insert_arango'
+            result = requests.get(url=url)
+            print(json.loads(result.text))
+
+            # delete all in es
+            header = {"Content-Type": "application/json; charset=UTF-8"}
+            url = "http://{}:{}".format(LOCAL_IP, '10001') + '/initial/delete_all_in_es'
+            result = requests.post(url=url, headers=header)
+            print(json.loads(result.text))
+
+            # pg_to_es
+            url = "http://{}:{}".format(LOCAL_IP, '10001') + '/initial/pg_insert_es'
+            result = requests.get(url=url)
+            print(json.loads(result.text))
+
+            print('数据同步es、arango成功')
+        except Exception as e:
+            print(str(e))
+
         res = success_res(data=res_records)
 
     except Exception as e:
@@ -1838,35 +1901,37 @@ def sync_source():
 
     return jsonify(res)
 
-# 保存到目标主机
+
+#保存到目标主机
 @blue_print.route('/save_file_to_target', methods=['POST'])
 def save_file_to_target():
     file_paths = request.json.get('file_paths', [])
     for url in file_paths:
         filename = url.split("/")
         file_path = os.path.join(os.getcwd(), 'static', 'upload', filename[-1])
+        #print("file_path",file_path)
         save_path = os.path.join(os.getcwd(), 'static', 'upload')
+        #print ("save_path")
         if not os.path.exists(save_path):
             os.makedirs(save_path)
         try:
             urllib.request.urlretrieve(url, filename=file_path)
 
         except Exception as e:
-            print("数据传输错误")
             print(e)
-
     res = success_res()
     return jsonify(res)
 
 
-# 从源主机获取url
+#从源主机获取url列表
 @blue_print.route('/get_file_from_source', methods=['POST'])
 def get_file_from_source():
-    url_list = []
     source_ip = request.json.get('source_ip', "")
+    url_list = []
     file_dir = os.path.join(os.getcwd(), 'static', 'upload')
-    for files in os.walk(file_dir):
+    for root,dirs,files in os.walk(file_dir):
         for file in files:
             url = "http://{0}:{1}/api/static/upload/{2}".format(source_ip, LOCAL_PORT, file)
             url_list.append(url)
+    #print("get_rul_list",url_list)
     return json.dumps(url_list)

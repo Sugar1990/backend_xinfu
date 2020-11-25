@@ -105,3 +105,10 @@ class RWLock(object):
 
     read_release = unlock
     write_release = unlock
+
+
+import re
+def devide_str(string):
+    str_to_num = re.findall('(\d+)', string)[0]
+    string_out = string.split(str(str_to_num))[1]
+    return int(str_to_num), string_out
