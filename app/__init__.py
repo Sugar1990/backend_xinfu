@@ -97,4 +97,7 @@ def create_app(config_name):
     from .api_1_0 import api_schedule as api_1_0_schedule_blueprint
     app.register_blueprint(api_1_0_schedule_blueprint, url_prefix='/schedule')
 
+    from .api_1_0 import api_event_track as api_1_0_event_track_blueprint
+    app.register_blueprint(api_1_0_event_track_blueprint, url_prefix='/event_track')
+
     return app
