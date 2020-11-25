@@ -565,9 +565,11 @@ class Schedule(db.Model):
     update_time = db.Column(db.TIMESTAMP)
     remind_time = db.Column(db.TIMESTAMP)
     _source = db.Column(db.String, default = LOCAL_SOURCE)
+    valid = db.Column(db.Integer)
 
     def __repr__(self):
         return '<Schedule %r>' % self.uuid
+
 
 class EventTrack(db.Model):
     __tablename__ = 'event_track'
@@ -581,9 +583,9 @@ class EventTrack(db.Model):
     update_time = db.Column(db.TIMESTAMP)
     update_by_uuid = db.Column(db.String)
 
-
     def __repr__(self):
         return '<Schedule %r>' % self.title_name
+
 
 class EventPoint(db.Model):
     __tablename__ = 'event_point'
@@ -604,7 +606,6 @@ class EventPoint(db.Model):
     end_time = db.Column(db.String)
     _source = db.Column(db.String, default=LOCAL_SOURCE)
     valid = db.Column(db.Integer)
-
 
     def __repr__(self):
         return '<Schedule %r>' % self.event_name
