@@ -13,11 +13,12 @@ import uuid
 @blue_print.route('/add_event_points', methods=['POST'])
 def add_event_points():
     try:
-        title_uuid = request.json.get('title_uuid', '')
+        title_uuid = request.json.get('title_uuid', None)
         entity_name = request.json.get('entity_name', '')
         end_time = request.json.get('end_time', '')
         details = request.json.get('details', [])
         _source = request.json.get('_source', "")
+        _source = request.json.get('_source')
         for detail in details:
             entity = Entity.query.filter_by(name=entity_name, valid=1).first()
             if not entity:
@@ -25,8 +26,7 @@ def add_event_points():
                                 longitude=detail.get("longitude"), latitude=detail.get("latitude"),
                                 create_time=time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
                                 update_time=time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
-                                _source=_source,
-                                valid=1)
+                                _source=_source, valid=1)
                 db.session.add(entity)
                 db.session.commit()
             event_point = EventPoint.query.filter_by(title_uuid=title_uuid, entity_uuid=entity.uuid,
@@ -45,8 +45,7 @@ def add_event_points():
                                          update_time=time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
                                          create_by_uuid=detail.get("create_by_uuid"),
                                          update_by_uuid=detail.get("update_by_uuid"),
-                                         _source=_source,
-                                         end_time=end_time, valid=1)
+                                         end_time=end_time, _source=_source, valid=1)
                 db.session.add(event_point)
         db.session.commit()
         res = success_res()
