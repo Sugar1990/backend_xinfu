@@ -553,6 +553,23 @@ class DocMarkMind(db.Model):
         return '<DocMarkMind %r>' % self.uuid
 
 
+class Schedule(db.Model):
+    __tablename__ = 'schedule'
+    __table_args__ = {"schema": "public"}
+    uuid = db.Column(db.String, primary_key=True)
+    description = db.Column(db.String)
+    start_time = db.Column(db.TIMESTAMP)
+    end_time = db.Column(db.TIMESTAMP)
+    customer_uuid = db.Column(db.String)
+    create_time = db.Column(db.TIMESTAMP)
+    update_time = db.Column(db.TIMESTAMP)
+    remind_time = db.Column(db.TIMESTAMP)
+    _source = db.Column(db.String, default = LOCAL_SOURCE)
+
+    def __repr__(self):
+        return '<Schedule %r>' % self.uuid
+
+
 class SyncRecords(db.Model):
     __tablename__ = 'sync_records'
     __table_args__ = {"schema": "public"}
@@ -601,10 +618,14 @@ class Es_controller():
         location_output = Entity.get_location_of_entity_name(place_name)
         return location_output
 
+
 import re
+
+
 def find_int_in_str(string):
     str_to_num = re.findall('(\d+)', string)[0]
     return int(str_to_num)
+
 
 def find_dfm(dfm_string):
     d_ = find_int_in_str(dfm_string.split("°")[0])
