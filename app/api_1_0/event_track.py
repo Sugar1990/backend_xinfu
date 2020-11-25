@@ -38,7 +38,7 @@ def get_event_track_names():
 def add_event_track_name():
     try:
         title_name = request.json.get('title_name')
-        source = request.json.get("_source", "")
+        source = request.json.get("_source")
         create_by_uuid = request.json.get("customer_uuid", None)
         create_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         update_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())

@@ -22,7 +22,7 @@ def insert_schedule():
         create_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         update_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         remind_time = request.json.get("remind_time", None)
-        _source = request.json.get("_source", "")
+        _source = request.json.get("_source")
         cur_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         cur_day = time.strftime("%Y-%m-%d", time.localtime())
 
