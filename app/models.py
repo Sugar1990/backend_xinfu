@@ -608,7 +608,7 @@ class EventPoint(db.Model):
     valid = db.Column(db.Integer)
 
     def __repr__(self):
-        return '<Schedule %r>' % self.event_name
+        return '<EventPoint %r>' % self.event_name
 
 class SyncRecords(db.Model):
     __tablename__ = 'sync_records'

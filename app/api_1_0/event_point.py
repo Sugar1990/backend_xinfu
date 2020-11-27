@@ -18,7 +18,6 @@ def add_event_points():
         end_time = request.json.get('end_time', '')
         details = request.json.get('details', [])
         _source = request.json.get('_source', "")
-        _source = request.json.get('_source')
         for detail in details:
             entity = Entity.query.filter_by(name=entity_name, valid=1).first()
             if not entity:
@@ -56,37 +55,36 @@ def add_event_points():
 
     return jsonify(res)
 
-@blue_print.route('/search_during_time_event_point', methods=['GET'])
+@blue_print.route('/search_during_time_event_point', methods=['POST'])
 def search_during_time_event_point():
     try:
-        start_time = request.args.get('start_time', '1900-01-01 00:00:00')
-        end_time = request.args.get('end_time', '9999-01-01 00:00:00')
+        start_time = request.json.get('start_time', '1900-01-01 00:00:00')
+        end_time = request.json.get('end_time', '9999-01-01 00:00:00')
 
         event_points = EventPoint.query.filter(and_(EventPoint.valid == 1, EventPoint.event_time >= start_time, EventPoint.event_time <= end_time)).order_by(
             EventPoint.event_time.asc()).all()
 
-        data = []
         entity_same = {}
         for event_point in event_points:
             event_track = EventTrack.query.filter_by(uuid=event_point.title_uuid, valid=1).first()
             entity = Entity.query.filter_by(uuid=event_point.entity_uuid, valid=1).first()
             if entity.name not in entity_same.keys():
                 entity_same[entity.name] = {
-                    "uuid": event_track.uuid,
-                    "title": event_track.title_name,
-                    "entity": entity.name,
-                    "data": data,
-                    "endTime": event_point.end_time,
-                    "_source":event_point._source,
+                    "event_tract_uuid": event_track.uuid,
+                    "event_track_title_name": event_track.title_name,
+                    "entity_name": entity.name,
+                    "end_time": event_point.end_time,
                     "details":[]
                 }
 
             entity_same[entity.name].get("details").append({
-                "description": event_point.event_desc,
-                "eventName": event_point.event_name,
-                "lon": entity.longitude,
-                "lat": entity.latitude,
-                "timing": event_point.event_time
+                "event_point_description": event_point.event_desc,
+                "event_point_event_name": event_point.event_name,
+                "entity_lon": entity.longitude,
+                "entity_lat": entity.latitude,
+                "source": event_point.source,
+                "event_point_event_time": event_point.event_time
+
             })
         res = success_res(data=entity_same)
 
