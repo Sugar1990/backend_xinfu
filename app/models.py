@@ -1,8 +1,11 @@
+# -*- coding:utf-8 -*-
+# author: Scandium
+# work_location: Bei Jing
 import os
 from sqlalchemy.dialects.postgresql import JSONB
 import re
 from . import db
-from .conf import PLACE_BASE_NAME
+from .conf import PLACE_BASE_NAME, LOCAL_SOURCE
 
 
 class Entity(db.Model):
@@ -17,7 +20,7 @@ class Entity(db.Model):
     valid = db.Column(db.Integer)
     longitude = db.Column(db.Float)
     latitude = db.Column(db.Float)
-    _source = db.Column(db.String)
+    _source = db.Column(db.String, default = LOCAL_SOURCE)
     create_time = db.Column(db.TIMESTAMP)
     update_time = db.Column(db.TIMESTAMP)
 
@@ -82,7 +85,7 @@ class Document(db.Model):
     keywords = db.Column(db.JSON)
     md5 = db.Column(db.String)
     is_favorite = db.Column(db.Integer)
-    _source = db.Column(db.String)
+    _source = db.Column(db.String, default = LOCAL_SOURCE)
     html_path = db.Column(db.String)
     valid = db.Column(db.Integer)
 
@@ -113,7 +116,7 @@ class DocumentRecords(db.Model):
     create_by_uuid = db.Column(db.String)
     create_time = db.Column(db.TIMESTAMP)
     operate_type = db.Column(db.Integer)
-    _source = db.Column(db.String)
+    _source = db.Column(db.String, default = LOCAL_SOURCE)
 
     def __repr__(self):
         return '<DocumentRecords %r>' % self.doc_uuid
@@ -128,7 +131,7 @@ class Customer(db.Model):
     permission_id = db.Column(db.Integer)
     valid = db.Column(db.Integer)
     token = db.Column(db.String)
-    _source = db.Column(db.String)
+    _source = db.Column(db.String, default = LOCAL_SOURCE)
     # mark_doc_ids = db.Column(db.JSON)
     power_score = db.Column(db.Float)
     troop_number = db.Column(db.String)
@@ -164,7 +167,7 @@ class Catalog(db.Model):
     update_by_uuid = db.Column(db.String)
     update_time = db.Column(db.TIMESTAMP)
     tagging_tabs = db.Column(db.JSON)
-    _source = db.Column(db.String)
+    _source = db.Column(db.String, default = LOCAL_SOURCE)
     sort = db.Column(db.Integer)
 
     @staticmethod
@@ -239,7 +242,7 @@ class EntityCategory(db.Model):
     name = db.Column(db.Text)
     valid = db.Column(db.Integer)  # 取值0或1，0表示已删除，1表示正常
     type = db.Column(db.Integer)  # 1：实体（地名、国家、人物...）；2：概念（条约公约、战略、战法...）
-    _source = db.Column(db.String)
+    _source = db.Column(db.String, default = LOCAL_SOURCE)
     create_time = db.Column(db.TIMESTAMP)
     update_time = db.Column(db.TIMESTAMP)
 
@@ -270,7 +273,7 @@ class EventCategory(db.Model):
     name = db.Column(db.Text)
     event_class_uuid = db.Column(db.String)
     valid = db.Column(db.Integer)
-    _source = db.Column(db.String)
+    _source = db.Column(db.String, default = LOCAL_SOURCE)
     create_time = db.Column(db.TIMESTAMP)
     update_time = db.Column(db.TIMESTAMP)
 
@@ -285,7 +288,7 @@ class EventClass(db.Model):
     uuid = db.Column(db.String, primary_key=True)
     name = db.Column(db.Text)
     valid = db.Column(db.Integer)
-    _source = db.Column(db.String)
+    _source = db.Column(db.String, default = LOCAL_SOURCE)
     create_time = db.Column(db.TIMESTAMP)
     update_time = db.Column(db.TIMESTAMP)
 
@@ -307,7 +310,7 @@ class RelationCategory(db.Model):
     target_entity_category_uuids = db.Column(db.JSON)
     relation_name = db.Column(db.Text)
     valid = db.Column(db.Integer)
-    _source = db.Column(db.String)
+    _source = db.Column(db.String, default = LOCAL_SOURCE)
     create_time = db.Column(db.TIMESTAMP)
     update_time = db.Column(db.TIMESTAMP)
 
@@ -340,7 +343,9 @@ class DocMarkComment(db.Model):
     update_by_uuid = db.Column(db.String)
     update_time = db.Column(db.TIMESTAMP)
     valid = db.Column(db.Integer)
-    _source = db.Column(db.String)
+    _source = db.Column(db.String, default = LOCAL_SOURCE)
+    appear_index_in_text = db.Column(JSONB)
+    locate_position = db.Column(JSONB)
 
     def __repr__(self):
         return '<DocMarkComment %r>' % self.name
@@ -359,7 +364,7 @@ class DocMarkAdvise(db.Model):
     update_by_uuid = db.Column(db.String)
     update_time = db.Column(db.TIMESTAMP)
     valid = db.Column(db.Integer)
-    _source = db.Column(db.String)
+    _source = db.Column(db.String, default = LOCAL_SOURCE)
 
     def __repr__(self):
         return '<DocMarkAdvise %r>' % self.content
@@ -377,9 +382,11 @@ class DocMarkEntity(db.Model):
     create_time = db.Column(db.TIMESTAMP)
     update_by_uuid = db.Column(db.String)
     update_time = db.Column(db.TIMESTAMP)
+    appear_text = db.Column(db.String)
     appear_index_in_text = db.Column(db.JSON)
     valid = db.Column(db.Integer)
-    _source = db.Column(db.String)
+    _source = db.Column(db.String, default = LOCAL_SOURCE)
+    position = db.Column(JSONB)
 
     def __repr__(self):
         return '<DocMarkEntity %r>' % self.word
@@ -413,7 +420,8 @@ class DocMarkEvent(db.Model):
     update_time = db.Column(db.TIMESTAMP)
     add_time = db.Column(db.TIMESTAMP)
     valid = db.Column(db.Integer)
-    _source = db.Column(db.String)
+    _source = db.Column(db.String, default = LOCAL_SOURCE)
+    position = db.Column(JSONB)
 
     def get_subject_entity_names(self):
         subject_entity_names = []
@@ -468,10 +476,11 @@ class DocMarkPlace(db.Model):
     valid = db.Column(db.Integer)
     entity_or_sys = db.Column(db.Integer)
     appear_index_in_text = db.Column(db.JSON)
-    _source = db.Column(db.String)
+    _source = db.Column(db.String, default = LOCAL_SOURCE)
     word_count = db.Column(db.String)
     word_sentence = db.Column(db.String)
     source_type = db.Column(db.Integer)
+    position = db.Column(JSONB)
     def __repr__(self):
         return '<DocMarkPlace %r>' % self.uuid
 
@@ -494,7 +503,8 @@ class DocMarkTimeTag(db.Model):
     update_by_uuid = db.Column(db.String)
     update_time = db.Column(db.TIMESTAMP)
     appear_index_in_text = db.Column(db.JSON)
-    _source = db.Column(db.String)
+    _source = db.Column(db.String, default = LOCAL_SOURCE)
+    position = db.Column(JSONB)
 
     def __repr__(self):
         return '<DocMarkTimeTag %r>' % self.uuid
@@ -515,11 +525,12 @@ class DocMarkRelationProperty(db.Model):
     source_entity_uuid = db.Column(db.String)
     target_entity_uuid = db.Column(db.String)
     valid = db.Column(db.Integer)
-    _source = db.Column(db.String)
+    _source = db.Column(db.String, default = LOCAL_SOURCE)
     create_by_uuid = db.Column(db.String)
     create_time = db.Column(db.TIMESTAMP)
     update_by_uuid = db.Column(db.String)
     update_time = db.Column(db.TIMESTAMP)
+    position = db.Column(JSONB)
 
     def __repr__(self):
         return '<DocMarkRelationProperty %r>' % self.uuid
@@ -533,13 +544,71 @@ class DocMarkMind(db.Model):
     parent_uuid = db.Column(db.String)
     doc_uuid = db.Column(db.String)
     valid = db.Column(db.Integer)
-    _source = db.Column(db.String)
+    _source = db.Column(db.String, default = LOCAL_SOURCE)
     create_time = db.Column(db.TIMESTAMP)
     update_time = db.Column(db.TIMESTAMP)
+    position = db.Column(JSONB)
 
     def __repr__(self):
         return '<DocMarkMind %r>' % self.uuid
 
+
+class Schedule(db.Model):
+    __tablename__ = 'schedule'
+    __table_args__ = {"schema": "public"}
+    uuid = db.Column(db.String, primary_key=True)
+    description = db.Column(db.String)
+    start_time = db.Column(db.TIMESTAMP)
+    end_time = db.Column(db.TIMESTAMP)
+    customer_uuid = db.Column(db.String)
+    create_time = db.Column(db.TIMESTAMP)
+    update_time = db.Column(db.TIMESTAMP)
+    remind_time = db.Column(db.TIMESTAMP)
+    _source = db.Column(db.String, default = LOCAL_SOURCE)
+    valid = db.Column(db.Integer)
+
+    def __repr__(self):
+        return '<Schedule %r>' % self.uuid
+
+
+class EventTrack(db.Model):
+    __tablename__ = 'event_track'
+    __table_args__ = {"schema": "public"}
+    uuid = db.Column(db.String, primary_key=True)
+    title_name = db.Column(db.String)
+    _source = db.Column(db.String, default=LOCAL_SOURCE)
+    valid = db.Column(db.Integer)
+    create_time = db.Column(db.TIMESTAMP)
+    create_by_uuid = db.Column(db.String)
+    update_time = db.Column(db.TIMESTAMP)
+    update_by_uuid = db.Column(db.String)
+
+    def __repr__(self):
+        return '<Schedule %r>' % self.title_name
+
+
+class EventPoint(db.Model):
+    __tablename__ = 'event_point'
+    __table_args__ = {"schema": "public"}
+    uuid = db.Column(db.String, primary_key=True)
+    title_uuid = db.Column(db.String)
+    source = db.Column(db.String)
+    event_name = db.Column(db.String)
+    event_desc = db.Column(db.Text)
+    entity_uuid = db.Column(db.String)
+    longitude = db.Column(db.Float)
+    latitude = db.Column(db.Float)
+    event_time = db.Column(db.TIMESTAMP)
+    create_time = db.Column(db.TIMESTAMP)
+    create_by_uuid = db.Column(db.String)
+    update_time = db.Column(db.TIMESTAMP)
+    update_by_uuid = db.Column(db.String)
+    end_time = db.Column(db.String)
+    _source = db.Column(db.String, default=LOCAL_SOURCE)
+    valid = db.Column(db.Integer)
+
+    def __repr__(self):
+        return '<EventPoint %r>' % self.event_name
 
 class SyncRecords(db.Model):
     __tablename__ = 'sync_records'
@@ -589,10 +658,14 @@ class Es_controller():
         location_output = Entity.get_location_of_entity_name(place_name)
         return location_output
 
+
 import re
+
+
 def find_int_in_str(string):
     str_to_num = re.findall('(\d+)', string)[0]
     return int(str_to_num)
+
 
 def find_dfm(dfm_string):
     d_ = find_int_in_str(dfm_string.split("°")[0])
