@@ -10,6 +10,26 @@ from ..conf import PLACE_BASE_NAME
 import uuid
 
 # <editor-fold desc="实体类型，type=1：国家、地名、机构……">
+# 返回地名uuid
+@blue_print.route('/get_uuid_of_place_base_name', methods=['GET'])
+def get_uuid_of_place_base_name():
+    try:
+        category = EntityCategory.query.filter(EntityCategory.name == PLACE_BASE_NAME, EntityCategory.valid==1).first()
+        if category:
+            res = {
+                "uuid": category.uuid
+            }
+        else:
+            res = fail_res(msg="未找到地名uuid")
+    except Exception as e:
+        print(str(e))
+        res = {
+            "uuid": "-1"
+        }
+
+    return jsonify(res)
+
+
 # 查全集实体类型
 @blue_print.route('/get_entity_categories', methods=['GET'])
 def get_entity_categories():

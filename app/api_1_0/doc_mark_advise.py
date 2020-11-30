@@ -87,25 +87,22 @@ def get_doc_mark_advise_by_create_by_id():
             doc_mark_advises = DocMarkAdvise.query.filter_by(create_by_uuid=create_by_uuid, doc_uuid=doc_uuid, valid=1).all()
         else:
             doc_mark_advises = DocMarkAdvise.query.filter_by(doc_uuid=doc_uuid, valid=1).all()
-        if not doc_mark_advises:
-            res = []
-        else:
-            res = success_res(data=[{
-                "uuid": doc_mark_advise.uuid,
-                "doc_uuid": doc_mark_advise.doc_uuid,
-                "mark_uuid": doc_mark_advise.mark_uuid,
-                "type": doc_mark_advise.type,
-                "content": doc_mark_advise.content,
-                "create_by_uuid": doc_mark_advise.create_by_uuid,
-                "create_time": doc_mark_advise.create_time.strftime(
-                    "%Y-%m-%d %H:%M:%S") if doc_mark_advise.create_time else None,
-                "update_by_uuid": doc_mark_advise.update_by_uuid,
-                "update_time": doc_mark_advise.update_time.strftime(
-                    "%Y-%m-%d %H:%M:%S") if doc_mark_advise.update_time else None
-            } for doc_mark_advise in doc_mark_advises])
+        res = success_res(data=[{
+            "uuid": doc_mark_advise.uuid,
+            "doc_uuid": doc_mark_advise.doc_uuid,
+            "mark_uuid": doc_mark_advise.mark_uuid,
+            "type": doc_mark_advise.type,
+            "content": doc_mark_advise.content,
+            "create_by_uuid": doc_mark_advise.create_by_uuid,
+            "create_time": doc_mark_advise.create_time.strftime(
+                "%Y-%m-%d %H:%M:%S") if doc_mark_advise.create_time else None,
+            "update_by_uuid": doc_mark_advise.update_by_uuid,
+            "update_time": doc_mark_advise.update_time.strftime(
+                "%Y-%m-%d %H:%M:%S") if doc_mark_advise.update_time else None
+        } for doc_mark_advise in doc_mark_advises])
     except Exception as e:
         print(str(e))
-        res = []
+        res = fail_res(data=[])
 
     return jsonify(res)
 

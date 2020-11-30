@@ -1,4 +1,4 @@
-# -*- coding: UTF-8 -*-
+﻿# -*- coding: UTF-8 -*-
 import datetime
 import time
 import uuid
@@ -27,7 +27,7 @@ def get_doc_mark_place_by_doc_id():
             "place_lat": doc_mark_place.place_lat,
             "height": doc_mark_place.height,
             "unit": doc_mark_place.unit,
-            "dms": doc_mark_place.dms,
+            "dms": doc_mark_place.dms if doc_mark_place.dms else None,
             "distance": doc_mark_place.distance,
             "relation": doc_mark_place.relation,
             "create_by_uuid": doc_mark_place.create_by_uuid,
@@ -38,7 +38,7 @@ def get_doc_mark_place_by_doc_id():
                 "%Y-%m-%d %H:%M:%S") if doc_mark_place.update_time else None,
             "valid": doc_mark_place.valid,
             "entity_or_sys": doc_mark_place.entity_or_sys,
-            "appear_index_in_text": doc_mark_place.appear_index_in_text,
+            "appear_index_in_text": doc_mark_place.appear_index_in_text if doc_mark_place.appear_index_in_text else None,
             "word_count": doc_mark_place.word_count,
             "word_sentence": doc_mark_place.word_sentence,
             "source_type": doc_mark_place.source_type,
@@ -58,7 +58,7 @@ def get_one_doc_mark_place_by_id():
         doc_mark_place_uuid = request.args.get('uuid', None)
         doc_mark_place = DocMarkPlace.query.filter_by(uuid=doc_mark_place_uuid, valid=1).first()
         if doc_mark_place:
-            res = {
+            res =success_res({
             "uuid": doc_mark_place.uuid,
             "doc_uuid": doc_mark_place.doc_uuid,
             "word": doc_mark_place.word,
@@ -69,7 +69,7 @@ def get_one_doc_mark_place_by_id():
             "place_lat": doc_mark_place.place_lat,
             "height": doc_mark_place.height,
             "unit": doc_mark_place.unit,
-            "dms": doc_mark_place.dms,
+            "dms": doc_mark_place.dms if doc_mark_place.dms else None,
             "distance": doc_mark_place.distance,
             "relation": doc_mark_place.relation,
             "create_by_uuid": doc_mark_place.create_by_uuid,
@@ -80,14 +80,14 @@ def get_one_doc_mark_place_by_id():
                 '%Y-%m-%d %H:%M:%S') if doc_mark_place.update_time else None,
             "valid": doc_mark_place.valid,
             "entity_or_sys": doc_mark_place.entity_or_sys,
-            "appear_index_in_text": doc_mark_place.appear_index_in_text,
+            "appear_index_in_text": doc_mark_place.appear_index_in_text if doc_mark_place.appear_index_in_text else None,
             "word_count": doc_mark_place.word_count,
             "word_sentence": doc_mark_place.word_sentence,
             "source_type": doc_mark_place.source_type,
             "place_name": Entity.query.filter(Entity.uuid == doc_mark_place.place_uuid,
                                               Entity.valid == 1).first().name
             if Entity.query.filter(Entity.uuid == doc_mark_place.place_uuid, Entity.valid == 1).first() else ""
-        }
+        })
         else:
             res = fail_res(msg="地点信息不存在")
     except Exception as e:
@@ -103,7 +103,7 @@ def get_one_doc_mark_place_by_id():
             "place_lat": "",
             "height": "",
             "unit": "",
-            "dms": "",
+            "dms": None,
             "distance": 0.0,
             "relation": "",
             "create_by_uuid": "",
@@ -112,7 +112,7 @@ def get_one_doc_mark_place_by_id():
             "update_time": None,
             "valid": -1,
             "entity_or_sys": -1,
-            "appear_index_in_text": -1,
+            "appear_index_in_text": None,
             "word_count": "",
             "word_sentence": "",
             "source_type": "",
@@ -138,7 +138,7 @@ def get_one_doc_mark_place_by_doc_id():
                 "place_lat": doc_mark_place.place_lat,
                 "height": doc_mark_place.height,
                 "unit": doc_mark_place.unit,
-                "dms": doc_mark_place.dms,
+                "dms": doc_mark_place.dms if doc_mark_place.dms else None,
                 "distance": doc_mark_place.distance,
                 "relation": doc_mark_place.relation,
                 "create_by_uuid": doc_mark_place.create_by_uuid,
@@ -149,7 +149,7 @@ def get_one_doc_mark_place_by_doc_id():
                     "%Y-%m-%d %H:%M:%S") if doc_mark_place.update_time else None,
                 "valid": doc_mark_place.valid,
                 "entity_or_sys": doc_mark_place.entity_or_sys,
-                "appear_index_in_text": doc_mark_place.appear_index_in_text,
+                "appear_index_in_text": doc_mark_place.appear_index_in_text if doc_mark_place.appear_index_in_text else None,
                 "word_count": doc_mark_place.word_count,
                 "word_sentence": doc_mark_place.word_sentence,
                 "source_type": doc_mark_place.source_type,
@@ -172,7 +172,7 @@ def get_one_doc_mark_place_by_doc_id():
             "place_lat": "",
             "height": "",
             "unit": "",
-            "dms": "",
+            "dms": None,
             "distance": 0.0,
             "relation": "",
             "create_by_uuid": "",
@@ -181,7 +181,7 @@ def get_one_doc_mark_place_by_doc_id():
             "update_time": None,
             "valid": -1,
             "entity_or_sys": -1,
-            "appear_index_in_text": [],
+            "appear_index_in_text": None,
             "word_count": "",
             "word_sentence": "",
             "source_type": "",
@@ -214,22 +214,13 @@ def add_doc_mark_place():
         word_count = request.json.get('word_count', '')
         word_sentence = request.json.get('word_sentence', '')
         source_type = request.json.get('source_type', 0)
+        position = request.json.get('position', [])
         if not isinstance(dms, list):
             res = fail_res(msg="dms参数格式错误!")
         if not isinstance(appear_index_in_text, list):
             res = fail_res(msg="appear_index_in_text参数格式错误!")
         else:
-            doc_mark_place = DocMarkPlace.query.filter_by(doc_uuid=doc_uuid, word=word, type=type,
-                                                          place_uuid=place_uuid,
-                                                          direction=direction, place_lon=place_lon, place_lat=place_lat,
-                                                          height=height, unit=unit, dms=dms, distance=distance,
-                                                          relation=relation, create_by_uuid=create_by_uuid,
-                                                          create_time=create_time,
-                                                          update_by_uuid=update_by_uuid, update_time=update_time,
-                                                          entity_or_sys=entity_or_sys,
-                                                          appear_index_in_text=appear_index_in_text,
-                                                          word_count=word_count, word_sentence=word_sentence,
-                                                          source_type=source_type, valid=1).first()
+            doc_mark_place = DocMarkPlace.query.filter_by(doc_uuid=doc_uuid, word=word, valid=1).first()
             if doc_mark_place:
                 res = fail_res(msg="文档标记地点已存在!")
             else:
@@ -243,7 +234,7 @@ def add_doc_mark_place():
                                             appear_index_in_text=appear_index_in_text,
                                             entity_or_sys=entity_or_sys, word_count=word_count,
                                             word_sentence=word_sentence,
-                                            source_type=source_type, valid=1)
+                                            source_type=source_type, valid=1, position=position)
                 db.session.add(docMarkPlace)
                 db.session.commit()
                 res = success_res(data={"uuid": docMarkPlace.uuid})
@@ -279,6 +270,7 @@ def modify_doc_mark_place():
         word_count = request.json.get('word_count', '')
         word_sentence = request.json.get('word_sentence', '')
         source_type = request.json.get('source_type', 0)
+        position = request.json.get('position', [])
 
         if not isinstance(dms, list):
             res = fail_res(msg="dms参数格式错误!")
@@ -343,6 +335,8 @@ def modify_doc_mark_place():
                         doc_mark_place.word_sentence = word_sentence
                     if source_type:
                         doc_mark_place.source_type = source_type
+                    if position:
+                        doc_mark_place.position = position
                     db.session.commit()
                     res = success_res()
             else:
@@ -393,7 +387,7 @@ def get_doc_mark_place_by_word():
                 "place_lat": doc_mark_place.place_lat,
                 "height": doc_mark_place.height,
                 "unit": doc_mark_place.unit,
-                "dms": doc_mark_place.dms,
+                "dms": doc_mark_place.dms if doc_mark_place.dms else None,
                 "distance": doc_mark_place.distance,
                 "relation": doc_mark_place.relation,
                 "create_by_uuid": doc_mark_place.create_by_uuid,
@@ -404,7 +398,7 @@ def get_doc_mark_place_by_word():
                     "%Y-%m-%d %H:%M:%S") if doc_mark_place.update_time else None,
                 "valid": doc_mark_place.valid,
                 "entity_or_sys": doc_mark_place.entity_or_sys,
-                "appear_index_in_text": doc_mark_place.appear_index_in_text,
+                "appear_index_in_text": doc_mark_place.appear_index_in_text if doc_mark_place.appear_index_in_text else None,
                 "word_count": doc_mark_place.word_count,
                 "word_sentence": doc_mark_place.word_sentence,
                 "source_type": doc_mark_place.source_type,
@@ -440,7 +434,7 @@ def get_doc_mark_place():
             "place_lat": doc_mark_place.place_lat,
             "height": doc_mark_place.height,
             "unit": doc_mark_place.unit,
-            "dms": doc_mark_place.dms,
+            "dms": doc_mark_place.dms if doc_mark_place.dms else None,
             "distance": doc_mark_place.distance,
             "relation": doc_mark_place.relation,
             "create_by_uuid": doc_mark_place.create_by_uuid,
@@ -451,7 +445,7 @@ def get_doc_mark_place():
                 "%Y-%m-%d %H:%M:%S") if doc_mark_place.update_time else None,
             "valid": doc_mark_place.valid,
             "entity_or_sys": doc_mark_place.entity_or_sys,
-            "appear_index_in_text": doc_mark_place.appear_index_in_text,
+            "appear_index_in_text": doc_mark_place.appear_index_in_text if doc_mark_place.appear_index_in_text else None,
             "word_count": doc_mark_place.word_count,
             "word_sentence": doc_mark_place.word_sentence,
             "source_type": doc_mark_place.source_type,
@@ -488,7 +482,7 @@ def get_doc_mark_place_by_types():
             "place_lat": doc_mark_place.place_lat,
             "height": doc_mark_place.height,
             "unit": doc_mark_place.unit,
-            "dms": doc_mark_place.dms,
+            "dms": doc_mark_place.dms if doc_mark_place.dms else None,
             "distance": doc_mark_place.distance,
             "relation": doc_mark_place.relation,
             "create_by_uuid": doc_mark_place.create_by_uuid,
@@ -499,7 +493,7 @@ def get_doc_mark_place_by_types():
                 "%Y-%m-%d %H:%M:%S") if doc_mark_place.update_time else None,
             "valid": doc_mark_place.valid,
             "entity_or_sys": doc_mark_place.entity_or_sys,
-            "appear_index_in_text": doc_mark_place.appear_index_in_text,
+            "appear_index_in_text": doc_mark_place.appear_index_in_text if doc_mark_place.appear_index_in_text else None,
             "word_count": doc_mark_place.word_count,
             "word_sentence": doc_mark_place.word_sentence,
             "source_type": doc_mark_place.source_type,
@@ -533,7 +527,7 @@ def get_doc_mark_place_by_ids():
             "place_lat": doc_mark_place.place_lat,
             "height": doc_mark_place.height,
             "unit": doc_mark_place.unit,
-            "dms": doc_mark_place.dms,
+            "dms": doc_mark_place.dms if doc_mark_place.dms else None,
             "distance": doc_mark_place.distance,
             "relation": doc_mark_place.relation,
             "create_by_uuid": doc_mark_place.create_by_uuid,
@@ -544,7 +538,7 @@ def get_doc_mark_place_by_ids():
                 "%Y-%m-%d %H:%M:%S") if doc_mark_place.update_time else None,
             "valid": doc_mark_place.valid,
             "entity_or_sys": doc_mark_place.entity_or_sys,
-            "appear_index_in_text": doc_mark_place.appear_index_in_text,
+            "appear_index_in_text": doc_mark_place.appear_index_in_text if doc_mark_place.appear_index_in_text else None,
             "word_count": doc_mark_place.word_count,
             "word_sentence": doc_mark_place.word_sentence,
             "source_type": doc_mark_place.source_type,
@@ -576,7 +570,7 @@ def get_doc_mark_place_all():
             "place_lat": doc_mark_place.place_lat,
             "height": doc_mark_place.height,
             "unit": doc_mark_place.unit,
-            "dms": doc_mark_place.dms,
+            "dms": doc_mark_place.dms if doc_mark_place.dms else None,
             "distance": doc_mark_place.distance,
             "relation": doc_mark_place.relation,
             "create_by_uuid": doc_mark_place.create_by_uuid,
@@ -587,7 +581,7 @@ def get_doc_mark_place_all():
                 "%Y-%m-%d %H:%M:%S") if doc_mark_place.update_time else None,
             "valid": doc_mark_place.valid,
             "entity_or_sys": doc_mark_place.entity_or_sys,
-            "appear_index_in_text": doc_mark_place.appear_index_in_text,
+            "appear_index_in_text": doc_mark_place.appear_index_in_text if doc_mark_place.appear_index_in_text else None,
             "word_count": doc_mark_place.word_count,
             "word_sentence": doc_mark_place.word_sentence,
             "source_type": doc_mark_place.source_type,
@@ -641,7 +635,7 @@ def get_doc_mark_place_by_place_uuids():
             "place_lat": doc_mark_place.place_lat,
             "height": doc_mark_place.height,
             "unit": doc_mark_place.unit,
-            "dms": doc_mark_place.dms,
+            "dms": doc_mark_place.dms if doc_mark_place.dms else None,
             "distance": doc_mark_place.distance,
             "relation": doc_mark_place.relation,
             "create_by_uuid": doc_mark_place.create_by_uuid,
@@ -652,7 +646,7 @@ def get_doc_mark_place_by_place_uuids():
                 "%Y-%m-%d %H:%M:%S") if doc_mark_place.update_time else None,
             "valid": doc_mark_place.valid,
             "entity_or_sys": doc_mark_place.entity_or_sys,
-            "appear_index_in_text": doc_mark_place.appear_index_in_text,
+            "appear_index_in_text": doc_mark_place.appear_index_in_text if doc_mark_place.appear_index_in_text else None,
             "word_count": doc_mark_place.word_count,
             "word_sentence": doc_mark_place.word_sentence,
             "source_type": doc_mark_place.source_type,
@@ -660,6 +654,25 @@ def get_doc_mark_place_by_place_uuids():
                                               Entity.valid == 1).first().name
             if Entity.query.filter(Entity.uuid == doc_mark_place.place_uuid, Entity.valid == 1).first() else ""
         } for doc_mark_place in doc_mark_places])
+
+    except Exception as e:
+        print(str(e))
+        res = fail_res(data=[])
+    return jsonify(res)
+
+
+#根据标注词和doc_uuid获取是否被标注
+@blue_print.route('/get_doc_mark_place_by_word_and_doc_id', methods=['GET'])
+def get_doc_mark_place_by_word_and_doc_id():
+    try:
+        doc_mark_place_doc_uuid = request.args.get('doc_uuid', None)
+        doc_mark_place_word = request.args.get('word', '')
+        doc_mark_place = DocMarkPlace.query.filter_by(doc_uuid=doc_mark_place_doc_uuid,
+                                                       word=doc_mark_place_word, valid=1).first()
+        if doc_mark_place:
+            res = success_res(data={"flag": 1})
+        else:
+            res = fail_res(data={"flag": 0}, msg="标注地点信息不存在！")
 
     except Exception as e:
         print(str(e))

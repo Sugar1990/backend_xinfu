@@ -205,7 +205,7 @@ def get_favorite_files():
 
     try:
         docs = Document.query.all()
-        customer = Customer.query.filter_by(uuid=customer_uuid).first()
+        customer = Customer.query.filter_by(uuid=customer_uuid,valid=1).first()
 
         if not customer:
             res = fail_res(msg="无效用户")
@@ -244,7 +244,7 @@ def get_catalog_files():
     customer_uuid = request.args.get("customer_uuid", None)
 
     try:
-        docs = Document.query.filter_by(catalog_uuid=catalog_uuid).all()
+        docs = Document.query.filter_by(catalog_uuid=catalog_uuid,valid=1).all()
         customer = Customer.query.filter_by(uuid=customer_uuid).first()
         catalogs = Catalog.query.filter_by(parent_uuid=catalog_uuid).all()
 
@@ -260,6 +260,7 @@ def get_catalog_files():
                         doc_json["uuid"] = d.uuid
                         doc_json["name"] = d.name
                         doc_json["create_time"] = d.create_time
+                        doc_json["_source"] = d._source
                         doc_json["create_username"] = Customer.get_username_by_id(d.create_by_uuid)
                         doc_json["extension"] = d.category.replace('\n\"', "")
                         doc_json["tag_flag"] = 1 if d.status == 1 else 0
@@ -374,7 +375,7 @@ def modify_catalog():
     tabs = request.json.get('tabs', [])
     sort = request.json.get('sort')
     try:
-        catalog = Catalog.query.filter_by(uuid=catalog_uuid).first()
+        catalog = Catalog.query.filter_by(uuid=catalog_uuid,valid=1).first()
         if catalog:
             catalog_same = Catalog.query.filter(
                 and_(Catalog.name == name, Catalog.parent_uuid == parent_uuid, Catalog.uuid != catalog_uuid)).first()

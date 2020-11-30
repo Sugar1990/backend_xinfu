@@ -2,7 +2,7 @@
 from flask import jsonify, request
 from sqlalchemy import or_, and_
 from . import api_doc_mark_entity as blue_print
-from ..models import DocMarkEntity, Entity
+from ..models import DocMarkEntity, Entity, EntityCategory
 from .. import db
 from .utils import success_res, fail_res
 import time
@@ -30,7 +30,8 @@ def get_doc_mark_entity_by_id():
                 "update_time": doc_mark_entity.update_time.strftime(
                     "%Y-%m-%d %H:%M:%S") if doc_mark_entity.update_time else None,
                 "entity_type_uuid": Entity.get_category_id(doc_mark_entity.entity_uuid),
-                "appear_index_in_text": doc_mark_entity.appear_index_in_text
+                "appear_index_in_text": doc_mark_entity.appear_index_in_text,
+                "appear_text" : doc_mark_entity.appear_text
             })
         else:
             res = fail_res(msg="实体数据不存在")
@@ -48,7 +49,8 @@ def get_doc_mark_entity_by_id():
             "update_by_uuid": '',
             "update_time": None,
             "entity_type_uuid": '',
-            "appear_index_in_text": []
+            "appear_index_in_text": [],
+            "appear_text": ""
         })
 
     return jsonify(res)
@@ -58,9 +60,45 @@ def get_doc_mark_entity_by_id():
 @blue_print.route('/get_doc_mark_entity_by_doc_id', methods=['GET'])
 def get_doc_mark_entity_by_doc_id():
     try:
+
         doc_uuid = request.args.get("doc_uuid", None)
         doc_mark_entity_list = DocMarkEntity.query.filter_by(doc_uuid=doc_uuid, valid=1).all()
+        data = []
+        for doc_mark_entity in doc_mark_entity_list:
+            entity_category = EntityCategory.query.filter_by(
+                uuid=Entity.get_category_id(doc_mark_entity.entity_uuid)).first()
 
+            doc_mark_entity_res = {
+                "uuid": doc_mark_entity.uuid,
+                "doc_uuid": doc_mark_entity.doc_uuid,
+                "word": doc_mark_entity.word,
+                "entity_uuid": doc_mark_entity.entity_uuid,
+                "source": doc_mark_entity.source,
+                "create_by_uuid": doc_mark_entity.create_by_uuid,
+                "create_time": doc_mark_entity.create_time.strftime(
+                    "%Y-%m-%d %H:%M:%S") if doc_mark_entity.create_time else None,
+                "update_by_uuid": doc_mark_entity.create_by_uuid,
+                "update_time": doc_mark_entity.update_time.strftime(
+                    "%Y-%m-%d %H:%M:%S") if doc_mark_entity.update_time else None,
+                "entity_type_uuid": Entity.get_category_id(doc_mark_entity.entity_uuid),
+                "appear_index_in_text": doc_mark_entity.appear_index_in_text,
+                "type": entity_category.type  # 1代表普通实体，2代表是概念
+            }
+            data.append(doc_mark_entity_res)
+        res = success_res(data=data)
+
+    except Exception as e:
+        print(str(e))
+        res = fail_res(data=[])
+
+    return jsonify(res)
+
+
+# 查询全部
+@blue_print.route('/get_doc_mark_entity_all', methods=['GET'])
+def get_doc_mark_entity_all():
+    try:
+        doc_mark_entity_list = DocMarkEntity.query.filter_by(valid=1).all()
         res = success_res(data=[{
             "uuid": i.uuid,
             "doc_uuid": i.doc_uuid,
@@ -74,6 +112,7 @@ def get_doc_mark_entity_by_doc_id():
             "entity_type_uuid": Entity.get_category_id(i.entity_uuid),
             "appear_index_in_text": i.appear_index_in_text
         } for i in doc_mark_entity_list])
+        # res = success_res(data=res)
 
     except Exception as e:
         print(str(e))
@@ -95,6 +134,8 @@ def add_doc_mark_entity():
         update_by_uuid = request.json.get("update_by_uuid", None)
         update_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         appear_index_in_text = request.json.get("appear_index_in_text", [])
+        appear_text = request.json.get("appear_text", "")
+        position = request.json.get("position", [])
 
         doc_mark_entity_same = DocMarkEntity.query.filter_by(doc_uuid=doc_uuid, word=word,
                                                              entity_uuid=entity_uuid, valid=1).first()
@@ -104,8 +145,8 @@ def add_doc_mark_entity():
             doc_mark_entity = DocMarkEntity(uuid=uuid.uuid1(),doc_uuid=doc_uuid, word=word, entity_uuid=entity_uuid, source=source,
                                             create_by_uuid=create_by_uuid, create_time=create_time,
                                             update_by_uuid=update_by_uuid, update_time=update_time,
-                                            appear_index_in_text=appear_index_in_text,
-                                            valid=1)
+                                            appear_index_in_text=appear_index_in_text, appear_text=appear_text,
+                                            position=position, valid=1)
             db.session.add(doc_mark_entity)
             db.session.commit()
             res = success_res(data={"uuid": doc_mark_entity.uuid})
@@ -132,9 +173,10 @@ def modify_doc_mark_entity():
         update_by_uuid = request.json.get("update_by_uuid", None)
         update_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         appear_index_in_text = request.json.get("appear_index_in_text", [])
-
+        appear_text = request.json.get("appear_text", "")
+        position = request.json.get("position", [])
         doc_mark_entity_same = DocMarkEntity.query.filter_by(doc_uuid=doc_uuid, word=word,
-                                                             entity_uuid=entity_uuid, valid=1).first()
+                                                           entity_uuid=entity_uuid, valid=1).first()
         if doc_mark_entity_same:
             res = fail_res(msg="相同标注实体已存在")
         else:
@@ -158,6 +200,10 @@ def modify_doc_mark_entity():
                     doc_mark_entity.update_time = update_time
                 if appear_index_in_text:
                     doc_mark_entity.appear_index_in_text = appear_index_in_text
+                if appear_text:
+                    doc_mark_entity.appear_text = appear_text
+                if position:
+                    doc_mark_entity.position = position
                 db.session.commit()
                 res = success_res()
             else:
@@ -189,3 +235,54 @@ def delete_doc_mark_entity_by_id():
         res = fail_res()
 
     return jsonify(res)
+
+
+#根据标注词和doc_uuid获取是否被标注
+@blue_print.route('/get_doc_mark_entity_by_word_and_doc_id', methods=['GET'])
+def get_doc_mark_entity_by_word_and_doc_id():
+    try:
+        doc_mark_entity_doc_uuid = request.args.get('doc_uuid', None)
+        doc_mark_entity_word = request.args.get('word', '')
+        doc_mark_entity = DocMarkEntity.query.filter_by(doc_uuid=doc_mark_entity_doc_uuid,
+                                                       word=doc_mark_entity_word, valid=1).first()
+        if doc_mark_entity:
+            res = success_res(data={"flag": 1})
+        else:
+            res = fail_res(data={"flag": 0}, msg="标注实体信息不存在！")
+
+    except Exception as e:
+        print(str(e))
+        res = fail_res(data=[])
+    return jsonify(res)
+
+
+# 按doc_id和entity_id查询
+@blue_print.route('/get_doc_mark_entity_by_doc_id_and_entity_id', methods=['GET'])
+def get_doc_mark_entity_by_doc_id_and_entity_id():
+    try:
+        doc_uuid = request.args.get("doc_uuid", None)
+        entity_uuid = request.args.get("entity_uuid", None)
+        doc_mark_entity_list = DocMarkEntity.query.filter_by(doc_uuid=doc_uuid, entity_uuid=entity_uuid, valid=1).all()
+
+        res = success_res(data=[{
+            "uuid": i.uuid,
+            "doc_uuid": i.doc_uuid,
+            "word": i.word,
+            "entity_uuid": i.entity_uuid,
+            "source": i.source,
+            "create_by_uuid": i.create_by_uuid,
+            "create_time": i.create_time.strftime("%Y-%m-%d %H:%M:%S") if i.create_time else None,
+            "update_by_uuid": i.create_by_uuid,
+            "update_time": i.update_time.strftime("%Y-%m-%d %H:%M:%S") if i.update_time else None,
+            "entity_type_uuid": Entity.get_category_id(i.entity_uuid),
+            "appear_index_in_text": i.appear_index_in_text
+        } for i in doc_mark_entity_list])
+
+    except Exception as e:
+        print(str(e))
+        res = fail_res(data=[])
+
+    return jsonify(res)
+
+
+

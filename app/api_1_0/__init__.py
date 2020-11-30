@@ -23,6 +23,10 @@ api_doc_mark_relation_property= Blueprint('doc_mark_relation_property', __name__
 api_doc_mark_advise= Blueprint('doc_mark_advise', __name__)
 api_doc_mark_relation_property = Blueprint('doc_mark_relation_property', __name__)
 api_sync_offline = Blueprint('sync_offline', __name__)
+api_ar_collection_service = Blueprint('ar_collection_service', __name__)
+api_schedule = Blueprint('schedule', __name__)
+api_event_track = Blueprint('event_track', __name__)
+api_event_point = Blueprint('event_point', __name__)
 
 from . import document
 from . import entity
@@ -46,3 +50,7 @@ from . import doc_mark_mind
 from . import doc_mark_relation_property
 from . import doc_mark_advise
 from . import sync_offline
+from . import ar_collection_service
+from . import schedule
+from . import event_track
+from . import event_point
