@@ -58,4 +58,6 @@ LOCAL_PORT = os.getenv('LOCAL_PORT', 8088)
 TAG_TABS = os.getenv('TAG_TABS', "{\"实体标注\":1,\"时间标注\":2,\"地点标注\":3,\"关系标注\":4,\"事件标注\":5,\"批注\":6,\"思维导图\":7,\"实体概念\":8}")
 MIN_PRICISE_OF_PERMSSION = 0.0000001
 
+LOCAL_SOURCE = os.getenv('LOCAL_SOURCE', "在线")
+
 LOCAL_SOURCE = os.getenv('LOCAL_SOURCE', "离线")

@@ -610,6 +610,63 @@ class EventPoint(db.Model):
     def __repr__(self):
         return '<EventPoint %r>' % self.event_name
 
+class Schedule(db.Model):
+    __tablename__ = 'schedule'
+    __table_args__ = {"schema": "public"}
+    uuid = db.Column(db.String, primary_key=True)
+    description = db.Column(db.String)
+    start_time = db.Column(db.TIMESTAMP)
+    end_time = db.Column(db.TIMESTAMP)
+    customer_uuid = db.Column(db.String)
+    create_time = db.Column(db.TIMESTAMP)
+    update_time = db.Column(db.TIMESTAMP)
+    remind_time = db.Column(db.TIMESTAMP)
+    _source = db.Column(db.String, default = LOCAL_SOURCE)
+    valid = db.Column(db.Integer)
+
+    def __repr__(self):
+        return '<Schedule %r>' % self.uuid
+
+
+class EventTrack(db.Model):
+    __tablename__ = 'event_track'
+    __table_args__ = {"schema": "public"}
+    uuid = db.Column(db.String, primary_key=True)
+    title_name = db.Column(db.String)
+    _source = db.Column(db.String, default=LOCAL_SOURCE)
+    valid = db.Column(db.Integer)
+    create_time = db.Column(db.TIMESTAMP)
+    create_by_uuid = db.Column(db.String)
+    update_time = db.Column(db.TIMESTAMP)
+    update_by_uuid = db.Column(db.String)
+
+    def __repr__(self):
+        return '<EventTrack %r>' % self.title_name
+
+
+class EventPoint(db.Model):
+    __tablename__ = 'event_point'
+    __table_args__ = {"schema": "public"}
+    uuid = db.Column(db.String, primary_key=True)
+    title_uuid = db.Column(db.String)
+    source = db.Column(db.String)
+    event_name = db.Column(db.String)
+    event_desc = db.Column(db.Text)
+    entity_uuid = db.Column(db.String)
+    longitude = db.Column(db.Float)
+    latitude = db.Column(db.Float)
+    event_time = db.Column(db.JSON)
+    create_time = db.Column(db.TIMESTAMP)
+    create_by_uuid = db.Column(db.String)
+    update_time = db.Column(db.TIMESTAMP)
+    update_by_uuid = db.Column(db.String)
+    end_time = db.Column(db.String)
+    _source = db.Column(db.String, default=LOCAL_SOURCE)
+    valid = db.Column(db.Integer)
+
+    def __repr__(self):
+        return '<EventPoint %r>' % self.event_name
+
 class SyncRecords(db.Model):
     __tablename__ = 'sync_records'
     __table_args__ = {"schema": "public"}
