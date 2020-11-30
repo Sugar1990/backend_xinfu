@@ -5,20 +5,6 @@ alter sequence sequence_name restart with 1000
 -- 验证
 SELECT nextval('sequence_name');
 
-select nextval('catalog_id_seq');
-select nextval('customer_id_seq');
-select nextval('document_id_seq');
-select nextval('document_records_id_seq');
-select nextval('entity_serial_id_seq');
-select nextval('entity_category_id_seq');
-select nextval('event_category_id_seq');
-select nextval('event_class_id_seq');
-select nextval('permission_id_seq');
-select nextval('relation_category_id_seq');
-
--- alter SEQUENCE entity_serial_id_seq restart with 34765;
-
-
 
 # 防火墙与docker冲突
 firewall-cmd --permanent --zone=trusted --change-interface=br-71dad0833ad5
@@ -29,16 +15,8 @@ pre_feature	    172.11.0.4	    10002
 pre_keyphrase	172.11.0.5	    10003
 web		        172.11.0.6	    8088
 elastic		    172.11.0.7\8\9	9200    (10-12 in 2.158)
-jieba_defined   172.11.0.14
-jieba_pure      172.11.0.15
-mysql           172.11.0.20     3306
+arango		    172.11.0.14		8529
 etl		        172.11.0.21	    6789
-mongodb         172.11.0.22     27017
-mongodb         172.11.0.23     10006
-neo4j_db        172.11.0.24     7474/7687
-neo4j_service   172.11.0.25     5008
-
-
 
 
  1002  firewall-cmd --zone=public --list-ports
