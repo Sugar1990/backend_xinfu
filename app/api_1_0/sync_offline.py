@@ -1912,7 +1912,62 @@ def sync_source():
 
         # </editor-fold>
 
-        # print(res_records)
+        # <editor-fold desc="sync_offline of Schedule">
+        # 定义模型类
+        try:
+            class Schedule(Target_Base):  # 自动加载表结构
+                __tablename__ = 'schedule'
+                uuid = db.Column(db.String, primary_key=True)
+                description = db.Column(db.String)
+                start_time = db.Column(db.TIMESTAMP)
+                end_time = db.Column(db.TIMESTAMP)
+                customer_uuid = db.Column(db.String)
+                create_time = db.Column(db.TIMESTAMP)
+                update_time = db.Column(db.TIMESTAMP)
+                remind_time = db.Column(db.TIMESTAMP)
+                _source = db.Column(db.String, default=LOCAL_SOURCE)
+                valid = db.Column(db.Integer)
+
+                def __repr__(self):
+                    return '<Schedule %r>' % self.uuid
+
+            class OfflineSchedule(Base):  # 自动加载表结构
+                __tablename__ = 'schedule'
+                uuid = db.Column(db.String, primary_key=True)
+                description = db.Column(db.String)
+                start_time = db.Column(db.TIMESTAMP)
+                end_time = db.Column(db.TIMESTAMP)
+                customer_uuid = db.Column(db.String)
+                create_time = db.Column(db.TIMESTAMP)
+                update_time = db.Column(db.TIMESTAMP)
+                remind_time = db.Column(db.TIMESTAMP)
+                _source = db.Column(db.String, default=LOCAL_SOURCE)
+                valid = db.Column(db.Integer)
+
+                def __repr__(self):
+                    return '<Schedule %r>' % self.uuid
+
+            # 更新customer_uuid
+            schedules_in_offline = dbsession.query(OfflineSchedule).filter(
+                OfflineSchedule.create_time > sync_time).all()
+            # 更新customer_uuid
+            for i in schedules_in_offline:
+                i.customer_uuid = customer_uuid_dict_trans.get(i.customer_uuid)
+
+            # 同步document_records_in_offline
+            sync_schedules = [
+                Schedule(uuid=i.uuid, description=i.description, start_time=i.start_time, end_time=i.end_time,
+                         customer_uuid=i.customer_uuid, create_time=i.create_time, update_time=i.update_time,
+                         remind_time=i.remind_time, _source=i._source, valid=1) for i in schedules_in_offline]
+            target_dbsession.add_all(sync_schedules)
+            target_dbsession.commit()
+            res_records.append(
+                f"日程表同步完成！新增{len(sync_schedules)}条数据。")
+        except Exception as e:
+            print(str(e))
+            target_dbsession.rollback()
+            res_records.append("日程表同步失败！")
+        # </editor-fold>
 
         try:
             print("es arango")
@@ -1941,6 +1996,12 @@ def sync_source():
             print('数据同步es、arango成功')
         except Exception as e:
             print(str(e))
+
+        # 同步yc redis
+        header = {"Content-Type": "application/json; charset=UTF-8"}
+        url = "http://{}:{}".format(LOCAL_IP, '10001') + '/entity/post_json_data_path_to_yc'
+        result = requests.post(url=url, headers=header)
+        print(json.loads(result.text))
 
         res = success_res(data=res_records)
 
