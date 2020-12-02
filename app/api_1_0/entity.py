@@ -374,62 +374,70 @@ def delete_entity():
 # @swag_from(delete_entity_by_ids_dict)
 def delete_entity_by_ids():
     try:
-        uuids = request.json.get('uuids')
-        entity = db.session.query(Entity).filter(Entity.uuid.in_(uuids), Entity.valid == 1).all()
-        valid_uuids = []
-        # feedback = set()
-        for uni_entity in entity:
-            try:
-                # category_place = EntityCategory.query.filter_by(id=uni_entity.category_id, valid=1).first()
-                # if category_place.name == PLACE_BASE_NAME:
-                #     feedback.add(PLACE_BASE_NAME)
-                # else:
+        uuids = request.json.get('uuids', [])
+        if uuids:
+            entity = db.session.query(Entity).filter(Entity.uuid.in_(uuids), Entity.valid == 1).all()
+            valid_uuids = []
+            # feedback = set()
+            if entity:
+                for uni_entity in entity:
+                    try:
+                        # category_place = EntityCategory.query.filter_by(id=uni_entity.category_id, valid=1).first()
+                        # if category_place.name == PLACE_BASE_NAME:
+                        #     feedback.add(PLACE_BASE_NAME)
+                        # else:
 
-                # <editor-fold desc="yc del entity">
-                sync_yc_del_name(uni_entity.name, uni_entity.id, uni_entity.get_yc_mark_category())
-                if uni_entity.synonyms:
-                    sync_yc_del_synonyms(uni_entity.synonyms, uni_entity.id, uni_entity.get_yc_mark_category())
-                # </editor-fold>
+                        # <editor-fold desc="yc del entity">
+                        sync_yc_del_name(uni_entity.name, uni_entity.id, uni_entity.get_yc_mark_category())
+                        if uni_entity.synonyms:
+                            sync_yc_del_synonyms(uni_entity.synonyms, uni_entity.id, uni_entity.get_yc_mark_category())
+                        # </editor-fold>
 
-                valid_uuids.append(uni_entity.uuid)
-                uni_entity.valid = 0
-                category_place = EntityCategory.query.filter_by(uuid=uni_entity.category_uuid, valid=1).first()
-                if category_place.name == PLACE_BASE_NAME:
-                    doc_mark_place = DocMarkPlace.query.filter_by(place_uuid=uni_entity.uuid, valid=1).all()
-                    for place_item in doc_mark_place:
-                        place_item.valid = 0
-                else:
-                    doc_mark_entity = DocMarkEntity.query.filter_by(entity_uuid=uni_entity.uuid, valid=1).all()
-                    for entity_item in doc_mark_entity:
-                        entity_item.valid = 0
-                # feedback.add(category_place.name)
-                res = success_res()
-            except:
-                pass
-        # db.session.commit()
+                        valid_uuids.append(uni_entity.uuid)
+                        uni_entity.valid = 0
+                        category_place = EntityCategory.query.filter_by(uuid=uni_entity.category_uuid, valid=1).first()
+                        if category_place.name == PLACE_BASE_NAME:
+                            doc_mark_place = DocMarkPlace.query.filter_by(place_uuid=uni_entity.uuid, valid=1).all()
+                            for place_item in doc_mark_place:
+                                place_item.valid = 0
+                        else:
+                            doc_mark_entity = DocMarkEntity.query.filter_by(entity_uuid=uni_entity.uuid, valid=1).all()
+                            for entity_item in doc_mark_entity:
+                                entity_item.valid = 0
+                        # feedback.add(category_place.name)
+                        res = success_res()
+                    except Exception as e:
+                        res = fail_res(msg=str(e))
+            else:
+                res = fail_res(msg="对应实体不存在")
 
-        url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
-        for uuid in valid_uuids:
-            search_json = {
-                'uuid': {'type': 'term', 'value': str(uuid)}}
-            header_es = {"Content-Type": "application/json; charset=UTF-8"}
-            es_id_para = {"search_index": "entity", "search_json": search_json}
-            search_result = requests.post(url + '/searchId', data=json.dumps(es_id_para), headers=header_es)
-            try:
-                es_id = [search_result.json()['data']['dataList'][0]]
+            # db.session.commit()
+            print("a")
 
-            except:
-                es_id = []
+            url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+            for uuid in valid_uuids:
+                search_json = {
+                    'uuid': {'type': 'term', 'value': str(uuid)}}
+                header_es = {"Content-Type": "application/json; charset=UTF-8"}
+                es_id_para = {"search_index": "entity", "search_json": search_json}
+                search_result = requests.post(url + '/searchId', data=json.dumps(es_id_para), headers=header_es)
+                try:
+                    es_id = [search_result.json()['data']['dataList'][0]]
 
-            # es_ids.append(es_id)
-            delete_para = {"delete_index": "entity", "id_json": es_id}
-            delete_result = requests.post(url + '/deletebyId', data=json.dumps(delete_para), headers=header_es)
-        # if len(feedback) == 1 and PLACE_BASE_NAME in feedback:
-        #     res = success_res("删除项均在地名库中，由专业团队维护,不能删除！")
-        # elif PLACE_BASE_NAME in feedback:
-        #     res = success_res("非地名已成功删除，地名由于地名库由专业团队维护,不能删除！")
-        # else:
-        #     res = success_res("全部成功删除！")
+                except:
+                    es_id = []
+
+                # es_ids.append(es_id)
+                delete_para = {"delete_index": "entity", "id_json": es_id}
+                delete_result = requests.post(url + '/deletebyId', data=json.dumps(delete_para), headers=header_es)
+            # if len(feedback) == 1 and PLACE_BASE_NAME in feedback:
+            #     res = success_res("删除项均在地名库中，由专业团队维护,不能删除！")
+            # elif PLACE_BASE_NAME in feedback:
+            #     res = success_res("非地名已成功删除，地名由于地名库由专业团队维护,不能删除！")
+            # else:
+            #     res = success_res("全部成功删除！")
+        else:
+            res = fail_res(msg="参数不能为空")
     except Exception as e:
         print(str(e))
         db.session.rollback()
