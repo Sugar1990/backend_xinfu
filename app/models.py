@@ -584,7 +584,7 @@ class EventTrack(db.Model):
     update_by_uuid = db.Column(db.String)
 
     def __repr__(self):
-        return '<Schedule %r>' % self.title_name
+        return '<EventTrack %r>' % self.title_name
 
 
 class EventPoint(db.Model):
@@ -598,7 +598,7 @@ class EventPoint(db.Model):
     entity_uuid = db.Column(db.String)
     longitude = db.Column(db.Float)
     latitude = db.Column(db.Float)
-    event_time = db.Column(db.TIMESTAMP)
+    event_time = db.Column(db.JSON)
     create_time = db.Column(db.TIMESTAMP)
     create_by_uuid = db.Column(db.String)
     update_time = db.Column(db.TIMESTAMP)
@@ -609,7 +609,6 @@ class EventPoint(db.Model):
 
     def __repr__(self):
         return '<EventPoint %r>' % self.event_name
-
 
 class SyncRecords(db.Model):
     __tablename__ = 'sync_records'

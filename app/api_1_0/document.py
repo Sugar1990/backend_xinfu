@@ -18,7 +18,7 @@ from werkzeug.utils import secure_filename
 # from app.swagger.document_dict import *
 from . import api_document as blue_print
 from .get_leader_ids import get_leader_ids
-from .utils import success_res, fail_res, devide_str
+from .utils import success_res, fail_res, devide_str, dfm_format
 from .. import db, lock
 from ..conf import LEXICON_IP, LEXICON_PORT, SUMMARY_IP, SUMMARY_PORT, YC_ROOT_URL, ES_SERVER_IP, ES_SERVER_PORT, \
     YC_TAGGING_PAGE_URL, YC_ROOT_URL_PYTHON, EVENT_EXTRACTION_URL, PLACE_BASE_NAME
@@ -2514,7 +2514,7 @@ def search_advance_for_doc_uuids_test(dates=[] , places=[], event_categories=[],
                             break
 
             elif place_type == "degrees" and place_value:
-                degrees = place_value
+                degrees = dfm_format(place_value)
                 doc_mark_places = DocMarkPlace.query.filter_by(dms=degrees).all()
                 doc_uuids_by_place = [i.doc_uuid for i in doc_mark_places]
 

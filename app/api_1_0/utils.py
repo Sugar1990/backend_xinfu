@@ -108,7 +108,41 @@ class RWLock(object):
 
 
 import re
+
+
 def devide_str(string):
     str_to_num = re.findall('(\d+)', string)[0]
     string_out = string.split(str(str_to_num))[1]
     return int(str_to_num),string_out
+
+
+def dfm_format(old_dict):
+    '''place_type": "degrees", value: [{lat: {degree: "22", minute: "22", second: "22"}, lon: {degree: "32", minute: "22", second: "22"}}]}'''
+
+    '''{"lat": {"du": "38", "fen": "42", "attr": "北纬", "miao": "30", "type": 2}, "lon": {"du": "21", "fen": "31", "attr": "东经", "miao": "00", "type": 1}}'''
+
+    # old_dict = {}
+    old_dict = old_dict[0]
+    new_dict = {"lat": {
+        "du": old_dict["lat"]["degree"],
+        "fen": old_dict["lat"]["minute"],
+        "miao": old_dict["lat"]["second"],
+        "type": "2"
+
+    }, "lon": {
+        "du": old_dict["lon"]["degree"],
+        "fen": old_dict["lon"]["minute"],
+        "miao": old_dict["lon"]["second"],
+        "type": "1"
+    }}
+    if int(old_dict["lat"]["degree"]) >= 0:
+        new_dict["lat"]["attr"] = "北纬"
+    else:
+        new_dict["lat"]["attr"] = "南纬"
+
+    if int(old_dict["lon"]["degree"]) >= 0:
+        new_dict["lon"]["attr"] = "东经"
+    else:
+        new_dict["lon"]["attr"] = "西经"
+    return new_dict
+
