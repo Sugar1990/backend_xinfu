@@ -367,3 +367,61 @@ def entity_update_loaction():
         print(str(e))
         res = fail_res(str(e))
     return res
+
+
+@blue_print.route('/pg_insert_elastic_search', methods=['GET','POST'])
+# @swag_from(pg_insert_es_dict)
+def pg_insert_elastic_search():
+    try:
+        url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+        create_url = url + "/createIndex"
+
+        header = {"Content-Type": "application/json"}
+
+        create_para = {"create_index": "entity", "mapping_json": {
+            "name": "ik_keyword",
+            "summary": "ik",
+            "latitude": "id",
+            "longitude": "id",
+            "location": "location"
+        }}
+        entity_result = requests.post(url=create_url, data=json.dumps(create_para ), headers=header)
+        create_doc_para = {"create_index": "document", "mapping_json": {
+            "name": "ik_keyword",
+            "content": "ik"
+        }}
+        doc_result = requests.post(url=create_url, data=json.dumps(create_doc_para), headers=header)
+        # ___________________________建表完成______________
+        # ---------------------实体----------------------
+        insert_url = url + '/dataInsert'
+        # 插入实体
+        entities = Entity.query.filter_by(valid=1).all()
+        es_entities = [
+            {"uuid": str(entity.uuid),
+             "name": entity.name,
+             "synonyms": entity.synonyms,
+             "props": entity.props,
+             "category_uuid":  str(entity.category_uuid),
+             "summary": entity.summary,
+             "latitude":entity.latitude,
+             "longitude":entity.longitude
+        } for entity in entities if entity.uuid and entity.name and entity.category_uuid]
+        para_entity = {"data_insert_index": "entity", "data_insert_json": es_entities}
+        search_result = requests.post(url=insert_url, data=json.dumps(para_entity), headers=header)
+        # ---------------------文档----------------------
+        docs = Document.query.filter_by(valid=1).all()
+        es_docs = [
+            {"uuid": str(doc.uuid),
+             "name": doc.name,
+             "content": doc.content,
+             "keywords": doc.keywords,
+             "doc_type": str(doc.doc_type),
+             "create_time": doc.create_time
+             } for doc in docs if doc.uuid]
+        para_doc = {"data_insert_index": "document", "data_insert_json": es_docs}
+        insert_result = requests.post(insert_url, data=json.dumps(para_doc), headers=header)
+
+    except Exception as e:
+        print(str(e))
+        res = fail_res()
+    return jsonify(res)
