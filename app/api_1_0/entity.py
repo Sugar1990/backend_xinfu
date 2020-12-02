@@ -388,9 +388,9 @@ def delete_entity_by_ids():
                         # else:
 
                         # <editor-fold desc="yc del entity">
-                        sync_yc_del_name(uni_entity.name, uni_entity.id, uni_entity.get_yc_mark_category())
+                        sync_yc_del_name(uni_entity.name, uni_entity.uuid, uni_entity.get_yc_mark_category())
                         if uni_entity.synonyms:
-                            sync_yc_del_synonyms(uni_entity.synonyms, uni_entity.id, uni_entity.get_yc_mark_category())
+                            sync_yc_del_synonyms(uni_entity.synonyms, uni_entity.uuid, uni_entity.get_yc_mark_category())
                         # </editor-fold>
 
                         valid_uuids.append(uni_entity.uuid)
@@ -412,7 +412,6 @@ def delete_entity_by_ids():
                 res = fail_res(msg="对应实体不存在")
 
             # db.session.commit()
-            print("a")
 
             url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
             for uuid in valid_uuids:
