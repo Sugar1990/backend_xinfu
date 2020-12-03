@@ -61,6 +61,56 @@ def init():
     return jsonify(res)
 
 
+@blue_print.route('/pg_insert_es', methods=['GET','POST'])
+# @swag_from(pg_insert_es_dict)
+def pg_insert_es():
+    try:
+        url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+        header = {"Content-Type": "application/json"}
+        esurl = url + "/pg_insert_es"
+
+        pg_table = 'entity'
+        es_mapping_dict = {
+            "name": "ik_keyword",
+            "summary": "ik",
+            "latitude": "id",
+            "longitude": "id",
+            "location": "location"
+        }
+
+        para = {"create_index": pg_table, "mapping_json": es_mapping_dict}
+        search_result = requests.post(url=esurl, data=json.dumps(para), headers=header)
+
+        pg_table_doc = 'document'
+        es_mapping_dict_doc = {
+            #"id": "id",
+            "name": "ik_keyword",
+            "content": "ik"
+            # "keywords": "ik",
+            # "create_time": "time",
+            # "dates": "ik",  # 多个时间，
+            # "places": "ik",  # 多个地点
+            # "entities": "ik",  # [{name: category_id}, …]  # 多个实体，含名称和类型id
+            # "event_categories": "ik",  # [{event_class: event_category}, …]
+            #"doc_type": "ik_keyword",
+            # "notes": "ik"
+        }
+        pg_dict_doc = {"uuid": {"col_type": "align", "document": "uuid"},
+                   "name": {"col_type": "", "document": "name"},
+                   "content": {"col_type": "", "document": "content"},
+                   "keywords": {"col_type": "", "document": "keywords"},
+                   "create_time": {"col_type": "", "document": "create_time"},
+                   "doc_type": {"col_type": "", "document": "catalog_uuid"}
+                   }
+
+        para = {"pg_dict": pg_dict_doc, "es_index_name": pg_table_doc, "es_mapping_dict": es_mapping_dict_doc}
+        search_result = requests.post(url=esurl, data=json.dumps(para), headers=header)
+        print(search_result, flush=True)
+        res = success_res()
+    except Exception as e:
+        print(str(e))
+        res = fail_res()
+    return jsonify(res)
 
 
 @blue_print.route('/delete_all_in_es', methods=['GET', 'POST'])
@@ -213,7 +263,74 @@ def delete_all_in_arango():
     return jsonify(res)
 
 
-#
+@blue_print.route('/pg_insert_elastic', methods=['GET','POST'])
+def pg_insert_elastic():
+    try:
+        root_url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+        header = {"Content-Type": "application/json; charset=UTF-8"}
+        serve_url = root_url + "/dataInsert"
+        # 插入实体
+        entities = Entity.query.with_entities(Entity.uuid, Entity.name, Entity.category_uuid, Entity.summary, Entity.props,
+        Entity.synonyms, Entity.longitude, Entity.latitude).filter_by(
+            valid=1).all()
+        creat_url = root_url + "/createIndex"
+        pg_table = 'entity'
+        es_mapping_dict = {
+            "name": "ik_keyword",
+            "summary": "ik",
+            "latitude": "id",
+            "longitude": "id",
+            "location": "location"
+        }
+        para = {"create_index": pg_table, "mapping_json": es_mapping_dict}
+        search_result = requests.post(creat_url, data=json.dumps(para), headers=header)
+
+        #print("entities[0].uuid: ", entities[0].uuid)
+
+        batch_size = 20000
+        for i in range(math.ceil(len(entities) / batch_size)):
+            nodes = [{
+                "uuid": str(entity.uuid),
+                "name": entity.name,
+                "category_uuid": str(entity.category_uuid),
+                "summary": entity.summary,
+                "props": entity.props,
+                "synonyms": entity.synonyms,
+                "latitude": entity.latitude,
+                "longitude": entity.longitude
+            } for entity in entities if entity.uuid and entity.name and entity.category_uuid][
+                    i * batch_size:(i + 1) * batch_size]
+            # print(data_insert_json)
+            para = {"data_insert_index": "entity", "data_insert_json": nodes}
+            search_result = requests.post(serve_url + '/dataInsert', data=json.dumps(para), headers=header)
+
+            if search_result.status_code != 200 or not json.loads(search_result.text).get("code", 0):
+                return fail_res(msg="elastic serve error: {}".format(json.loads(search_result.text).get("msg", "")))
+
+        # 插入事件
+        # document = Document.query.filter_by(valid=1).all()
+        # insert_nodes = []
+        # for doc in document:
+        #     event_time = []
+        #     for event_time_uuid in doc.event_time:
+        #         event_time_tag = DocMarkTimeTag.query.filter_by(uuid=event_time_uuid, valid=1).first()
+        #         if event_time_tag:
+        #             if event_time_tag.format_date:
+        #                 event_time.append(event_time_tag.format_date.strftime('%Y-%m-%d %H:%M:%S'))
+        #     nodes = {
+        #         "_key": str(doc.uuid),
+        #         "event_uuid": str(doc.uuid),
+        #         "event_subject": doc.event_subject,
+        #         "event_object": doc.event_object,
+        #         "event_time": event_time
+        #     }
+        #     insert_nodes.append(nodes)
+    except Exception as e:
+        print(str(e),flush=True
+)
+    return jsonify(success_res())
+
+
 # @blue_print.route('/pg_insert_neo4j', methods=['GET'])
 # # @swag_from(pg_insert_es_dict)
 # def pg_insert_neo4j():
@@ -312,118 +429,3 @@ def entity_update_loaction():
         print(str(e))
         res = fail_res(str(e))
     return res
-
-
-@blue_print.route('/pg_insert_es', methods=['GET','POST'])
-# @swag_from(pg_insert_es_dict)
-def pg_insert_es():
-    try:
-        url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
-        create_url = url + "/createIndex"
-
-        header = {"Content-Type": "application/json"}
-
-        create_para = {"create_index": "entity", "mapping_json": {
-            "name": "ik_keyword",
-            "summary": "ik",
-            "latitude": "id",
-            "longitude": "id",
-            "location": "location"
-        }}
-        entity_result = requests.post(url=create_url, data=json.dumps(create_para ), headers=header)
-        create_doc_para = {"create_index": "document", "mapping_json": {
-            "name": "ik_keyword",
-            "content": "ik"
-        }}
-        doc_result = requests.post(url=create_url, data=json.dumps(create_doc_para), headers=header)
-        # ___________________________建表完成______________
-        # ---------------------实体----------------------
-        insert_url = url + '/dataInsert'
-        # 插入实体
-        entities = Entity.query.filter_by(valid=1).all()
-        es_entities = [
-            {"uuid": str(entity.uuid),
-             "name": entity.name,
-             "synonyms": entity.synonyms,
-             "props": entity.props,
-             "category_uuid":  str(entity.category_uuid),
-             "summary": entity.summary,
-             "latitude":entity.latitude,
-             "longitude":entity.longitude
-        } for entity in entities if entity.uuid and entity.name and entity.category_uuid]
-        para_entity = {"data_insert_index": "entity", "data_insert_json": es_entities}
-        search_result = requests.post(url=insert_url, data=json.dumps(para_entity), headers=header)
-        # ---------------------文档----------------------
-        docs = Document.query.filter_by(valid=1).all()
-        es_docs = [
-            {"uuid": str(doc.uuid),
-             "name": doc.name,
-             "content": doc.content,
-             "keywords": doc.keywords,
-             "doc_type": str(doc.catalog_uuid),
-             "create_time": str(doc.create_time)
-             } for doc in docs if doc.uuid]
-        para_doc = {"data_insert_index": "document", "data_insert_json": es_docs}
-        insert_result = requests.post(insert_url, data=json.dumps(para_doc), headers=header)
-        res = success_res()
-    except Exception as e:
-        print(str(e))
-        res = fail_res()
-    return jsonify(res)
-
-# @blue_print.route('/pg_insert_es', methods=['GET','POST'])
-# # @swag_from(pg_insert_es_dict)
-# def pg_insert_es():
-#     try:
-#         url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
-#         header = {"Content-Type": "application/json"}
-#         esurl = url + "/pg_insert_es"
-#
-#         pg_table = 'entity'
-#         es_mapping_dict = {
-#             "name": "ik_keyword",
-#             "summary": "ik",
-#             "latitude": "id",
-#             "longitude": "id",
-#             "location": "location"
-#         }
-#         pg_dict = {"uuid": {"col_type": "align", "entity": "uuid"},
-#                    "name": {"col_type": "", "entity": "name"},
-#                    "synonyms": {"col_type": "", "entity": "synonyms"},
-#                    "props": {"col_type": "", "entity": "props"},
-#                    "category_uuid": {"col_type": "", "entity": "category_uuid"},
-#                    "summary": {"col_type": "", "entity": "summary"},
-#                    "latitude": {"col_type": "", "entity": "latitude"},
-#                    "longitude": {"col_type": "", "entity": "longitude"}}
-#         para = {"pg_dict": pg_dict, "es_index_name": pg_table, "es_mapping_dict": es_mapping_dict}
-#         search_result = requests.post(url=esurl, data=json.dumps(para), headers=header)
-#         pg_table_doc = 'document'
-#         es_mapping_dict_doc = {
-#             #"id": "id",
-#             "name": "ik_keyword",
-#             "content": "ik"
-#             # "keywords": "ik",
-#             # "create_time": "time",
-#             # "dates": "ik",  # 多个时间，
-#             # "places": "ik",  # 多个地点
-#             # "entities": "ik",  # [{name: category_id}, …]  # 多个实体，含名称和类型id
-#             # "event_categories": "ik",  # [{event_class: event_category}, …]
-#             #"doc_type": "ik_keyword",
-#             # "notes": "ik"
-#         }
-#         pg_dict_doc = {"uuid": {"col_type": "align", "document": "uuid"},
-#                    "name": {"col_type": "", "document": "name"},
-#                    "content": {"col_type": "", "document": "content"},
-#                    "keywords": {"col_type": "", "document": "keywords"},
-#                    "create_time": {"col_type": "", "document": "create_time"},
-#                    "doc_type": {"col_type": "", "document": "catalog_uuid"}
-#                    }
-#
-#         para = {"pg_dict": pg_dict_doc, "es_index_name": pg_table_doc, "es_mapping_dict": es_mapping_dict_doc}
-#         search_result = requests.post(url=esurl, data=json.dumps(para), headers=header)
-#         print(search_result, flush=True)
-#         res = success_res()
-#     except Exception as e:
-#         print(str(e))
-#         res = fail_res()
-#     return jsonify(res)

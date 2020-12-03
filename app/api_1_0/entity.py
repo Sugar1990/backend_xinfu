@@ -173,6 +173,23 @@ def insert_entity():
             # neo4j同步
             # create_node(entity.id, entity.name, entity.category_id)
 
+            # arango 同步
+            root_url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
+            header = {"Content-Type": "application/json"}
+            serve_url = root_url + "/arango/insert_data"
+            nodes = {
+                "_key": str(entity.uuid),
+                "uuid": str(entity.uuid),
+                "name": entity.name,
+                "category_uuid": str(entity.category_uuid)
+            }
+            para = {"collection": "entity", "data": nodes}
+            search_result = requests.post(url=serve_url, data=json.dumps(para), headers=header)
+            # print(search_result.status_code, flush=True)
+            # print(search_result.text, flush=True)
+            if search_result.status_code != 200 or not json.loads(search_result.text).get("code", 0):
+                return fail_res(msg="arango serve error: {}".format(json.loads(search_result.text).get("msg", "")))
+
             res = success_res(data={"entity_uuid": str(entity.uuid)})
         else:
             res = fail_res(msg="该实体名称已存在")
@@ -359,6 +376,16 @@ def delete_entity():
             # neo4j同步
             # delete_node(entity.id)
 
+            # arango同步
+            para = {
+                "collection": "entity",
+                "key": str(entity.uuid)
+            }
+            header = {"Content-Type": "application/json; charset=UTF-8"}
+            url = "http://{}:{}".format(ES_SERVER_IP, ES_SERVER_PORT) + '/arango/delete_data'
+            data = json.dumps(para)
+            result = requests.post(url=url, data=data, headers=header)
+
             res = success_res()
         else:
             res = fail_res(msg="实体不存在")
@@ -405,6 +432,17 @@ def delete_entity_by_ids():
                             for entity_item in doc_mark_entity:
                                 entity_item.valid = 0
                         # feedback.add(category_place.name)
+
+                        # arango同步
+                        para = {
+                            "collection": "entity",
+                            "key": str(uni_entity.uuid)
+                        }
+                        header = {"Content-Type": "application/json; charset=UTF-8"}
+                        url = "http://{}:{}".format(ES_SERVER_IP, ES_SERVER_PORT) + '/arango/delete_data'
+                        data = json.dumps(para)
+                        result = requests.post(url=url, data=data, headers=header)
+
                         res = success_res()
                     except Exception as e:
                         res = fail_res(msg=str(e))

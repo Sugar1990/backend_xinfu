@@ -446,7 +446,9 @@ class DocMarkEvent(db.Model):
     def get_places(self):
         places = []
         if self.event_address:
-            places = DocMarkPlace.query.filter(DocMarkPlace.uuid.in_(self.event_address)).all()
+            places = DocMarkPlace.query.filter(DocMarkPlace.uuid.in_(self.event_address),
+                                               DocMarkPlace.place_lat is not None,
+                                               DocMarkPlace.place_lon is not None).all()
         return places
 
     def __repr__(self):
