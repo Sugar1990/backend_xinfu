@@ -124,10 +124,12 @@ def insert_entity():
             if EntityCategory.get_category_name(category_uuid) == PLACE_BASE_NAME:
                 longitude = request.json.get('longitude', 0)
                 latitude = request.json.get('latitude', 0)
-                if longitude:
+                if longitude and latitude:
                     entity.longitude = longitude
-                if latitude:
                     entity.latitude = latitude
+                else:
+                    res = fail_res(msg="地名实体经纬度不能为空")
+                    return jsonify(res)
 
             db.session.add(entity)
             db.session.commit()
@@ -246,12 +248,14 @@ def update_entity():
             if EntityCategory.get_category_name(category_uuid) == PLACE_BASE_NAME:
                 longitude = request.json.get('longitude', 0)
                 latitude = request.json.get('latitude', 0)
-                if longitude:
+                if longitude and latitude:
                     entity.longitude = longitude
                     key_value_json['longitude'] = longitude
-                if latitude:
                     entity.latitude = latitude
                     key_value_json['latitude'] = latitude
+                else:
+                    res = fail_res(msg="地名实体经纬度不能为空")
+                    return jsonify(res)
 
             yc_update_data, add_synonyms, remove_synonyms = [], [], []
             if name:
