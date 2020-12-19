@@ -228,12 +228,26 @@ def upload_doc():
                                                     doc_mark_place.place_lat = place_lat
                                             # 其他类型的doc_mark_place
                                             else:
+                                                # if item_place.get("place_lon", ""):
+                                                #     doc_mark_place.place_lon = item_place["place_lon"]
+                                                #
+                                                # # location_json["lon"] = item_place["place_lon"]
+                                                # if item_place.get("place_lat", ""):
+                                                #     doc_mark_place.place_lat = item_place["place_lat"]
+                                                
                                                 if item_place.get("place_lon", ""):
-                                                    doc_mark_place.place_lon = item_place["place_lon"]
+                                                    try:
+                                                        place_lon = float(item_place.get("place_lon"))
+                                                        doc_mark_place.place_lon = str(place_lon)
+                                                    except:
+                                                        pass
 
-                                                # location_json["lon"] = item_place["place_lon"]
                                                 if item_place.get("place_lat", ""):
-                                                    doc_mark_place.place_lat = item_place["place_lat"]
+                                                    try:
+                                                        place_lat = float(item_place.get("place_lat"))
+                                                        doc_mark_place.place_lat = str(place_lat)
+                                                    except:
+                                                        pass
 
                                                     # location_json["lat"] = item_place["place_lat"]
                                             if item_place.get("word_count", ""):
@@ -256,7 +270,7 @@ def upload_doc():
                                                 data_insert_place.append(doc_mark_place.word)
 
                                                 # data_insert_location.append(location_json)
-                                        # print("doc_mark_place数据插入成功")
+                                        print("doc_mark_place数据插入成功")
 
                                         data_insert_date = []
                                         data_insert_time_range = []
@@ -272,7 +286,6 @@ def upload_doc():
                                             # 插入position
                                             if item_time.get("position", []):
                                                 doc_mark_time_tag.position = item_time["position"]
-
                                             if item_time.get("format_date", ""):
                                                 doc_mark_time_tag.format_date = item_time["format_date"]
                                             if item_time.get("format_date_end", ""):
@@ -309,7 +322,7 @@ def upload_doc():
                                         doc.status = 2
                                         db.session.commit()
 
-                                        print("yc_res: ", yc_res)
+                                        print("yc_res_1: ", yc_res)
 
                                         # <editor-fold desc="返回event带解析封装接口">
                                         event_id_list = []
