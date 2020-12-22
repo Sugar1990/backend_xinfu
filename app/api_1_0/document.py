@@ -1465,7 +1465,7 @@ def get_doc_events_to_earth_by_entities(doc_ids):
                 if object_uni_list:
 
                     # 确立时间线的key值
-                    timeline_key = ",".join([str(i) for i in sorted(object_uni_list)])
+                    # timeline_key = ",".join([str(i) for i in sorted(object_uni_list)])
 
                     item = {
                         "datetime": datetime,
@@ -1474,14 +1474,14 @@ def get_doc_events_to_earth_by_entities(doc_ids):
                         "object": object_uni_list,
                         "event_uuid": doc_mark_event.uuid
                     }
-
-                    if event_dict.get(timeline_key, []):
-                        event_dict[timeline_key].append(item)
-                    else:
-                        event_dict[timeline_key] = [item]
+                    for ob in object_uni_list:
+                        if event_dict.get(ob, []):
+                            event_dict[ob].append(item)
+                        else:
+                            event_dict[ob] = [item]
             # </editor-fold>
 
-        res = [sorted(i, key=lambda x: x.get('datetime', '')[0]) for i in event_dict.values()]
+        res = [sorted(i, key=lambda x: x.get('datetime', '')[0]) for i in event_dict.values() if len(i) > 1]
     else:
         res = []
     return res

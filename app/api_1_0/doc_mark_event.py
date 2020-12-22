@@ -749,7 +749,7 @@ def get_advanced_search_of_events():
                         if doc_mark_entity:
                             object.append(doc_mark_entity.word)
 
-                timeline_key = ",".join([str(i) for i in sorted(object)])
+                # timeline_key = ",".join([str(i) for i in sorted(object)])
 
                 if place:
                     doc_record = Document.query.filter_by(uuid=doc_mark_event.doc_uuid, valid=1).first()
@@ -767,11 +767,14 @@ def get_advanced_search_of_events():
                             "html_path": html_path
                         }
                         event_list.append(event)
-                        if event_dict.get(timeline_key, []):
-                            event_dict[timeline_key].append(event)
-                        else:
-                            event_dict[timeline_key] = [event]
-            event_list_entity = [sorted(i, key=lambda x: x.get('datetime', '')) for i in event_dict.values()]
+                        for ob in object:
+                            if event_dict.get(ob, []):
+                                event_dict[ob].append(event)
+                            else:
+                                event_dict[ob] = [event]
+
+
+            event_list_entity = [sorted(i, key=lambda x: x.get('datetime', '')) for i in event_dict.values() if len(i) > 1]
             event_list_sorted = sorted(event_list, key=lambda x: x.get('datetime', '')[0])
             res = success_res(data={"event_list": event_list_sorted, "event_list_entity": event_list_entity})
         else:
