@@ -65,26 +65,27 @@ def get_doc_mark_entity_by_doc_id():
         doc_mark_entity_list = DocMarkEntity.query.filter_by(doc_uuid=doc_uuid, valid=1).all()
         data = []
         for doc_mark_entity in doc_mark_entity_list:
-            entity_category = EntityCategory.query.filter_by(
-                uuid=Entity.get_category_id(doc_mark_entity.entity_uuid)).first()
-
-            doc_mark_entity_res = {
-                "uuid": doc_mark_entity.uuid,
-                "doc_uuid": doc_mark_entity.doc_uuid,
-                "word": doc_mark_entity.word,
-                "entity_uuid": doc_mark_entity.entity_uuid,
-                "source": doc_mark_entity.source,
-                "create_by_uuid": doc_mark_entity.create_by_uuid,
-                "create_time": doc_mark_entity.create_time.strftime(
-                    "%Y-%m-%d %H:%M:%S") if doc_mark_entity.create_time else None,
-                "update_by_uuid": doc_mark_entity.create_by_uuid,
-                "update_time": doc_mark_entity.update_time.strftime(
-                    "%Y-%m-%d %H:%M:%S") if doc_mark_entity.update_time else None,
-                "entity_type_uuid": Entity.get_category_id(doc_mark_entity.entity_uuid),
-                "appear_index_in_text": doc_mark_entity.appear_index_in_text,
-                "type": entity_category.type  # 1代表普通实体，2代表是概念
-            }
-            data.append(doc_mark_entity_res)
+            uuid = Entity.get_category_id(doc_mark_entity.entity_uuid)
+            if uuid != -1:
+                entity_category = EntityCategory.query.filter_by(uuid=uuid, valid=1).first()
+                if entity_category:
+                    doc_mark_entity_res = {
+                        "uuid": doc_mark_entity.uuid,
+                        "doc_uuid": doc_mark_entity.doc_uuid,
+                        "word": doc_mark_entity.word,
+                        "entity_uuid": doc_mark_entity.entity_uuid,
+                        "source": doc_mark_entity.source,
+                        "create_by_uuid": doc_mark_entity.create_by_uuid,
+                        "create_time": doc_mark_entity.create_time.strftime(
+                            "%Y-%m-%d %H:%M:%S") if doc_mark_entity.create_time else None,
+                        "update_by_uuid": doc_mark_entity.create_by_uuid,
+                        "update_time": doc_mark_entity.update_time.strftime(
+                            "%Y-%m-%d %H:%M:%S") if doc_mark_entity.update_time else None,
+                        "entity_type_uuid": Entity.get_category_id(doc_mark_entity.entity_uuid),
+                        "appear_index_in_text": doc_mark_entity.appear_index_in_text,
+                        "type": entity_category.type  # 1代表普通实体，2代表是概念
+                    }
+                    data.append(doc_mark_entity_res)
         res = success_res(data=data)
 
     except Exception as e:

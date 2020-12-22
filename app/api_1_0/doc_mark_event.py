@@ -7,7 +7,7 @@ from sqlalchemy import or_, and_
 from sqlalchemy.dialects.postgresql import Any
 import uuid
 from . import api_doc_mark_event as blue_print
-from ..models import DocMarkEvent, DocMarkTimeTag, DocMarkEntity, DocMarkPlace, Entity, EventCategory
+from ..models import DocMarkEvent, DocMarkTimeTag, DocMarkEntity, DocMarkPlace, Entity, EventCategory, Document
 from .. import db
 from .utils import success_res, fail_res
 from .document import get_event_list_from_docs
@@ -627,19 +627,43 @@ def get_advanced_search_of_events():
             if object.get("category_uuid", "") and object.get("entity", ""):
                 category_uuid = object["category_uuid"]
                 entity = object["entity"]
-                entity_db = Entity.query.filter_by(category_uuid=category_uuid, name=entity, valid=1).first()
+                entity_db = Entity.query.filter(Entity.category_uuid==category_uuid, or_(Entity.name.like(f'%{entity}%'),
+                                                                                         Entity.synonyms.op('@>')([entity])),
+                                                Entity.valid==1).all()
                 if entity_db:
-                    doc_mark_entities = DocMarkEntity.query.filter_by(entity_uuid=entity_db.uuid, valid=1).all()
+                    entity_db_uuids = [i.uuid for i in entity_db]
+                    doc_mark_entities = DocMarkEntity.query.filter(DocMarkEntity.entity_uuid.in_(entity_db_uuids),
+                                                                   DocMarkEntity.valid==1).all()
                     doc_mark_entity_ids = [str(i.uuid) for i in doc_mark_entities]
-                    print(doc_mark_entity_ids)
+                    print("有类型", doc_mark_entity_ids)
+                else:
+                    res = fail_res(msg='此检索式无事件')
+                    return jsonify(res)
 
-            if not object.get("category_uuid", None) and object.get("entity", ""):
+            # elif not object.get("category_uuid", None) and object.get("entity", ""):
+            #     entity = object["entity"]
+            #     entity_db = Entity.query.filter_by(name=entity, valid=1).first()
+            #     if entity_db:
+            #         doc_mark_entities = DocMarkEntity.query.filter_by(entity_uuid=entity_db.uuid, valid=1).all()
+            #         doc_mark_entity_ids = [str(i.uuid) for i in doc_mark_entities]
+            #         print(doc_mark_entity_ids)
+            elif object["category_uuid"] == 0 and object.get("entity", ""):
                 entity = object["entity"]
-                entity_db = Entity.query.filter_by(name=entity, valid=1).first()
+                entity_db = Entity.query.filter(or_(Entity.name.like(f'%{entity}%'),
+                                                    Entity.synonyms.op('@>')([entity])),
+                                                Entity.valid==1).all()
                 if entity_db:
-                    doc_mark_entities = DocMarkEntity.query.filter_by(entity_uuid=entity_db.uuid, valid=1).all()
+                    entity_db_uuids = [i.uuid for i in entity_db]
+                    doc_mark_entities = DocMarkEntity.query.filter(DocMarkEntity.entity_uuid.in_(entity_db_uuids),
+                                                                   DocMarkEntity.valid==1).all()
                     doc_mark_entity_ids = [str(i.uuid) for i in doc_mark_entities]
-                    print(doc_mark_entity_ids)
+                    print("无类型", doc_mark_entity_ids)
+                else:
+                    res = fail_res(msg='此检索式无事件')
+                    return jsonify(res)
+            else:
+                pass
+
 
         event = request.json.get("event", {})
         title = request.json.get("title", "")
@@ -681,6 +705,7 @@ def get_advanced_search_of_events():
                 event_datetime = []
                 datetime = []
                 print("doc_mark_event.event_time: ", doc_mark_event.event_time)
+
                 for event_time_uuid in doc_mark_event.event_time:
                     event_time_tag = DocMarkTimeTag.query.filter_by(uuid=event_time_uuid, valid=1).first()
                     if event_time_tag:
@@ -727,20 +752,28 @@ def get_advanced_search_of_events():
                 timeline_key = ",".join([str(i) for i in sorted(object)])
 
                 if place:
-                    event = {
-                        "event_uuid": event_uuid,
-                        "datetime": sorted(datetime) if datetime else sorted(event_datetime),
-                        "place": place,
-                        "title": title,
-                        "object": object
-                    }
-                    event_list.append(event)
-                    if event_dict.get(timeline_key, []):
-                        event_dict[timeline_key].append(event)
-                    else:
-                        event_dict[timeline_key] = [event]
+                    doc_record = Document.query.filter_by(uuid=doc_mark_event.doc_uuid, valid=1).first()
+                    if doc_record:
+                        doc_title = doc_record.name
+                        html_path = doc_record.html_path
+                        event = {
+                            "event_uuid": event_uuid,
+                            "datetime": sorted(datetime) if datetime else sorted(event_datetime),
+                            "place": place,
+                            "title": title,
+                            "object": object,
+                            "doc_uuid": doc_mark_event.doc_uuid,
+                            "doc_title": doc_title,
+                            "html_path": html_path
+                        }
+                        event_list.append(event)
+                        if event_dict.get(timeline_key, []):
+                            event_dict[timeline_key].append(event)
+                        else:
+                            event_dict[timeline_key] = [event]
             event_list_entity = [sorted(i, key=lambda x: x.get('datetime', '')) for i in event_dict.values()]
-            res = success_res(data={"event_list": event_list, "event_list_entity": event_list_entity})
+            event_list_sorted = sorted(event_list, key=lambda x: x.get('datetime', '')[0])
+            res = success_res(data={"event_list": event_list_sorted, "event_list_entity": event_list_entity})
         else:
             event_result = []
             for doc_mark_event in doc_mark_events:
@@ -864,7 +897,7 @@ def get_during_time_event_by_entities():
         for doc_mark_time_tag in doc_mark_time_tags:
             if doc_mark_time_tag.time_type == 1 and doc_mark_time_tag.format_date.strftime(
                     '%Y-%m-%d %H:%M:%S') >= start_date and doc_mark_time_tag.format_date.strftime(
-                    '%Y-%m-%d %H:%M:%S') <= end_date:
+                '%Y-%m-%d %H:%M:%S') <= end_date:
                 doc_mark_time_tag_ids.append(str(doc_mark_time_tag.uuid))
 
             elif doc_mark_time_tag.time_type == 2 and not (

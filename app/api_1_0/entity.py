@@ -1790,3 +1790,107 @@ def insert_entity_to_pg_and_es(name, category_uuid, summary, props={}, synonyms=
         db.session.rollback()
         print(str(e))
 
+@blue_print.route('sync_entity_doc_place_doc_entity', methods=['POST'])
+def sync_entity_doc_place_doc_entity():
+    try:
+        entity_sqls = request.files.getlist('entity_sql', None)
+        doc_mark_place_sqls = request.files.getlist('doc_mark_place_sql', None)
+        doc_mark_entity_sqls = request.files.getlist('doc_mark_entity_sql', None)
+        place_save_path = ''
+        entity_save_path = ''
+        for doc_mark_place_sql in doc_mark_place_sqls:
+            path_filename = doc_mark_place_sql.filename
+            path = path_filename.split("/")
+            if path:
+                filename = secure_filename(''.join(lazy_pinyin(path[-1])))
+                save_filename = "{0}{1}{2}".format(os.path.splitext(filename)[0],
+                                                   datetime.datetime.now().strftime('%Y%m%d%H%M%S'),
+                                                   os.path.splitext(filename)[1]).lower()
+                place_save_path = os.path.join(os.getcwd(), 'static', save_filename)
+                doc_mark_place_sql.save(place_save_path)
+
+        for doc_mark_entity_sql in doc_mark_entity_sqls:
+            path_filename = doc_mark_entity_sql.filename
+            path = path_filename.split("/")
+            if path:
+                filename = secure_filename(''.join(lazy_pinyin(path[-1])))
+                save_filename = "{0}{1}{2}".format(os.path.splitext(filename)[0],
+                                                   datetime.datetime.now().strftime('%Y%m%d%H%M%S'),
+                                                   os.path.splitext(filename)[1]).lower()
+                entity_save_path = os.path.join(os.getcwd(), 'static', save_filename)
+                doc_mark_entity_sql.save(entity_save_path)
+
+        dict = get_doc_mark_entity_place_dict(place_save_path, entity_save_path)
+        dict_trans_entity = {}
+        dict_trans_place = {}
+        for entity_sql in entity_sqls:
+            path_filename = entity_sql.filename
+            path = path_filename.split("/")
+            if path:
+                filename = secure_filename(''.join(lazy_pinyin(path[-1])))
+                save_filename = "{0}{1}{2}".format(os.path.splitext(filename)[0],
+                                                   datetime.datetime.now().strftime('%Y%m%d%H%M%S'),
+                                                   os.path.splitext(filename)[1]).lower()
+                file_savepath = os.path.join(os.getcwd(), 'static',save_filename)
+                entity_sql.save(file_savepath)
+                with open(file_savepath, mode='r', encoding='utf-8') as file:
+                    lines = file.readlines()
+                    for line in lines:
+                        tmp = line.split("VALUES ")
+                        if len(tmp) >= 2:
+                            tmp = tmp[1][1:-1]
+                            str_list = tmp.split(",")
+                            if len(str_list) == 14:
+                                entity = db.session.query(Entity).filter(Entity.name == str_list[0][1:-1],
+                                                                         Entity.valid == 1).first()
+                                if entity:
+                                    e_uuid = str_list[7].strip(" ").strip("'")
+                                    if e_uuid in dict.get("entity_uuid") and e_uuid != str(entity.uuid):
+                                        dict_trans_entity[e_uuid] = entity.uuid
+                                    if e_uuid in dict.get("place_uuid") and e_uuid != str(entity.uuid):
+                                        dict_trans_place[e_uuid] = entity.uuid
+                                else:
+                                    if int(str_list[12]):
+                                        with open('entity.txt', mode='w', encoding='utf-8') as f:
+                                            f.write(line)
+
+        with open('doc_mark_place_insert.txt', mode= 'w' ,encoding='utf-8') as file:
+            for key, value in dict_trans_place.items():
+                tmp_str = "UPDATE doc_mark_place SET place_uuid='{0}' WHERE place_uuid='{1}';".format(value, key)
+                file.write(tmp_str + '\n')
+
+        with open('doc_mark_entity_insert.txt', mode= 'w' ,encoding='utf-8') as file:
+            for key,value in dict_trans_entity.items():
+                tmp_str = "UPDATE doc_mark_entity SET entity_uuid='{0}' WHERE entity_uuid='{1}';".format(value, key)
+                file.write(tmp_str + '\n')
+        res = success_res()
+    except Exception as e:
+        print(str(e))
+        res = fail_res()
+    return jsonify(res)
+
+def get_doc_mark_entity_place_dict(place_save_path,entity_save_path):
+    dict = {}
+    with open(place_save_path, mode='r', encoding='utf-8') as file:
+        lines = file.readlines()
+        place_uuid = []
+        for line in lines:
+            tmp = line.split("]',")
+            if len(tmp)>= 2:
+                str_list = tmp[1].split(",")
+                if len(str_list) >= 4:
+                    if str_list[3].strip(" ").strip("'") not in place_uuid:
+                        place_uuid.append(str_list[3].strip(" ").strip("'"))
+        dict["place_uuid"] = place_uuid
+    with open(entity_save_path, mode='r', encoding='utf-8') as file:
+        lines = file.readlines()
+        entity_uuid = []
+        for line in lines:
+            tmp = line.split("]',")
+            if len(tmp) >= 2:
+                str_list = tmp[1].split(",")
+                if len(str_list) >= 4:
+                    if str_list[3].strip(" ").strip("'") not in entity_uuid:
+                        entity_uuid.append(str_list[3].strip(" ").strip("'"))
+        dict["entity_uuid"] = entity_uuid
+    return dict

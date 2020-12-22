@@ -154,7 +154,7 @@ def add_doc_mark_relation_property():
             else:
                 res = fail_res(msg='请插入实体关系或事件关系数据')
         else:
-            res = fail_res(msg="关联实体已存在")
+            res = fail_res(msg="关系记录已存在")
 
     except Exception as e:
         print(str(e))
@@ -406,8 +406,8 @@ def get_doc_mark_relation_property_by_nids():
 @blue_print.route('/get_doc_mark_relation_property_by_uuid_sets', methods=['GET'])
 def get_doc_mark_relation_property_by_uuid_sets():
     try:
-        source_uuid = request.json.get('source_uuid', None)
-        target_uuid = request.json.get('target_uuid', None)
+        source_uuid = request.args.get('source_uuid', None)
+        target_uuid = request.args.get('target_uuid', None)
         relation_uuid = request.args.get('relation_uuid', None)
 
         doc_mark_relation_property = DocMarkRelationProperty.query.filter_by(source_entity_uuid=source_uuid,

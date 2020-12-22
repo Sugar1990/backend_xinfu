@@ -2576,7 +2576,9 @@ def search_advance_for_doc_uuids_test(dates=[] , places=[], event_categories=[],
         # entities: [{id: 0, entity: "中华", category_uuid: "7d2a3e03-7eac-4080-a9c3-735ca122b29a"}]
         data = entities[0]
         if data.get('entity'):
-            condition.append(Entity.name == data.get('entity'))
+            print(data['entity'],flush = True)
+            entity_ins = data['entity']
+            condition.append(or_(Entity.name.like(f'%{entity_ins}%'), Entity.synonyms.op('@>')([entity_ins])))
         if data.get('category_uuid'):
             condition.append(Entity.category_uuid == data.get('category_uuid'))
         condition = tuple(condition)
