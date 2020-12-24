@@ -576,7 +576,10 @@ def get_advanced_search_of_events():
                     for date_time_tag in date_time_tags:
                         if start_time < date_time_tag.format_date.strftime('%Y-%m-%d %H:%M:%S') < end_time:
                             time_tag_ids.append(str(date_time_tag.uuid))
-                print(time_tag_ids)
+                if not time_tag_ids:
+                    res = fail_res(msg='此检索式无数据')
+                    return jsonify(res)
+                # print(time_tag_ids)
 
         places = request.json.get('places', {})
         doc_mark_place_ids = []
@@ -620,6 +623,19 @@ def get_advanced_search_of_events():
                         if entity.category_name() == PLACE_BASE_NAME:
                             doc_mark_places = DocMarkPlace.query.filter_by(place_uuid=entity.uuid, valid=1).all()
                             doc_mark_place_ids = [str(i.uuid) for i in doc_mark_places]
+
+            else:  # place_type == 'route'
+                # place_list = []
+                route = set(place_value)
+                doc_mark_places = DocMarkPlace.query.filter_by(valid=1, type=6).all()
+                for doc_mark_place in doc_mark_places:
+                    route_set = set(doc_mark_place.relation.split(','))
+                    if route_set - route:
+                        doc_mark_place_ids.append(str(doc_mark_place.uuid))
+                print("doc_mark_place_ids", doc_mark_place_ids)
+            if not doc_mark_place_ids:
+                res = fail_res(msg='此检索式无数据')
+                return jsonify(res)
 
         object_list = request.json.get("object", [])
         doc_mark_entity_ids = []
@@ -704,7 +720,7 @@ def get_advanced_search_of_events():
             for doc_mark_event in doc_mark_events:
                 event_datetime = []
                 datetime = []
-                print("doc_mark_event.event_time: ", doc_mark_event.event_time)
+                # print("doc_mark_event.event_time: ", doc_mark_event.event_time)
 
                 for event_time_uuid in doc_mark_event.event_time:
                     event_time_tag = DocMarkTimeTag.query.filter_by(uuid=event_time_uuid, valid=1).first()
@@ -722,6 +738,7 @@ def get_advanced_search_of_events():
                                 datetime.append(doc_mark_time_tag.format_date.strftime('%Y-%m-%d %H:%M:%S'))
                                 datetime.append(doc_mark_time_tag.format_date_end.strftime('%Y-%m-%d %H:%M:%S'))
 
+                # print('datetime', datetime, event_datetime)
                 event_uuid = doc_mark_event.uuid
 
                 place = []
@@ -729,7 +746,7 @@ def get_advanced_search_of_events():
                 for doc_mark_place_id in doc_mark_place_id_list:
                     temp = {}
                     doc_mark_place = DocMarkPlace.query.filter_by(uuid=doc_mark_place_id, valid=1).first()
-                    if doc_mark_place:
+                    if doc_mark_place and doc_mark_place.type != 6:
                         temp["word"] = doc_mark_place.word
                         temp["place_id"] = doc_mark_place.place_uuid
                         entity = Entity.query.filter_by(uuid=doc_mark_place.place_uuid, valid=1).first()
@@ -737,6 +754,21 @@ def get_advanced_search_of_events():
                             temp["place_lon"] = entity.longitude
                             temp["place_lat"] = entity.latitude
                             place.append(temp)
+                    if doc_mark_place and doc_mark_place.type == 6:
+                        temp["word"] = doc_mark_place.word
+                        # temp["place_id"] = doc_mark_place.place_uuid
+                        place_names = doc_mark_place.relation.split(',')
+                        for place_name in place_names:
+                            entities = Entity.query.filter(or_(Entity.name.like(f'%{place_name}%'),
+                                                             Entity.synonyms.op('@>')([place_name])),
+                                                         Entity.valid==1).all()
+                            for entity in entities:
+                                if entity.category_name() == PLACE_BASE_NAME:
+                                    temp["place_lon"] = entity.longitude
+                                    temp["place_lat"] = entity.latitude
+                                    print('a', entity.longitude, entity.latitude)
+                                    place.append(temp)
+                                    break
 
                 title = doc_mark_event.title
                 subject_object = doc_mark_event.event_subject
@@ -773,7 +805,7 @@ def get_advanced_search_of_events():
                             else:
                                 event_dict[ob] = [event]
 
-
+            # print('print result', event_list)
             event_list_entity = [sorted(i, key=lambda x: x.get('datetime', '')) for i in event_dict.values() if len(i) > 1]
             event_list_sorted = sorted(event_list, key=lambda x: x.get('datetime', '')[0])
             res = success_res(data={"event_list": event_list_sorted, "event_list_entity": event_list_entity})
