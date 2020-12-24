@@ -955,7 +955,7 @@ def get_entity_info():
             doc_mark_entities = DocMarkEntity.query.filter_by(entity_uuid=entity.uuid, valid=1).all()
             doc_uuids_by_entities = [i.doc_uuid for i in doc_mark_entities]
             doces = db.session.query(Document).filter(
-                Document.uuid.in_(doc_uuids_by_entities), Document.valid == 1).all()
+                Document.uuid.in_(doc_uuids_by_entities), Document.valid == 1).order_by(Document.create_time.desc()).all()
 
             doc_list = [{
                 "uuid": i.uuid,
