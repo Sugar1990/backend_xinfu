@@ -126,7 +126,8 @@ def upload_doc():
                                         data_insert_entity = []
                                         for index, item_entity in enumerate(res_entity):
                                             entity_json = {}
-                                            doc_mark_entity = DocMarkEntity(uuid=uuid.uuid1(), doc_uuid=doc.uuid, valid=1)
+                                            doc_mark_entity = DocMarkEntity(uuid=uuid.uuid1(), doc_uuid=doc.uuid,
+                                                                            valid=1)
                                             if item_entity.get("word", ""):
                                                 doc_mark_entity.word = item_entity["word"]
                                                 entity_json["name"] = item_entity["word"]
@@ -150,7 +151,8 @@ def upload_doc():
 
                                         for index, item_entity in enumerate(res_concept):
                                             entity_json = {}
-                                            doc_mark_entity = DocMarkEntity(uuid=uuid.uuid1(), doc_uuid=doc.uuid, valid=1)
+                                            doc_mark_entity = DocMarkEntity(uuid=uuid.uuid1(), doc_uuid=doc.uuid,
+                                                                            valid=1)
                                             if item_entity.get("word", ""):
                                                 doc_mark_entity.word = item_entity["word"]
                                                 entity_json["name"] = item_entity["word"]
@@ -234,7 +236,7 @@ def upload_doc():
                                                 # # location_json["lon"] = item_place["place_lon"]
                                                 # if item_place.get("place_lat", ""):
                                                 #     doc_mark_place.place_lat = item_place["place_lat"]
-                                                
+
                                                 if item_place.get("place_lon", ""):
                                                     try:
                                                         place_lon = float(item_place.get("place_lon"))
@@ -277,7 +279,8 @@ def upload_doc():
                                         data_insert_time_period = []
                                         for index, item_time in enumerate(res_time):
                                             time_range_json = {}
-                                            doc_mark_time_tag = DocMarkTimeTag(uuid=uuid.uuid1(), doc_uuid=doc.uuid, valid=1)
+                                            doc_mark_time_tag = DocMarkTimeTag(uuid=uuid.uuid1(), doc_uuid=doc.uuid,
+                                                                               valid=1)
                                             if item_time.get("time_type", 0):
                                                 doc_mark_time_tag.time_type = item_time["time_type"]
                                             if item_time.get("word", ""):
@@ -343,10 +346,14 @@ def upload_doc():
                                             data_insert_event = []
 
                                             for item in event_extraction_res.json()["result"]:
-                                                print("a")
+                                                # print("a")
                                                 event_json = {}
                                                 doc_mark_event = DocMarkEvent(uuid=uuid.uuid1(), doc_uuid=doc.uuid,
                                                                               valid=1)
+                                                if not item.get("event_address", []) or not item.get("event_time",
+                                                                                                     []) or not (
+                                                        item.get("event_subject", []) or item.get("event_object", [])):
+                                                    continue
                                                 if item.get("event_address", []):
                                                     # print("b")
                                                     doc_mark_event.event_address = item["event_address"]
@@ -421,7 +428,7 @@ def upload_doc():
                                     # "location": data_insert_location,
                                     "entities": data_insert_entity,
                                     "event_categories": data_insert_event,
-                                    "doc_type":str(doc.catalog_uuid)
+                                    "doc_type": str(doc.catalog_uuid)
                                 }]
                                 # an_catalog = Catalog.get_ancestorn_catalog(catalog_uuid)
                                 # doc_type_id = str(an_catalog.uuid) if an_catalog else ""
@@ -566,7 +573,8 @@ def move_doc_to_catalog():
             docs = Document.query.filter(Document.uuid.in_(doc_uuids), Document.valid == 1).all()
             if docs:
                 for doc in docs:
-                    document_same = Document.query.filter(Document.md5 == doc.md5, Document.uuid != doc.uuid, Document.valid == 1).first()
+                    document_same = Document.query.filter(Document.md5 == doc.md5, Document.uuid != doc.uuid,
+                                                          Document.valid == 1).first()
                     move_source_docs_to_target_catalog([doc], catalog_uuid)
                     res = success_res()
             else:
@@ -872,7 +880,8 @@ def get_upload_history():
         page_size = request.args.get('page_size', 10, type=int)
         customer_uuid = request.args.get('customer_uuid', "")
 
-        pagination = Document.query.filter_by(create_by_uuid=customer_uuid, valid=1).order_by(Document.create_time.desc()).paginate(
+        pagination = Document.query.filter_by(create_by_uuid=customer_uuid, valid=1).order_by(
+            Document.create_time.desc()).paginate(
             current_page, page_size, False)
 
         data = [{
@@ -943,7 +952,7 @@ def get_info():
 
             # ----------------------- 根据目录id，获取根目录tab权限 -----------------------
             flag, ancestorn_catalog_tagging_tabs = True, []
-            print("uuid",doc.catalog_uuid)
+            print("uuid", doc.catalog_uuid)
             if doc.catalog_uuid:
                 catalog = Catalog.query.filter_by(uuid=doc.catalog_uuid).first()
                 print(str(catalog.uuid))
@@ -953,7 +962,7 @@ def get_info():
                         flag, ancestorn_catalog_tagging_tabs = True, an_catalog.tagging_tabs
                     else:
                         flag, ancestorn_catalog_tagging_tabs = True, catalog.tagging_tabs
-                #print(str(ancestorn_catalog_tagging_tabs),flag)
+                # print(str(ancestorn_catalog_tagging_tabs),flag)
             # ----------------------- 根据目录id，获取根目录tab权限 END -----------------------
 
             doc_info = {
@@ -1070,12 +1079,12 @@ def get_entity_in_list_pagination():
                                                                     DocMarkComment.create_by_uuid.in_(leader_ids),
                                                                     DocMarkComment.valid == 1).all()
 
-
                     data_res = {
                         "name": doc.name,
                         "uuid": doc.uuid,
                         "create_time": doc.create_time.strftime('%Y-%m-%d %H:%M:%S'),
-                        "create_username": Customer.get_username_by_id(doc.create_by_uuid) if doc.create_by_uuid else "",
+                        "create_username": Customer.get_username_by_id(
+                            doc.create_by_uuid) if doc.create_by_uuid else "",
                         'path': doc.get_full_path() if doc.get_full_path() else '已失效',
                         'extension': doc.category,
                         "tag_flag": 1 if doc.status == 1 else 0,
@@ -2108,7 +2117,8 @@ def get_event_list_from_docs_group_by_entities(doc_ids=[]):
         event_list = [sorted(i, key=lambda x: x.get('datetime', '')[0]) for i in event_dict.values()]
     return event_list
 
-#------------------处理经纬度----------------------------
+
+# ------------------处理经纬度----------------------------
 
 
 def find_int_in_str(string):
@@ -2160,8 +2170,8 @@ def search_advance_for_doc_uuids():
                         # 取出与该时间段有交集的事件
                         for time_range_time_tag in time_range_time_tags:
                             if not (end_time < time_range_time_tag.format_date.strftime('%Y-%m-%d %H:%M:%S') or
-                                            start_time > time_range_time_tag.format_date_end.strftime(
-                                            '%Y-%m-%d %H:%M:%S')):
+                                    start_time > time_range_time_tag.format_date_end.strftime(
+                                        '%Y-%m-%d %H:%M:%S')):
                                 time_tag_ids.append(str(time_range_time_tag.uuid))
                         # 取出时间点在该时间段内的事件
                         date_time_tags = DocMarkTimeTag.query.filter_by(time_type=1, valid=1).all()
@@ -2321,7 +2331,7 @@ def search_advanced_doc_type():
         content = request.json.get('content', "")
         url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
 
-        uuid_advanced  = search_advance_for_doc_uuids_test(dates,places,event_categories,entities)
+        uuid_advanced = search_advance_for_doc_uuids_test(dates, places, event_categories, entities)
         if dates or places or entities or event_categories:
             if not uuid_advanced:
                 return {
@@ -2331,7 +2341,8 @@ def search_advanced_doc_type():
                     "doc_ids": []
                 }
 
-        data_screen = get_es_doc_test(url, doc_uuid=uuid_advanced, keywords=keywords,notes=notes, doc_type=doc_type, content=content, notes_content=notes_content)
+        data_screen = get_es_doc_test(url, doc_uuid=uuid_advanced, keywords=keywords, notes=notes, doc_type=doc_type,
+                                      content=content, notes_content=notes_content)
         # 组装ids，和结构化数据
         doc_ids = []
         data_by_doc_id = {}
@@ -2354,7 +2365,7 @@ def search_advanced_doc_type():
             {"name": Catalog.get_name_by_id(doc_type), "data": data_by_doc_id[doc_type]}
             for doc_type in data_by_doc_id if Catalog.get_name_by_id(doc_type)]
 
-        print("final_test",doc_ids, flush=True)
+        print("final_test", doc_ids, flush=True)
 
         res = {
             "doc": data_forms,
@@ -2440,8 +2451,8 @@ def search_advanced_pagination():
            'total_count': total_count}
     return jsonify(res)
 
-def search_advance_for_doc_uuids_test(dates=[] , places=[], event_categories=[], entities =[]):
 
+def search_advance_for_doc_uuids_test(dates=[], places=[], event_categories=[], entities=[]):
     '''
     :param dates: {"date_type":"date/time_range/time_period/frequency", "value":"时间戳/{"start_time:"时间戳}"}
     :param places: {“place_type": "place", "value":""}
@@ -2466,7 +2477,7 @@ def search_advance_for_doc_uuids_test(dates=[] , places=[], event_categories=[],
             date_value = dates.get("value", None)
             if date_type == 'date':
                 date_f = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(int(str(date_value)[:-3])))
-                print(date_f,flush=True)
+                print(date_f, flush=True)
                 time_tags = DocMarkTimeTag.query.filter_by(format_date=date_f, time_type=1, valid=1).all()
                 doc_uuids_by_dates = [i.doc_uuid for i in time_tags]
             elif date_type == "time_range":
@@ -2482,8 +2493,8 @@ def search_advance_for_doc_uuids_test(dates=[] , places=[], event_categories=[],
                     # 取出与该时间段有交集的事件
                     for time_range_time_tag in time_range_time_tags:
                         if not (end_time < time_range_time_tag.format_date.strftime('%Y-%m-%d %H:%M:%S') or
-                                        start_time > time_range_time_tag.format_date_end.strftime(
-                                        '%Y-%m-%d %H:%M:%S')):
+                                start_time > time_range_time_tag.format_date_end.strftime(
+                                    '%Y-%m-%d %H:%M:%S')):
                             time_tag_ids.append(str(time_range_time_tag.uuid))
                     # 取出时间点在该时间段内的事件
                     date_time_tags = DocMarkTimeTag.query.filter_by(time_type=1, valid=1).all()
@@ -2576,7 +2587,7 @@ def search_advance_for_doc_uuids_test(dates=[] , places=[], event_categories=[],
         # entities: [{id: 0, entity: "中华", category_uuid: "7d2a3e03-7eac-4080-a9c3-735ca122b29a"}]
         data = entities[0]
         if data.get('entity'):
-            print(data['entity'],flush = True)
+            print(data['entity'], flush=True)
             entity_ins = data['entity']
             condition.append(or_(Entity.name.like(f'%{entity_ins}%'), Entity.synonyms.op('@>')([entity_ins])))
         if data.get('category_uuid'):
@@ -2602,9 +2613,10 @@ def search_advance_for_doc_uuids_test(dates=[] , places=[], event_categories=[],
         for i in range(len(result_list) - 1):
             result = list(set(result_list[i]).intersection(set(result_list[i + 1])))
 
-    return [ str(i) for i in result]
+    return [str(i) for i in result]
 
-def get_es_doc_test(url, doc_uuid=[], keywords=[], notes=[],doc_type="", content="", notes_content=[]):
+
+def get_es_doc_test(url, doc_uuid=[], keywords=[], notes=[], doc_type="", content="", notes_content=[]):
     search_json = {}
     if doc_uuid:
         search_json["uuid"] = {"type": "terms", "value": doc_uuid}
