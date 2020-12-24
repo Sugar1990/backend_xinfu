@@ -19,7 +19,7 @@ from . import api_entity as blue_print
 from .utils import success_res, fail_res
 from .. import db
 from ..conf import ES_SERVER_IP, ES_SERVER_PORT, YC_ROOT_URL, YC_ROOT_URL_PYTHON, PLACE_BASE_NAME, USE_PLACE_SERVER
-from ..models import Entity, EntityCategory, DocMarkPlace, DocMarkEntity
+from ..models import Entity, EntityCategory, DocMarkPlace, DocMarkEntity, DocMarkEvent, Document, Customer
 from .place import get_place_from_base_server
 import zipfile
 
@@ -950,6 +950,57 @@ def get_entity_info():
         uuid = request.args.get('uuid', None)
         entity = Entity.query.filter_by(uuid=uuid, valid=1).first()
         if entity:
+            condition_object = []
+            # 查询相关文档列表
+            doc_mark_entities = DocMarkEntity.query.filter_by(entity_uuid=entity.uuid, valid=1).all()
+            doc_uuids_by_entities = [i.doc_uuid for i in doc_mark_entities]
+            doces = db.session.query(Document).filter(
+                Document.uuid.in_(doc_uuids_by_entities), Document.valid == 1).all()
+
+            doc_list = [{
+                "uuid": i.uuid,
+                "name": i.name,
+                "create_time": i.create_time.strftime("%Y-%m-%d %H:%M:%S") if i.create_time else None,
+                "create_username": Customer.get_username_by_id(i.create_by_uuid),
+                "status": i.get_status_name()
+            } for i in doces]
+
+            # 查询相关事件列表
+            conditions = [DocMarkEvent.valid == 1]
+            condition_object.append(or_(DocMarkEvent.event_subject.op('@>')([str(entity.uuid)]),
+                                        DocMarkEvent.event_object.op('@>')([str(entity.uuid)])))
+            condition_object = tuple(condition_object)
+
+            doc_mark_events = DocMarkEvent.query.filter(and_(*conditions), or_(*condition_object)).order_by(
+                DocMarkEvent.create_time.desc()).all()
+
+            doc_mark_event_list = [{
+                "uuid": i.uuid,
+                "event_id": i.event_id,
+                "event_desc": i.event_desc,
+                "event_subject": i.event_subject,
+                "event_predicate": i.event_predicate,
+                "event_object": i.event_object,
+                "event_time": i.event_time,
+                "event_address": i.event_address,
+                "event_why": i.event_why,
+                "event_result": i.event_result,
+                "event_conduct": i.event_conduct,
+                "event_talk": i.event_talk,
+                "event_how": i.event_how,
+                "doc_uuid": i.doc_uuid,
+                "customer_uuid": i.customer_uuid,
+                "parent_uuid": i.parent_uuid,
+                "title": i.title,
+                "event_class_uuid": i.event_class_uuid,
+                "event_type_uuid": i.event_type_uuid,
+                "create_by_uuid": i.create_by_uuid,
+                "create_time": i.create_time.strftime("%Y-%m-%d %H:%M:%S") if i.create_time else None,
+                "update_by_uuid": i.update_by_uuid,
+                "update_time": i.update_time.strftime("%Y-%m-%d %H:%M:%S") if i.update_time else None,
+                "add_time": i.add_time.strftime("%Y-%m-%d %H:%M:%S") if i.add_time else None
+            } for i in doc_mark_events]
+
             res = {'uuid': str(entity.uuid), 'name': entity.name,
                    'synonyms': entity.synonyms if entity.synonyms else [],
                    'props': entity.props if entity.props else {},
@@ -958,10 +1009,14 @@ def get_entity_info():
                    'summary': entity.summary if entity.summary else '',
                    'summary_phase': entity.summary.split('\n') if entity.summary else '',
                    'longitude': entity.longitude,
-                   'latitude': entity.latitude}
+                   'latitude': entity.latitude,
+                   "doc_list": doc_list,
+                   "doc_mark_event_list": doc_mark_event_list
+                   }
         else:
-            res = {'uuid': '-1', 'name': '', 'synonyms': [], 'props': {}, 'category_uuid': "-1", 'category': '',
+            res = {'uuid': '', 'name': '', 'synonyms': [], 'props': {}, 'category_uuid': "-1", 'category': '',
                    'longitude': None, 'latitude': None}
+
     except Exception as e:
         print(str(e))
         res = {'uuid': "-1", 'name': '', 'synonyms': [], 'props': {}, 'category_uuid': "-1", 'category': '', 'longitude': None,
