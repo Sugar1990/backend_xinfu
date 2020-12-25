@@ -720,8 +720,6 @@ def get_advanced_search_of_events():
             for doc_mark_event in doc_mark_events:
                 event_datetime = []
                 datetime = []
-                # print("doc_mark_event.event_time: ", doc_mark_event.event_time)
-
                 for event_time_uuid in doc_mark_event.event_time:
                     event_time_tag = DocMarkTimeTag.query.filter_by(uuid=event_time_uuid, valid=1).first()
                     if event_time_tag:
@@ -737,7 +735,6 @@ def get_advanced_search_of_events():
                             if doc_mark_time_tag.time_type == 2:
                                 datetime.append(doc_mark_time_tag.format_date.strftime('%Y-%m-%d %H:%M:%S'))
                                 datetime.append(doc_mark_time_tag.format_date_end.strftime('%Y-%m-%d %H:%M:%S'))
-
                 # print('datetime', datetime, event_datetime)
                 event_uuid = doc_mark_event.uuid
 
@@ -755,18 +752,19 @@ def get_advanced_search_of_events():
                             temp["place_lat"] = entity.latitude
                             place.append(temp)
                     if doc_mark_place and doc_mark_place.type == 6:
-                        temp["word"] = doc_mark_place.word
                         # temp["place_id"] = doc_mark_place.place_uuid
                         place_names = doc_mark_place.relation.split(',')
                         for place_name in place_names:
+                            temp = {}
+                            temp["word"] = place_name
                             entities = Entity.query.filter(or_(Entity.name.like(f'%{place_name}%'),
                                                              Entity.synonyms.op('@>')([place_name])),
                                                          Entity.valid==1).all()
                             for entity in entities:
                                 if entity.category_name() == PLACE_BASE_NAME:
+                                    print('entity_name', entity.name)
                                     temp["place_lon"] = entity.longitude
                                     temp["place_lat"] = entity.latitude
-                                    print('a', entity.longitude, entity.latitude)
                                     place.append(temp)
                                     break
 
@@ -805,8 +803,8 @@ def get_advanced_search_of_events():
                             else:
                                 event_dict[ob] = [event]
 
-            # print('print result', event_list)
-            event_list_entity = [sorted(i, key=lambda x: x.get('datetime', '')) for i in event_dict.values() if len(i) > 1]
+            # print('print result', event_dict)
+            event_list_entity = [sorted(i, key=lambda x: x.get('datetime', '')) for i in event_dict.values() if len(i) >= 1]
             event_list_sorted = sorted(event_list, key=lambda x: x.get('datetime', '')[0])
             res = success_res(data={"event_list": event_list_sorted, "event_list_entity": event_list_entity})
         else:
