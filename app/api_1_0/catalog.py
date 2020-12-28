@@ -242,17 +242,24 @@ def get_favorite_files():
 def get_catalog_files():
     catalog_uuid = request.args.get("catalog_uuid", None)
     customer_uuid = request.args.get("customer_uuid", None)
-    docs_order_by_name = request.args.get("docs_order_by_name", False)
-    docs_order_by_create_time = request.args.get("docs_order_by_create_time", False)
+    docs_order_by_name = request.args.get("docs_order_by_name", 0, type=int)
+    docs_order_by_create_time = request.args.get("docs_order_by_create_time", 0, type=int)
 
     try:
-        docs = Document.query.filter(Document.catalog_uuid == catalog_uuid, Document.valid == 1).all()
-        if docs_order_by_create_time:
+        docs = Document.query.filter(Document.catalog_uuid == catalog_uuid, Document.valid == 1).order_by(
+            Document.create_time.desc()).all()
+        if docs_order_by_create_time == 1:
             docs = Document.query.filter(Document.catalog_uuid == catalog_uuid, Document.valid == 1).order_by(
             Document.create_time.desc()).all()
-        if docs_order_by_name:
+        elif docs_order_by_create_time == 2:
             docs = Document.query.filter(Document.catalog_uuid == catalog_uuid, Document.valid == 1).order_by(
-                Document.name).all()
+                Document.create_time.asc()).all()
+        elif docs_order_by_name == 1:
+            docs = Document.query.filter(Document.catalog_uuid == catalog_uuid, Document.valid == 1).order_by(
+                Document.name.desc()).all()
+        elif docs_order_by_name == 2:
+            docs = Document.query.filter(Document.catalog_uuid == catalog_uuid, Document.valid == 1).order_by(
+                Document.name.asc()).all()
 
         customer = Customer.query.filter_by(uuid=customer_uuid).first()
         catalogs = Catalog.query.filter_by(parent_uuid=catalog_uuid).all()

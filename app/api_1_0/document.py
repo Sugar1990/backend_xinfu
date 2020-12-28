@@ -1004,6 +1004,9 @@ def get_entity_in_list_pagination():
         customer_uuid = request.args.get("customer_uuid", "")
         cur_page = request.args.get("cur_page", 1, type=int)
         page_size = request.args.get("page_size", 10, type=int)
+        docs_order_by_name = request.args.get("docs_order_by_name", 0, type=int)
+        docs_order_by_create_time = request.args.get("docs_order_by_create_time", 0, type=int)
+
 
         res = {"data": [],
                "page_count": 0,
@@ -1063,7 +1066,16 @@ def get_entity_in_list_pagination():
                                     'leader_operate': 1 if doc_mark_comments else 0
                                 }
                             data.append(res)
-                    res = {"data": data,
+                    data_sorted = data
+                    if docs_order_by_create_time == 1:
+                        data_sorted = sorted(data, key=lambda x: x.get('create_time', ''), reverse=True)
+                    elif docs_order_by_create_time == 2:
+                        data_sorted = sorted(data, key=lambda x: x.get('create_time', ''), reverse=False)
+                    elif docs_order_by_name == 1:
+                        data_sorted = sorted(data, key=lambda x: x.get('name', ''), reverse=True)
+                    elif docs_order_by_name == 2:
+                        data_sorted = sorted(data, key=lambda x: x.get('name', ''), reverse=False)
+                    res = {"data": data_sorted,
                            "page_count": int(len(data) / page_size) + 1,
                            "total_count": len(data)}
         else:
@@ -1093,8 +1105,16 @@ def get_entity_in_list_pagination():
                         'leader_operate': 1 if doc_mark_comments else 0
                     }
                     data.append(data_res)
-
-                res = {"data": data,
+                data_sorted = data
+                if docs_order_by_create_time == 1:
+                    data_sorted = sorted(data, key=lambda x: x.get('create_time', ''), reverse=True)
+                elif docs_order_by_create_time == 2:
+                    data_sorted = sorted(data, key=lambda x: x.get('create_time', ''), reverse=False)
+                elif docs_order_by_name == 1:
+                    data_sorted = sorted(data, key=lambda x: x.get('name', ''), reverse=True)
+                elif docs_order_by_name == 2:
+                    data_sorted = sorted(data, key=lambda x: x.get('name', ''), reverse=False)
+                res = {"data": data_sorted,
                        "page_count": int(len(data) / page_size) + 1,
                        "total_count": len(data)}
 
@@ -1138,6 +1158,8 @@ def get_search_pagination():
         search_type = request.args.get('search_type', "")
         page_size = request.args.get('page_size', 10, type=int)
         cur_page = request.args.get('cur_page', 1, type=int)
+        docs_order_by_name = request.args.get("docs_order_by_name", 0, type=int)
+        docs_order_by_create_time = request.args.get("docs_order_by_create_time", 0, type=int)
         url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
         if search and search_type:
             if search[0] == "\"" or search[0] == "“":
@@ -1179,14 +1201,22 @@ def get_search_pagination():
                         "leader_operate": 1 if doc_mark_comments else 0
                     }
                     data.append(data_item)
-
-        total_count = len(data)
+        data_sorted = data
+        if docs_order_by_create_time == 1:
+            data_sorted = sorted(data, key=lambda x: x.get('create_time', ''), reverse=True)
+        elif docs_order_by_create_time == 2:
+            data_sorted = sorted(data, key=lambda x: x.get('create_time', ''), reverse=False)
+        elif docs_order_by_name == 1:
+            data_sorted = sorted(data, key=lambda x: x.get('name', ''), reverse=True)
+        elif docs_order_by_name == 2:
+            data_sorted = sorted(data, key=lambda x: x.get('name', ''), reverse=False)
+        total_count = len(data_sorted)
 
         if total_count >= page_size * cur_page:
-            list_return = data[page_size * (cur_page - 1):page_size * cur_page]
+            list_return = data_sorted[page_size * (cur_page - 1):page_size * cur_page]
 
         elif total_count < page_size * cur_page and total_count > page_size * (cur_page - 1):
-            list_return = data[page_size * (cur_page - 1):]
+            list_return = data_sorted[page_size * (cur_page - 1):]
         else:
             list_return = []
         # print(esurl, para, flush=True)
@@ -2453,9 +2483,9 @@ def search_advanced_pagination():
 
     if docs_order_by_name:
         if docs_order_by_name == 2:
-            list_return = sorted(list_return, key=lambda x: x.get('name', '')[0])
+            list_return = sorted(list_return, key=lambda x: x.get('name', ''))
         else:
-            list_return = sorted(list_return, key=lambda x: x.get('name', '')[0], reverse=True)
+            list_return = sorted(list_return, key=lambda x: x.get('name', ''), reverse=True)
 
     if docs_order_by_create_time:
         if docs_order_by_create_time == 2:  # 升序
