@@ -19,7 +19,7 @@ from . import api_entity as blue_print
 from .utils import success_res, fail_res
 from .. import db
 from ..conf import ES_SERVER_IP, ES_SERVER_PORT, YC_ROOT_URL, YC_ROOT_URL_PYTHON, PLACE_BASE_NAME, USE_PLACE_SERVER
-from ..models import Entity, EntityCategory, DocMarkPlace, DocMarkEntity, DocMarkEvent, Document, Customer
+from ..models import Entity, EntityCategory, DocMarkPlace, DocMarkEntity, DocMarkEvent, Document, Customer, DocMarkTimeTag
 from .place import get_place_from_base_server
 import zipfile
 
@@ -967,38 +967,30 @@ def get_entity_info():
 
             # 查询相关事件列表
             conditions = [DocMarkEvent.valid == 1]
-            condition_object.append(or_(DocMarkEvent.event_subject.op('@>')([str(entity.uuid)]),
-                                        DocMarkEvent.event_object.op('@>')([str(entity.uuid)])))
+            doc_mark_entity_ids = [str(i.uuid) for i in doc_mark_entities]
+            for doc_mark_entity_id in doc_mark_entity_ids:
+                condition_object.append(or_(DocMarkEvent.event_subject.op('@>')([doc_mark_entity_id]),
+                                            DocMarkEvent.event_object.op('@>')([doc_mark_entity_id])))
             condition_object = tuple(condition_object)
 
             doc_mark_events = DocMarkEvent.query.filter(and_(*conditions), or_(*condition_object)).order_by(
                 DocMarkEvent.create_time.desc()).all()
 
+            #获取事件时间
+            for doc_mark_event in doc_mark_events:
+                event_datetime = []
+                for event_time_uuid in doc_mark_event.event_time:
+                    event_time_tag = DocMarkTimeTag.query.filter_by(uuid=event_time_uuid, valid=1).first()
+                    if event_time_tag:
+                        if event_time_tag.format_date:
+                            event_datetime.append(event_time_tag.format_date.strftime('%Y-%m-%d %H:%M:%S'))
+
             doc_mark_event_list = [{
                 "uuid": i.uuid,
-                "event_id": i.event_id,
-                "event_desc": i.event_desc,
-                "event_subject": i.event_subject,
-                "event_predicate": i.event_predicate,
-                "event_object": i.event_object,
-                "event_time": i.event_time,
-                "event_address": i.event_address,
-                "event_why": i.event_why,
-                "event_result": i.event_result,
-                "event_conduct": i.event_conduct,
-                "event_talk": i.event_talk,
-                "event_how": i.event_how,
-                "doc_uuid": i.doc_uuid,
-                "customer_uuid": i.customer_uuid,
-                "parent_uuid": i.parent_uuid,
-                "title": i.title,
-                "event_class_uuid": i.event_class_uuid,
-                "event_type_uuid": i.event_type_uuid,
-                "create_by_uuid": i.create_by_uuid,
-                "create_time": i.create_time.strftime("%Y-%m-%d %H:%M:%S") if i.create_time else None,
-                "update_by_uuid": i.update_by_uuid,
-                "update_time": i.update_time.strftime("%Y-%m-%d %H:%M:%S") if i.update_time else None,
-                "add_time": i.add_time.strftime("%Y-%m-%d %H:%M:%S") if i.add_time else None
+                # "event_subject": i.event_subject,
+                # "event_object": i.event_object,
+                "datetime": event_datetime,
+                "title": i.title
             } for i in doc_mark_events]
 
             res = {'uuid': str(entity.uuid), 'name': entity.name,
