@@ -2407,6 +2407,10 @@ def search_advanced_pagination():
     content = request.json.get('content', "")
     url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
 
+    # 排序参数
+    docs_order_by_name = request.args.get("docs_order_by_name", 0, type=int)
+    docs_order_by_create_time = request.args.get("docs_order_by_create_time", 0, type=int)
+
     uuid_advanced = search_advance_for_doc_uuids_test(dates, places, event_categories, entities)
     if dates or places or entities or event_categories:
         if not uuid_advanced:
@@ -2446,6 +2450,19 @@ def search_advanced_pagination():
         list_return = data_screen_res[page_size * (cur_page - 1):]
     else:
         list_return = []
+
+    if docs_order_by_name:
+        if docs_order_by_name == 2:
+            list_return = sorted(list_return, key=lambda x: x.get('name', '')[0])
+        else:
+            list_return = sorted(list_return, key=lambda x: x.get('name', '')[0], reverse=True)
+
+    if docs_order_by_create_time:
+        if docs_order_by_create_time == 2:  # 升序
+            list_return = sorted(list_return, key=lambda x: x.get('create_time', ''))
+        else:  # 降序
+            list_return = sorted(list_return, key=lambda x: x.get('create_time', ''), reverse=True)
+
     res = {'data': list_return,
            'page_count': math.ceil(total_count / page_size),
            'total_count': total_count}
