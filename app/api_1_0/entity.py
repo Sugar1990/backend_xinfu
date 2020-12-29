@@ -19,7 +19,8 @@ from . import api_entity as blue_print
 from .utils import success_res, fail_res
 from .. import db
 from ..conf import ES_SERVER_IP, ES_SERVER_PORT, YC_ROOT_URL, YC_ROOT_URL_PYTHON, PLACE_BASE_NAME, USE_PLACE_SERVER
-from ..models import Entity, EntityCategory, DocMarkPlace, DocMarkEntity, DocMarkEvent, Document, Customer, DocMarkTimeTag
+from ..models import Entity, EntityCategory, DocMarkPlace, DocMarkEntity, DocMarkEvent, Document, Customer, \
+    DocMarkTimeTag
 from .place import get_place_from_base_server
 import zipfile
 
@@ -115,7 +116,8 @@ def insert_entity():
             props = props if props else {}
             if name in synonyms:
                 synonyms.remove(name)
-            entity = Entity(uuid=uuid.uuid1(), name=name, category_uuid=category_uuid, props=props, synonyms=synonyms, summary=summary,
+            entity = Entity(uuid=uuid.uuid1(), name=name, category_uuid=category_uuid, props=props, synonyms=synonyms,
+                            summary=summary,
                             valid=1)
 
             # es 插入操作
@@ -166,9 +168,11 @@ def insert_entity():
             # print(data_insert_json, search_result.text)
 
             # <editor-fold desc="yc insert name & synonyms">
-            sync_yc_add_name(name, str(entity.uuid), str(entity.category_uuid), entity.get_yc_mark_category(), longitude, latitude)
+            sync_yc_add_name(name, str(entity.uuid), str(entity.category_uuid), entity.get_yc_mark_category(),
+                             longitude, latitude)
 
-            sync_yc_add_synonyms(synonyms, str(entity.uuid), str(entity.category_uuid), entity.get_yc_mark_category(), longitude,
+            sync_yc_add_synonyms(synonyms, str(entity.uuid), str(entity.category_uuid), entity.get_yc_mark_category(),
+                                 longitude,
                                  latitude)
             # </editor-fold>
 
@@ -421,7 +425,8 @@ def delete_entity_by_ids():
                         # <editor-fold desc="yc del entity">
                         sync_yc_del_name(uni_entity.name, uni_entity.uuid, uni_entity.get_yc_mark_category())
                         if uni_entity.synonyms:
-                            sync_yc_del_synonyms(uni_entity.synonyms, uni_entity.uuid, uni_entity.get_yc_mark_category())
+                            sync_yc_del_synonyms(uni_entity.synonyms, uni_entity.uuid,
+                                                 uni_entity.get_yc_mark_category())
                         # </editor-fold>
 
                         valid_uuids.append(uni_entity.uuid)
@@ -955,7 +960,8 @@ def get_entity_info():
             doc_mark_entities = DocMarkEntity.query.filter_by(entity_uuid=entity.uuid, valid=1).all()
             doc_uuids_by_entities = [i.doc_uuid for i in doc_mark_entities]
             doces = db.session.query(Document).filter(
-                Document.uuid.in_(doc_uuids_by_entities), Document.valid == 1).order_by(Document.create_time.desc()).all()
+                Document.uuid.in_(doc_uuids_by_entities), Document.valid == 1).order_by(
+                Document.create_time.desc()).all()
 
             doc_list = [{
                 "uuid": i.uuid,
@@ -971,12 +977,14 @@ def get_entity_info():
             for doc_mark_entity_id in doc_mark_entity_ids:
                 condition_object.append(or_(DocMarkEvent.event_subject.op('@>')([doc_mark_entity_id]),
                                             DocMarkEvent.event_object.op('@>')([doc_mark_entity_id])))
+
             condition_object = tuple(condition_object)
+            doc_mark_events = []
+            if condition_object:
+                doc_mark_events = DocMarkEvent.query.filter(and_(*conditions), or_(*condition_object)).order_by(
+                    DocMarkEvent.create_time.desc()).all()
 
-            doc_mark_events = DocMarkEvent.query.filter(and_(*conditions), or_(*condition_object)).order_by(
-                DocMarkEvent.create_time.desc()).all()
-
-            #获取事件时间
+            # 获取事件时间
             for doc_mark_event in doc_mark_events:
                 event_datetime = []
                 for event_time_uuid in doc_mark_event.event_time:
@@ -1011,7 +1019,8 @@ def get_entity_info():
 
     except Exception as e:
         print(str(e))
-        res = {'uuid': "-1", 'name': '', 'synonyms': [], 'props': {}, 'category_uuid': "-1", 'category': '', 'longitude': None,
+        res = {'uuid': "-1", 'name': '', 'synonyms': [], 'props': {}, 'category_uuid': "-1", 'category': '',
+               'longitude': None,
                'latitude': None}
     return jsonify(res)
 
@@ -1210,7 +1219,8 @@ def import_entity_excel():
                         # print(search_result.text, flush=True)
 
                     else:
-                        entity = Entity(uuid=uuid.uuid1(), name=ex_name, props=ex_props, synonyms=ex_synonyms, category_uuid=category_uuid,
+                        entity = Entity(uuid=uuid.uuid1(), name=ex_name, props=ex_props, synonyms=ex_synonyms,
+                                        category_uuid=category_uuid,
                                         valid=1)
                         db.session.add(entity)
                         # db.session.commit()
@@ -1234,8 +1244,10 @@ def import_entity_excel():
                         # print(search_result.text, flush=True)
 
                         # <editor-fold desc="yc insert name & synonyms">
-                        sync_yc_add_name(ex_name, str(entity.uuid), str(entity.category_uuid), entity.get_yc_mark_category())
-                        sync_yc_add_synonyms(ex_synonyms, str(entity.uuid), str(entity.category_uuid), entity.get_yc_mark_category())
+                        sync_yc_add_name(ex_name, str(entity.uuid), str(entity.category_uuid),
+                                         entity.get_yc_mark_category())
+                        sync_yc_add_synonyms(ex_synonyms, str(entity.uuid), str(entity.category_uuid),
+                                             entity.get_yc_mark_category())
                         # </editor-fold>
 
             except Exception as e:
@@ -1248,7 +1260,6 @@ def import_entity_excel():
 
     res = success_res()
     return jsonify(res)
-
 
 
 # 不做实体与数据库对齐和去重等操作，直接插入，excel批量导入实体
@@ -1272,7 +1283,7 @@ def import_entity_excel_straightly():
             try:
                 row_value = table.row_values(row_index)
                 ex_name = row_value[0].strip()
-                print("here is arrived",flush=True)
+                print("here is arrived", flush=True)
                 category_uuid = str(EntityCategory.get_category_id(row_value[1].strip()))
 
                 ex_summary = row_value[2].strip()
@@ -1288,7 +1299,8 @@ def import_entity_excel_straightly():
                         key, value = re.match('(.+?):(.*)', prop_str).groups()
                         ex_props[key] = value
 
-                entity = {"name": ex_name, "props": ex_props, "synonyms": ex_synonyms, "category_uuid": str(category_uuid),
+                entity = {"name": ex_name, "props": ex_props, "synonyms": ex_synonyms,
+                          "category_uuid": str(category_uuid),
                           "summary": ex_summary, "valid": 1}
 
                 entity_list.append(entity)
@@ -1330,19 +1342,20 @@ def SaveOneFile(filepath, file_name):
                 category_uuid = EntityCategory.get_category_id('机构')
                 name_summary_dict = {}
                 for row in range(1, number_of_rows):
-                    name, synonym, summary = sheet.cell(row, col_dict["名称"]).value, sheet.cell(row, col_dict["英文名称"]).value, sheet.cell(row, col_dict["概况"]).value
+                    name, synonym, summary = sheet.cell(row, col_dict["名称"]).value, sheet.cell(row, col_dict[
+                        "英文名称"]).value, sheet.cell(row, col_dict["概况"]).value
                     if name in name_summary_dict:
                         name_summary_dict[name]['summary'].append(summary)
                         name_summary_dict[name]['synonyms'].append(synonym)
                     else:
-                        name_summary_dict[name] = {"summary":[summary], "synonyms":[synonym]}
+                        name_summary_dict[name] = {"summary": [summary], "synonyms": [synonym]}
                 for name, info_dict in name_summary_dict.items():
                     insert_json = {
                         "name": name,
                         "category_uuid": str(category_uuid),
                         "summary": '\n'.join(info_dict['summary']),
                         "synonyms": list(set(info_dict['synonyms']))}
-                    
+
                     insert_entity_to_pg_and_es(insert_json.get("name", ""), insert_json.get("category_uuid", None),
                                                insert_json.get("summary", ""),
                                                insert_json.get("props", None), insert_json.get("synonyms", []))
@@ -1391,7 +1404,7 @@ def SaveOneFile(filepath, file_name):
             try:
                 category_uuid = EntityCategory.get_category_id(file_name.split("-")[0])
                 for row in range(1, number_of_rows):
-                    props_json = {"身份证号码": sheet.cell(row,col_dict["身份证号码"]).value,
+                    props_json = {"身份证号码": sheet.cell(row, col_dict["身份证号码"]).value,
                                   "性别": sheet.cell(row, col_dict["性别"]).value,
                                   "政治面貌": sheet.cell(row, col_dict["政治面貌"]).value,
                                   "军衔": sheet.cell(row, col_dict["军衔"]).value,
@@ -1414,7 +1427,8 @@ def SaveOneFile(filepath, file_name):
                         "props": props_json
                     }
                     # print(insert_json)
-                    insert_entity_to_pg_and_es(insert_json.get("name", ""), insert_json.get("category_uuid", None), insert_json.get("summary", ""),
+                    insert_entity_to_pg_and_es(insert_json.get("name", ""), insert_json.get("category_uuid", None),
+                                               insert_json.get("summary", ""),
                                                insert_json.get("props", None), insert_json.get("synonyms", []))
 
             except Exception as e:
@@ -1468,7 +1482,7 @@ def SaveOneFile(filepath, file_name):
                         "油库容量": sheet.cell(row, col_dict["油库容量"]).value,
                         "营房总面积": sheet.cell(row, col_dict["营房总面积"]).value,
                         "占地面积": sheet.cell(row, col_dict["占地面积"]).value
-                        }
+                    }
 
                     insert_json = {
                         "name": sheet.cell(row, col_dict["工程名称"]).value,
@@ -1497,7 +1511,7 @@ def SaveOneFile(filepath, file_name):
                         "所在防护责任区": sheet.cell(row, col_dict["所在防护责任区"]).value,
                         "数据来源": sheet.cell(row, col_dict["数据来源"]).value,
                         "数据时间": sheet.cell(row, col_dict["数据时间"]).value
-                        }
+                    }
 
                     insert_json = {
                         "name": sheet.cell(row, col_dict["工程名称"]).value,
@@ -1607,13 +1621,12 @@ def SaveOneFile(filepath, file_name):
                                                insert_json.get("props", None), insert_json.get("synonyms", []))
             except Exception as e:
                 print(str(e))
-        
+
         else:
             print("没有匹配文件模板:", file_name)
 
     else:
         pass
-
 
 
 @blue_print.route('import_excel_to_pg', methods=['POST'])
@@ -1674,7 +1687,8 @@ def post_json_data_path_to_yc():
                                                   Entity.category_uuid.in_(entity_category1_ids)).all()
             place_list = Entity.query.filter_by(valid=1, category_uuid=category_uuid_of_place).all()
             if entity_category2_ids:
-                concept_list = Entity.query.filter(Entity.valid == 1, Entity.category_uuid.in_(entity_category2_ids)).all()
+                concept_list = Entity.query.filter(Entity.valid == 1,
+                                                   Entity.category_uuid.in_(entity_category2_ids)).all()
 
         root_path = os.getcwd()
         yc_entity_path = os.path.join("/static", "entity.json")
@@ -1734,7 +1748,6 @@ def post_json_data_path_to_yc():
     return jsonify(res)
 
 
-
 def insert_entity_to_pg_and_es(name, category_uuid, summary, props={}, synonyms=[]):
     try:
 
@@ -1752,18 +1765,18 @@ def insert_entity_to_pg_and_es(name, category_uuid, summary, props={}, synonyms=
 
         entity = Entity.query.filter(Entity.name == name, Entity.valid == 1,
                                      Entity.category_uuid == category_uuid).first()
-                                     
+
         if name in synonyms:
             synonyms.remove(name)
-            
+
         if entity:
             entity.summary = summary
             entity.props = props
             entity.synonyms = synonyms
             db.session.commit()
 
-            key_value_json =  {"uuid": str(entity.uuid)}
-            
+            key_value_json = {"uuid": str(entity.uuid)}
+
             # es 更新操作
             if category_uuid:
                 key_value_json["category_uuid"] = category_uuid
@@ -1773,7 +1786,7 @@ def insert_entity_to_pg_and_es(name, category_uuid, summary, props={}, synonyms=
             key_value_json["props"] = props if props else {}
             if synonyms:
                 key_value_json["synonyms"] = synonyms
-            
+
             # 获得es对应实体
             url = f'http://{ES_SERVER_IP}:{ES_SERVER_PORT}'
             header = {"Content-Type": "application/json; charset=UTF-8"}
@@ -1805,7 +1818,8 @@ def insert_entity_to_pg_and_es(name, category_uuid, summary, props={}, synonyms=
             props = props if props else {}
             if name in synonyms:
                 synonyms.remove(name)
-            entity = Entity(uuid=uuid.uuid1(), name=name, category_uuid=category_uuid, props=props, synonyms=synonyms, summary=summary,
+            entity = Entity(uuid=uuid.uuid1(), name=name, category_uuid=category_uuid, props=props, synonyms=synonyms,
+                            summary=summary,
                             valid=1)
 
             db.session.add(entity)
@@ -1836,6 +1850,7 @@ def insert_entity_to_pg_and_es(name, category_uuid, summary, props={}, synonyms=
     except Exception as e:
         db.session.rollback()
         print(str(e))
+
 
 @blue_print.route('sync_entity_doc_place_doc_entity', methods=['POST'])
 def sync_entity_doc_place_doc_entity():
@@ -1878,7 +1893,7 @@ def sync_entity_doc_place_doc_entity():
                 save_filename = "{0}{1}{2}".format(os.path.splitext(filename)[0],
                                                    datetime.datetime.now().strftime('%Y%m%d%H%M%S'),
                                                    os.path.splitext(filename)[1]).lower()
-                file_savepath = os.path.join(os.getcwd(), 'static',save_filename)
+                file_savepath = os.path.join(os.getcwd(), 'static', save_filename)
                 entity_sql.save(file_savepath)
                 with open(file_savepath, mode='r', encoding='utf-8') as file:
                     lines = file.readlines()
@@ -1901,13 +1916,13 @@ def sync_entity_doc_place_doc_entity():
                                         with open('entity.txt', mode='w', encoding='utf-8') as f:
                                             f.write(line)
 
-        with open('doc_mark_place_insert.txt', mode= 'w' ,encoding='utf-8') as file:
+        with open('doc_mark_place_insert.txt', mode='w', encoding='utf-8') as file:
             for key, value in dict_trans_place.items():
                 tmp_str = "UPDATE doc_mark_place SET place_uuid='{0}' WHERE place_uuid='{1}';".format(value, key)
                 file.write(tmp_str + '\n')
 
-        with open('doc_mark_entity_insert.txt', mode= 'w' ,encoding='utf-8') as file:
-            for key,value in dict_trans_entity.items():
+        with open('doc_mark_entity_insert.txt', mode='w', encoding='utf-8') as file:
+            for key, value in dict_trans_entity.items():
                 tmp_str = "UPDATE doc_mark_entity SET entity_uuid='{0}' WHERE entity_uuid='{1}';".format(value, key)
                 file.write(tmp_str + '\n')
         res = success_res()
@@ -1916,14 +1931,15 @@ def sync_entity_doc_place_doc_entity():
         res = fail_res()
     return jsonify(res)
 
-def get_doc_mark_entity_place_dict(place_save_path,entity_save_path):
+
+def get_doc_mark_entity_place_dict(place_save_path, entity_save_path):
     dict = {}
     with open(place_save_path, mode='r', encoding='utf-8') as file:
         lines = file.readlines()
         place_uuid = []
         for line in lines:
             tmp = line.split("]',")
-            if len(tmp)>= 2:
+            if len(tmp) >= 2:
                 str_list = tmp[1].split(",")
                 if len(str_list) >= 4:
                     if str_list[3].strip(" ").strip("'") not in place_uuid:
